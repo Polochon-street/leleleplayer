@@ -24,17 +24,19 @@ float freq_sort(int16_t *cheat_array) {
 	float pas_freq;
 	FILE *file1;
 	FILE *file2;
-	FILE *file3;
+//	FILE *file3;
 
-	file1 = fopen("file_freq1.txt", "w");
-	file2 = fopen("file_freq2.txt", "w");
-	file3 = fopen("yolo.raw", "w");
+	if (debug) {
+		file1 = fopen("file_freq1.txt", "w");
+		file2 = fopen("file_freq2.txt", "w");
+	}
+
 	float peak;
 	char resnum_freq = 0;
 
 	sample_array = malloc(size);
 	int16_t *p = sample_array;
-	for(i = 0; i <= size; i+=2) {
+	for(i = 0; i <= size; i+=2) { // Select only one channel (left) TODO
 		if(planar == 1) {
 			*(p++) = cheat_array[i];
 		//	*(p++) = cheat_array[i++];
@@ -99,13 +101,14 @@ float freq_sort(int16_t *cheat_array) {
 
 	pas_freq = sample_rate/WIN_SIZE;
 
-	for(d=1;d<WIN_SIZE/2;++d) {
-		freq+=pas_freq;
-		fprintf(file1, "%f\n", freq);
-		fprintf(file2, "%f\n", spectre_moy[d]);
-		if(freq > 20000) // 10000 pour tracer
-		break;
-	} 
+	if (debug)
+		for(d=1;d<WIN_SIZE/2;++d) {
+			freq+=pas_freq;
+			fprintf(file1, "%f\n", freq);
+			fprintf(file2, "%f\n", spectre_moy[d]);
+			if(freq > 20000) // 10000 pour tracer
+			break;
+		}
 
 	tab_bandes[0] = (spectre_moy[1]+spectre_moy[2])/2;
 	tab_bandes[1] = (spectre_moy[3]+spectre_moy[4])/2;

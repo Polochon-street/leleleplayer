@@ -23,7 +23,9 @@ float amp_sort(int16_t* sample_array) {
 		histogram_temp[i] = '\0';
 	passe = 300;
 	histogram_count= 0;
-	file_amp = fopen("file_amp.txt", "w");
+
+	if (debug)
+		file_amp = fopen("file_amp.txt", "w");
 
 	for(d=0;sample_array[d] == 0;++d)
 		;
@@ -60,7 +62,8 @@ float amp_sort(int16_t* sample_array) {
 	for(i=0;i<=INT_SUP;++i)
 		histogram_integ+=histogram_smooth[i];
 
-	for(i=0;i<SIZE;++i) {
+	if(debug)
+		for(i=0;i<SIZE;++i) {
 		fprintf(file_amp, "%f\n", histogram_smooth[i]);
 //		printf("%f\n", histogram_smooth[i]);
 	} 

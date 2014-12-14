@@ -26,12 +26,11 @@ int main (int argc, char **argv) {
 	current_sample_array = audio_decode(current_sample_array, filename); // Decode audio track
 
 	resnum_freq = freq_sort(current_sample_array); // Freq sort
-	resnum_amp = amp_sort(current_sample_array);
+	resnum_amp = amp_sort(current_sample_array); // Amplitude sort
 	resnum = resnum_freq + resnum_amp;
 
 	if(debug)
 		printf("RÉSULTAT FINAL: %d\n", resnum);
-
 	if (resnum == 0) {
 		if(resnum_amp == 1) {
 			printf("Yolo\n");
@@ -51,6 +50,8 @@ int main (int argc, char **argv) {
 	else if (resnum < -1) {
 		if (debug)
 			printf("Doux\n");
+
 		return 1;
 	}
 }
+

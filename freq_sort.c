@@ -61,6 +61,8 @@ float freq_sort(int16_t *cheat_array) {
 	for(i=0;i<11;++i)
 		tab_bandes[i] = 0.0f;
 
+	nSamples/=2; // Only one channel
+
 	if(nSamples%WIN_SIZE > 0)
 		nSamples = (nSamples/WIN_SIZE+1)*WIN_SIZE; //in order for the fft to work
 

@@ -7,6 +7,7 @@ int16_t *current_sample_array;
 size_t size;
 int nSamples;
 int sample_rate;
+int nb_bytes_per_sample;
 int debug;
 int planar;
 

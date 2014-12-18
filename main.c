@@ -25,8 +25,8 @@ int main (int argc, char **argv) {
 
 	current_sample_array = audio_decode(current_sample_array, filename); // Decode audio track
 
-	resnum_freq = freq_sort(current_sample_array); // Freq sort
 	resnum_amp = amp_sort(current_sample_array); // Amplitude sort
+	resnum_freq = freq_sort(current_sample_array); // Freq sort
 	resnum = resnum_freq + resnum_amp;
 
 	if(debug)

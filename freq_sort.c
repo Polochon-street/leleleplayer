@@ -16,7 +16,11 @@ float freq_sort(int16_t *cheat_array) {
 	float tab_bandes[4];
 	float tab_sum;
 	int nFrames;
-	int16_t *sample_array;
+	int16_t *sample_array16;
+	int16_t *p16;
+	int32_t *sample_array32;
+	int32_t *p32;
+	 
 	int i, d, iFrame;
 	FFTSample* x;
 	RDFTContext* fft;
@@ -24,26 +28,36 @@ float freq_sort(int16_t *cheat_array) {
 	float pas_freq;
 	FILE *file1;
 	FILE *file2;
-//	FILE *file3;
+	FILE *file3;
 
 	if (debug) {
 		file1 = fopen("file_freq1.txt", "w");
 		file2 = fopen("file_freq2.txt", "w");
+		file3 = fopen("yolo.raw", "w");
 	}
 
 	float peak;
 	char resnum_freq = 0;
 
-	sample_array = malloc(size);
-	int16_t *p = sample_array;
-	for(i = 0; i <= size; i+=2) { // Select only one channel (left) TODO
-		if(planar == 1) {
-			*(p++) = cheat_array[i];
-		//	*(p++) = cheat_array[i++];
+	if (nb_bytes_per_sample == 2) {
+		sample_array16 = malloc(size);
+		p16 = sample_array16;
+		for (i = 0; i <= size; i+=2) // Select only one channel (left) TODO	
+			*(p16++) = cheat_array[i];
+	}
+	else if (nb_bytes_per_sample == 4) {
+		sample_array32 = malloc(size);
+		p32 = sample_array32;
+		for (i = 0; i <= size; i+=2) {	
+			*(p32++) = ((int32_t*)cheat_array)[i];
 		}
-		if(planar == 0) {
-			*(p++) = cheat_array[i];
-		}
+	}
+	
+	if (debug) {
+		if (nb_bytes_per_sample == 2)
+			fwrite(sample_array16, 1, size, file3);
+		else if (nb_bytes_per_sample == 4)
+			fwrite(sample_array32, 1, size, file3);
 	}
 
 	peak=0;
@@ -76,9 +90,16 @@ float freq_sort(int16_t *cheat_array) {
 	/* FFT computation */
 
 	for(i=0, iFrame = 0; iFrame<nFrames;i+=WIN_SIZE, iFrame++) {
-		for(d = 0; d < WIN_SIZE; d++)
-			x[d] = (float)(sample_array[i+d])*hann_window[d];
-		
+		if (nb_bytes_per_sample == 2) {
+			for(d = 0; d < WIN_SIZE; d++)
+				x[d] = (float)(sample_array16[i+d])*hann_window[d];
+		}
+
+		else if (nb_bytes_per_sample == 4) {
+			for(d = 0; d < WIN_SIZE; d++)
+				x[d] = (float)(sample_array32[i+d])*hann_window[d];
+		}
+
 		av_rdft_calc(fft, x);
 		
 		for(d = 1; d < WIN_SIZE/2; ++d) { // 1?

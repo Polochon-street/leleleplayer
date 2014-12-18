@@ -51,11 +51,12 @@ int16_t *audio_decode(int16_t* sample_array, const char *filename) { // decode t
 	nSamples = (pFormatCtx->duration)*(sample_rate)*c->channels/AV_TIME_BASE;
 
 	sample_array = (int16_t*)malloc(10*size*c->channels);
-	
 
 	beginning = sample_array;
 
 	planar = av_sample_fmt_is_planar(c->sample_fmt);
+	nb_bytes_per_sample = av_get_bytes_per_sample(c->sample_fmt);
+
 	/* End of codec init */
 	while(av_read_frame(pFormatCtx, &avpkt) >= 0) {
 		if(avpkt.stream_index == audioStream) {

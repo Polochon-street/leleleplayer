@@ -42,14 +42,14 @@ float freq_sort(int16_t *cheat_array) {
 	if (nb_bytes_per_sample == 2) {
 		sample_array16 = malloc(size);
 		p16 = sample_array16;
-		for (i = 0; i <= size; i+=2) // Select only one channel (left) TODO	
-			*(p16++) = cheat_array[i];
+		for (i = 0; i <= size; i+=2) 
+			*(p16++) = (cheat_array[i]+cheat_array[i+1])/2;
 	}
 	else if (nb_bytes_per_sample == 4) {
 		sample_array32 = malloc(size);
 		p32 = sample_array32;
 		for (i = 0; i <= size; i+=2) {	
-			*(p32++) = ((int32_t*)cheat_array)[i];
+			*(p32++) = (((int32_t*)cheat_array)[i]+((int32_t*)cheat_array)[i+1])/2;
 		}
 	}
 	

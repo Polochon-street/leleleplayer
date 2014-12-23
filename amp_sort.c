@@ -2,6 +2,7 @@
 #define SIZE 32768
 #define INT_INF 0
 #define INT_SUP 2000
+#define max( a, b ) ( ((a) > (b)) ? (a) : (b) )
 
 float amp_sort(int16_t* sample_array) {
 	int i, d, e, g;
@@ -21,6 +22,7 @@ float amp_sort(int16_t* sample_array) {
 		histogram_smooth[i] = '\0';
 	for(i=0;i<=SIZE;++i)
 		histogram_temp[i] = '\0';
+
 	passe = 300;
 	histogram_count= 0;
 
@@ -31,6 +33,7 @@ float amp_sort(int16_t* sample_array) {
 		;
 	for(e=size-1;sample_array[e] == 0; --e)
 		;
+
 	
 	for(i=d;i<=e;++i) 
 		++histogram[abs(*(sample_array++))];
@@ -64,8 +67,8 @@ float amp_sort(int16_t* sample_array) {
 
 	if(debug)
 		for(i=0;i<SIZE;++i) {
-		fprintf(file_amp, "%f\n", histogram_smooth[i]);
-//		printf("%f\n", histogram_smooth[i]);
+		fprintf(file_amp, "%d\n", histogram_smooth[i]);
+		//printf("%f\n", histogram_smooth[i]);
 	} 
 
 	if (histogram_integ < 25)

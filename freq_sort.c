@@ -109,7 +109,7 @@ float freq_sort(int16_t *cheat_array) {
 			spectre_moy[d] += raw;
 		} 
 		spectre_moy[0] = x[0]*x[0];
-	}
+	}	
 
 	for(d=1;d<=WIN_SIZE/2;++d) {
 		spectre_moy[d] /= WIN_SIZE;

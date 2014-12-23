@@ -1,8 +1,10 @@
 #include "analyse.h"
 
 int main (int argc, char **argv) {
+	int16_t *current_sample_array;
 	int resnum_freq;
 	int resnum_amp;
+	int resnum_env;
 	char resnum;
 	char *filename = argv[1];
 
@@ -27,30 +29,25 @@ int main (int argc, char **argv) {
 
 	resnum_amp = amp_sort(current_sample_array); // Amplitude sort
 	resnum_freq = freq_sort(current_sample_array); // Freq sort
-	resnum = resnum_freq + resnum_amp;
-
+	resnum_env = envelope_sort(current_sample_array);
+	resnum = resnum_amp + resnum_freq;
+	
 	if(debug)
 		printf("RÉSULTAT FINAL: %d\n", resnum);
-	if (resnum == 0) {
-		if(resnum_amp == 1) {
-			printf("Yolo\n");
-			return 0;
-		}
-		if(resnum_amp == -1) {
-			printf("Yolo\n");
+	if(resnum == 0 || resnum == -1) {
+		if(resnum_env == 1)
 			return 1;
-		}
-		return 3;
+		else
+			return 0;
 	}
-	else if (resnum > 1) {
-		if (debug)
+	else if(resnum >= 1) {
+		if(debug)
 			printf("Fort\n");
 		return 0;
 	}
-	else if (resnum < -1) {
-		if (debug)
+	else if(resnum < -1) {
+		if(debug)
 			printf("Doux\n");
-
 		return 1;
 	}
 }

@@ -5,13 +5,16 @@ void makeEnvelope(int16_t* sample_array, float* envelope, float attackS, float r
 	unsigned long i = 0;
 	const float attack = pow(0.01f, 1.0f/(attackS*sample_rate));
 	const float release = pow(0.01f, 1.0f/(releaseS*sample_rate));
+	int16_t *p16;
+	int d;
 	
+	p16 = sample_array;
+
 	float e = 0;
 	for(i = 0; i < nSamples; ++i) {
-		float v = (float)abs(sample_array[i]);
+		float v = (float)abs((*(p16++)));
 		float b = v > e ? attack : release;
 		e = b*(e-v)+v;
-
 		envelope[i] = e;
 	}
 }
@@ -53,11 +56,13 @@ float envelope_sort(int16_t* sample_array) {
 	float dDownEnvelope[mSamples-2];
 	float dDownEnvelopeMax = 0.0f;
 	float moy = 0;
-
+	
 	file_env = fopen("file_env.txt", "w");
 
-	envelope = (float*)malloc(size);
+	envelope = (float*)malloc(nSamples*sizeof(float));
+
 	makeEnvelope(sample_array, envelope, 5.0f, 10.0f);
+
 	signalDownsample(downEnvelope, mSamples, envelope, nSamples);
 	signalNormalize(downEnvelope, mSamples);
 
@@ -74,12 +79,15 @@ float envelope_sort(int16_t* sample_array) {
 		
 	for(i = 1; i < mSamples-2; ++i) {
 		moy += dDownEnvelope[i];
-		fprintf(file_env, "%f\n", dDownEnvelope[i]);
+		fprintf(file_env, "%d\n", sample_array[i]);
 	}
 	moy/=mSamples-1;
-
+	
+	
 	printf("%f, Moy: %f\n", dDownEnvelopeMax, moy*1000);
-	if(moy*1000 > 0.6) {
+	if(moy*1000 > 1)
+		return 2;
+	else if(moy*1000 > 0.6) {
 		printf("WARING WARING\n");
 		return 0;
 	}

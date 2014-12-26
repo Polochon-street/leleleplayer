@@ -21,7 +21,8 @@ float freq_sort(int16_t *cheat_array) {
 	int32_t *sample_array32;
 	int32_t *p32;
 	 
-	int i, d, iFrame;
+	int d, iFrame;
+	size_t i;
 	FFTSample* x;
 	RDFTContext* fft;
 	float freq;
@@ -29,7 +30,7 @@ float freq_sort(int16_t *cheat_array) {
 	FILE *file1;
 	FILE *file2;
 	FILE *file3;
-
+	
 	if (debug) {
 		file1 = fopen("file_freq1.txt", "w");
 		file2 = fopen("file_freq2.txt", "w");
@@ -40,15 +41,16 @@ float freq_sort(int16_t *cheat_array) {
 	char resnum_freq = 0;
 
 	if (nb_bytes_per_sample == 2) {
-		sample_array16 = malloc(size);
+		sample_array16 = (int16_t*)malloc(size);
 		p16 = sample_array16;
-		for (i = 0; i <= size; i+=2) 
+		for (i = 0; i < nSamples; i+=2) {
 			*(p16++) = (cheat_array[i]+cheat_array[i+1])/2;
+		}
 	}
 	else if (nb_bytes_per_sample == 4) {
 		sample_array32 = malloc(size);
 		p32 = sample_array32;
-		for (i = 0; i <= size; i+=2) {	
+		for (i = 0; i < nSamples; i+=2) {	
 			*(p32++) = (((int32_t*)cheat_array)[i]+((int32_t*)cheat_array)[i+1])/2;
 		}
 	}
@@ -127,7 +129,7 @@ float freq_sort(int16_t *cheat_array) {
 	if (debug)
 		for(d=1;d<WIN_SIZE/2;++d) {
 			freq+=pas_freq;
-			fprintf(file1, "%f\n", freq);
+			fprintf(file1, "%d\n", freq);
 			fprintf(file2, "%f\n", spectre_moy[d]);
 			if(freq > 20000) // 10000 pour tracer
 			break;

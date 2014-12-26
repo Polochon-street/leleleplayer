@@ -15,7 +15,7 @@ int16_t *audio_decode(int16_t* sample_array, const char *filename) { // decode t
 	int16_t *beginning;
 	int got_frame;
 	int audioStream;
-	
+	size_t index;
 
 	av_register_all();
 	av_init_packet(&avpkt);
@@ -46,12 +46,12 @@ int16_t *audio_decode(int16_t* sample_array, const char *filename) { // decode t
 	}
 
 	sample_rate = c->sample_rate;
-	size = (pFormatCtx->duration)*(sample_rate)*c->channels*sizeof(int16_t)/AV_TIME_BASE;
-	nSamples = (pFormatCtx->duration)*(sample_rate)*c->channels/AV_TIME_BASE;
-
-	sample_array = (int16_t*)malloc(10*size*c->channels);
+	size = (((uint64_t)(pFormatCtx->duration)*(uint64_t)sample_rate)/(uint64_t)AV_TIME_BASE+1)*c->channels*sizeof(int16_t);
+	nSamples = (((uint64_t)(pFormatCtx->duration)*(uint64_t)sample_rate)/(uint64_t)AV_TIME_BASE+1)*c->channels;
+	sample_array = (int16_t*)malloc(size);
 
 	beginning = sample_array;
+	index = 0;
 
 	planar = av_sample_fmt_is_planar(c->sample_fmt);
 	nb_bytes_per_sample = av_get_bytes_per_sample(c->sample_fmt);
@@ -70,6 +70,7 @@ int16_t *audio_decode(int16_t* sample_array, const char *filename) { // decode t
 			}
 			else 
 				av_frame_unref(decoded_frame);
+
 			len = avcodec_decode_audio4(c, decoded_frame, &got_frame, &avpkt);
 	
 			if(len < 0) {
@@ -80,18 +81,25 @@ int16_t *audio_decode(int16_t* sample_array, const char *filename) { // decode t
 			/* interesting part: copying decoded data into a huge array */
 			/* flac has a different behaviour from mp3, hence the planar condition */
 			if(got_frame) {
-				int data_size = av_samples_get_buffer_size(NULL, c->channels, decoded_frame->nb_samples, c->sample_fmt, 1); 
-				int16_t *p = sample_array;
+				size_t data_size = av_samples_get_buffer_size(NULL, c->channels, decoded_frame->nb_samples, c->sample_fmt, 1); 
+
+				if(index*2 + data_size > size) {
+					printf("Fuck. Reallocating...\n");
+					beginning = realloc(beginning, (size+=data_size));
+					nSamples+=data_size/2;
+				}
+				int16_t *p = beginning+index;
+				
 				if(planar == 1) {
-					for(i = 0; i < data_size; i++) { 
+					for(i = 0; i < decoded_frame->nb_samples; i++) { 
 						*(p++) = ((int16_t*)(decoded_frame->extended_data[0]))[i];
 						*(p++) = ((int16_t*)(decoded_frame->extended_data[1]))[i];
 					}
-					sample_array+=data_size/2; // WHY /2? TODO
+					index+=data_size/2; 
 				}
 				else if(planar == 0) {
-				memcpy(sample_array, decoded_frame->extended_data[0], data_size);
-	        	sample_array+=data_size/2;
+					memcpy(index+beginning, decoded_frame->extended_data[0], data_size);
+	        		index+=data_size/2;
 				}
 			} 
 		}

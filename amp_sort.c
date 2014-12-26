@@ -13,9 +13,11 @@ float amp_sort(int16_t* sample_array) {
 	float histogram_integ;
 	float moy, sd;
 	int passe;
+	int16_t* p16;
 	FILE *file_amp; // prevents crumbling?
 	int resnum_amp = 0;
-
+	
+	p16 = sample_array;
 	for(i=0;i<SIZE;++i)
 		histogram[i] = '\0';
 	for(i=0;i<=SIZE;++i)
@@ -29,14 +31,13 @@ float amp_sort(int16_t* sample_array) {
 	if (debug)
 		file_amp = fopen("file_amp.txt", "w");
 
-	for(d=0;sample_array[d] == 0;++d)
+	for(d=0;sample_array[d] == 0||sample_array[d] == -1;++d)
 		;
-	for(e=size-1;sample_array[e] == 0; --e)
+	for(e=nSamples-1;sample_array[e] == 0; --e)
 		;
-
 	
 	for(i=d;i<=e;++i) 
-		++histogram[abs(*(sample_array++))];
+		++histogram[abs(*(p16++))];
 	for(i=0;i<SIZE;++i)
 		histogram_temp[i]=histogram[i];
 	histogram_count+=e-d;
@@ -65,9 +66,10 @@ float amp_sort(int16_t* sample_array) {
 	for(i=0;i<=INT_SUP;++i)
 		histogram_integ+=histogram_smooth[i];
 
+
 	if(debug)
 		for(i=0;i<SIZE;++i) {
-		fprintf(file_amp, "%d\n", histogram_smooth[i]);
+//		fprintf(file_amp, "%d\n", sample_array[i]);
 		//printf("%f\n", histogram_smooth[i]);
 	} 
 

@@ -46,8 +46,8 @@ int16_t *audio_decode(int16_t* sample_array, const char *filename) { // decode t
 	}
 
 	sample_rate = c->sample_rate;
-	size = (((uint64_t)(pFormatCtx->duration)*(uint64_t)sample_rate)/(uint64_t)AV_TIME_BASE+1)*c->channels*sizeof(int16_t);
-	nSamples = (((uint64_t)(pFormatCtx->duration)*(uint64_t)sample_rate)/(uint64_t)AV_TIME_BASE+1)*c->channels;
+	size = (((uint64_t)(pFormatCtx->duration)*(uint64_t)sample_rate)/(uint64_t)AV_TIME_BASE)*c->channels*av_get_bytes_per_sample(c->sample_fmt);
+	nSamples = (((uint64_t)(pFormatCtx->duration)*(uint64_t)sample_rate)/(uint64_t)AV_TIME_BASE)*c->channels;
 	sample_array = (int16_t*)malloc(size);
 
 	beginning = sample_array;
@@ -83,10 +83,9 @@ int16_t *audio_decode(int16_t* sample_array, const char *filename) { // decode t
 			if(got_frame) {
 				size_t data_size = av_samples_get_buffer_size(NULL, c->channels, decoded_frame->nb_samples, c->sample_fmt, 1); 
 
-				if(index*2 + data_size > size) {
-					printf("Fuck. Reallocating...\n");
+				if(index*nb_bytes_per_sample + data_size > size) {
 					beginning = realloc(beginning, (size+=data_size));
-					nSamples+=data_size/2;
+					nSamples+=data_size/nb_bytes_per_sample;
 				}
 				int16_t *p = beginning+index;
 				
@@ -95,17 +94,16 @@ int16_t *audio_decode(int16_t* sample_array, const char *filename) { // decode t
 						*(p++) = ((int16_t*)(decoded_frame->extended_data[0]))[i];
 						*(p++) = ((int16_t*)(decoded_frame->extended_data[1]))[i];
 					}
-					index+=data_size/2; 
+					index+=data_size/2;
 				}
 				else if(planar == 0) {
 					memcpy(index+beginning, decoded_frame->extended_data[0], data_size);
-	        		index+=data_size/2;
+	        		index+=data_size/2; // TODO better management int16_t and int32_t (p+index+sizeof(type de p))
 				}
 			} 
 		}
 	}
 	/* cleaning memory */
-	//fclose(f);
 	avcodec_close(c);
 	av_free(c);
 	//avformat_close_input(&pFormatCtx);

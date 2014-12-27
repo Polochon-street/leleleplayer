@@ -27,14 +27,9 @@ int main (int argc, char **argv) {
 	}
 
 	current_sample_array = audio_decode(current_sample_array, filename); // Decode audio track
-
-	printf("Coucou\n");
 	resnum_freq = freq_sort(current_sample_array); // Freq sort
-	printf("Tu veux\n");
-	resnum_env = envelope_sort(current_sample_array);
-	printf("Voir ma\n");
+	resnum_env = envelope_sort(current_sample_array); // Attack sort // TODO better implementation of final sort
 	resnum_amp = amp_sort(current_sample_array); // Amplitude sort
-	printf("BITE\n");
 
 
 	resnum = resnum_amp + resnum_freq;

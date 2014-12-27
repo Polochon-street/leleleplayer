@@ -83,16 +83,19 @@ float envelope_sort(int16_t* sample_array) {
 	}
 	moy/=mSamples-1;
 	
-	
-	printf("%f, Moy: %f\n", dDownEnvelopeMax, moy*1000);
+	if(debug) {
+	printf("-> Debug attaque\n");
+	printf("Moyenne dérivée enveloppe: %f\n", moy*1000);
+	printf("Critère: fort > 1 > 0.6 > doux\n");
+	}
+
 	if(moy*1000 > 1)
-		return 2;
-	else if(moy*1000 > 0.6) {
-		printf("WARING WARING\n");
-		return 0;
+		return 2; // Much fort
+	else if(moy*1000 > 0.35) {
+		return 0; // Quelques attaques
 	}
 	else
-		return 1;
+		return 1; // Calme plat
 }
 
 

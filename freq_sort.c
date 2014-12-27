@@ -48,7 +48,7 @@ float freq_sort(int16_t *cheat_array) {
 		}
 	}
 	else if (nb_bytes_per_sample == 4) {
-		sample_array32 = malloc(size);
+		sample_array32 = (int32_t*)malloc(size);
 		p32 = sample_array32;
 		for (i = 0; i < nSamples; i+=2) {	
 			*(p32++) = (((int32_t*)cheat_array)[i]+((int32_t*)cheat_array)[i+1])/2;
@@ -57,7 +57,7 @@ float freq_sort(int16_t *cheat_array) {
 	
 	if (debug) {
 		if (nb_bytes_per_sample == 2)
-			fwrite(sample_array16, 1, size, file3);
+			fwrite(sample_array16, 1, nSamples, file3);
 		else if (nb_bytes_per_sample == 4)
 			fwrite(sample_array32, 1, size, file3);
 	}

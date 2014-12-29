@@ -17,7 +17,6 @@ float amp_sort(int16_t* sample_array) {
 	FILE *file_amp; // prevents crumbling?
 	int resnum_amp = 0;
 	
-	p16 = sample_array;
 	for(i=0;i<SIZE;++i)
 		histogram[i] = '\0';
 	for(i=0;i<=SIZE;++i)
@@ -35,9 +34,11 @@ float amp_sort(int16_t* sample_array) {
 		;
 	for(e=nSamples-1; sample_array[e] == 0; --e)
 		;
-	
-	for(i = d;i <= e; ++i) 
+	p16 = sample_array+d;
+
+	for(i = d; i <= e; ++i) 
 		++histogram[abs(*(p16++))];
+	
 	for(i=0;i<SIZE;++i)
 		histogram_temp[i]=histogram[i];
 	histogram_count+=e-d;

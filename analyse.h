@@ -13,6 +13,6 @@ int planar;
 
 float amp_sort(int16_t* array);
 float envelope_sort(int16_t* array);
-int16_t* audio_decode(int16_t *array, const char *file);
+int8_t* audio_decode(int8_t*array, const char *file);
 float freq_sort(int16_t *array);
 

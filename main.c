@@ -1,7 +1,7 @@
 #include "analyse.h"
 
 int main (int argc, char **argv) {
-	int16_t *current_sample_array;
+	int8_t *current_sample_array;
 	int resnum_freq;
 	int resnum_amp;
 	int resnum_env;
@@ -27,11 +27,11 @@ int main (int argc, char **argv) {
 	}
 
 	current_sample_array = audio_decode(current_sample_array, filename); // Decode audio track
-	resnum_freq = freq_sort(current_sample_array); // Freq sort
-	resnum_env = envelope_sort(current_sample_array); // Attack sort // TODO better implementation of final sort
-	resnum_amp = amp_sort(current_sample_array); // Amplitude sort
+	resnum_freq = freq_sort((int16_t*)current_sample_array); // Freq sort // TODO better implement in order to avoid HF
+	resnum_env = envelope_sort((int16_t*)current_sample_array); // Attack sort // TODO better implementation of final sort
+	resnum_amp = amp_sort((int16_t*)current_sample_array); // Amplitude sort
 
-
+	free(current_sample_array);
 	resnum = resnum_amp + resnum_freq;
 	
 	if(debug)

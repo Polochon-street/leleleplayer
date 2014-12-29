@@ -157,17 +157,24 @@ float freq_sort(int16_t *cheat_array) {
 	else
 		resnum_freq = -2;
 
-if (debug) {
-	printf("-> Debug fréquentiel\n");
-	printf("Basses fréquences: %f\n", tab_bandes[0]);
-	printf("Moyennes-basses fréquences: %f\n", tab_bandes[1]);
-	printf("Moyennes fréquences: %f\n", tab_bandes[2]); // Marche bien pour Combichrist (?) (27.1 = no strict) TODO
-	printf("Moyennes-hautes fréquences: %f\n", tab_bandes[3]);
-	printf("Hautes fréquences: %f\n", tab_bandes[4]);
-	printf("Critères: fort > -47 > -51 > -55 > doux\n");
-	printf("Somme: %f\n", tab_sum);
-	printf("Résultat fréquences: %d\n", resnum_freq);
-}
+	free(spectre_moy);
+	free(x);
+	if(nb_bytes_per_sample == 2)
+		free(sample_array16);
+	if(nb_bytes_per_sample == 4)
+		free(sample_array32);
+
+	if (debug) {
+		printf("-> Debug fréquentiel\n");
+		printf("Basses fréquences: %f\n", tab_bandes[0]);
+		printf("Moyennes-basses fréquences: %f\n", tab_bandes[1]);
+		printf("Moyennes fréquences: %f\n", tab_bandes[2]); // Marche bien pour Combichrist (?) (27.1 = no strict) TODO
+		printf("Moyennes-hautes fréquences: %f\n", tab_bandes[3]);
+		printf("Hautes fréquences: %f\n", tab_bandes[4]);
+		printf("Critères: fort > -47 > -51 > -55 > doux\n");
+		printf("Somme: %f\n", tab_sum);
+		printf("Résultat fréquences: %d\n", resnum_freq);
+	}
 
 	return (resnum_freq);
 }

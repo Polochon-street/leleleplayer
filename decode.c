@@ -4,15 +4,15 @@
 
 #include "analyse.h"
 
-int16_t *audio_decode(int16_t* sample_array, const char *filename) { // decode the track
+int8_t *audio_decode(int8_t* sample_array, const char *filename) { // decode the track
 	AVCodec *codec = NULL;
 	AVCodecContext *c = NULL;
 	AVFormatContext *pFormatCtx;
-	int i;
+	int i, d;
 	int len;
 	AVPacket avpkt;
 	AVFrame *decoded_frame = NULL;
-	int16_t *beginning;
+	int8_t *beginning;
 	int got_frame;
 	int audioStream;
 	size_t index;
@@ -48,7 +48,7 @@ int16_t *audio_decode(int16_t* sample_array, const char *filename) { // decode t
 	sample_rate = c->sample_rate;
 	size = (((uint64_t)(pFormatCtx->duration)*(uint64_t)sample_rate)/(uint64_t)AV_TIME_BASE)*c->channels*av_get_bytes_per_sample(c->sample_fmt);
 	nSamples = (((uint64_t)(pFormatCtx->duration)*(uint64_t)sample_rate)/(uint64_t)AV_TIME_BASE)*c->channels;
-	sample_array = (int16_t*)malloc(size);
+	sample_array = malloc(size);
 
 	beginning = sample_array;
 	index = 0;
@@ -87,18 +87,20 @@ int16_t *audio_decode(int16_t* sample_array, const char *filename) { // decode t
 					beginning = realloc(beginning, (size+=data_size));
 					nSamples+=data_size/nb_bytes_per_sample;
 				}
-				int16_t *p = beginning+index;
+				int8_t *p = beginning+index*nb_bytes_per_sample;
 				
 				if(planar == 1) {
-					for(i = 0; i < decoded_frame->nb_samples; i++) { 
-						*(p++) = ((int16_t*)(decoded_frame->extended_data[0]))[i];
-						*(p++) = ((int16_t*)(decoded_frame->extended_data[1]))[i];
+					for(i = 0; i < decoded_frame->nb_samples*nb_bytes_per_sample; i+=nb_bytes_per_sample) { 
+						for(d = 0; d < nb_bytes_per_sample; ++d) 
+							*(p++) = ((int8_t*)(decoded_frame->extended_data[0]))[i+d];
+						for(d = 0; d < nb_bytes_per_sample; ++d) 
+							*(p++) = ((int8_t*)(decoded_frame->extended_data[1]))[i+d];
 					}
-					index+=data_size/2;
+					index+=data_size/nb_bytes_per_sample;
 				}
 				else if(planar == 0) {
-					memcpy(index+beginning, decoded_frame->extended_data[0], data_size);
-	        		index+=data_size/2; // TODO better management int16_t and int32_t (p+index+sizeof(type de p))
+					memcpy(index*nb_bytes_per_sample+beginning, decoded_frame->extended_data[0], data_size);
+	        		index+=data_size/nb_bytes_per_sample; // TODO better management int16_t and int32_t (p+index+sizeof(type de p))
 				}
 			} 
 		}

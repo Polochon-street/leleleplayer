@@ -146,13 +146,13 @@ float freq_sort(int16_t *cheat_array) {
 	for(i=60;i<=117;++i)
 		tab_bandes[4]+=spectre_moy[i];
 	tab_bandes[4]/=(116-59);
-	tab_sum = tab_bandes[3] + tab_bandes[4] - (tab_bandes[1] + tab_bandes[0]);
+	tab_sum = tab_bandes[3] + tab_bandes[4] - (tab_bandes[1] + tab_bandes[2] + tab_bandes[0]);
 
-	if (tab_sum > -47.)
+	if (tab_sum > -28.)
 		resnum_freq = 2;
-	else if (tab_sum > -51.)
+	else if (tab_sum > -33.)
 		resnum_freq = 1;
-	else if (tab_sum > -55)
+	else if (tab_sum > -38)
 		resnum_freq = -1;
 	else
 		resnum_freq = -2;

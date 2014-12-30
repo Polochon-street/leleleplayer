@@ -14,7 +14,7 @@ float amp_sort(int16_t* sample_array) {
 	float moy, sd;
 	int passe;
 	int16_t* p16;
-	FILE *file_amp; // prevents crumbling?
+	FILE *file_amp;
 	int resnum_amp = 0;
 	
 	for(i=0;i<SIZE;++i)

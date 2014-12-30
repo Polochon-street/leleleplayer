@@ -91,11 +91,11 @@ float envelope_sort(int16_t* sample_array) {
 
 	if(moy*1000 > 1)
 		return 2; // Much fort
-	else if(moy*1000 > 0.35) {
-		return 0; // Quelques attaques
+	else if(moy*1000 > 0.30) {
+		return 1; // Quelques attaques
 	}
 	else
-		return 1; // Calme plat
+		return 0; // Calme plat
 }
 
 

@@ -27,7 +27,7 @@ int main (int argc, char **argv) {
 	}
 
 	current_sample_array = audio_decode(current_sample_array, filename); // Decode audio track
-	resnum_freq = freq_sort((int16_t*)current_sample_array); // Freq sort // TODO better implement in order to avoid HF
+	resnum_freq = freq_sort((int16_t*)current_sample_array); // Freq sort 
 	resnum_env = envelope_sort((int16_t*)current_sample_array); // Attack sort // TODO better implementation of final sort
 	resnum_amp = amp_sort((int16_t*)current_sample_array); // Amplitude sort
 
@@ -41,10 +41,10 @@ int main (int argc, char **argv) {
 		return 0;
 
 	if(resnum == 0 || resnum == -1) {
-		if(resnum_env == 1)
-			return 1;
-		else
+		if(resnum_env == 1 || resnum == 0)
 			return 0;
+		else if(resnum_env == 0)
+			return 1;
 	}
 	else if(resnum >= 1) {
 		if(debug)

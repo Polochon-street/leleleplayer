@@ -37,7 +37,7 @@ int main (int argc, char **argv) {
 	if(debug)
 		printf("RÉSULTAT FINAL: %d\n", resnum);
 
-	if(resnum_env == 2)
+	if(resnum_env == 1)
 		return 0;
 
 	if(resnum == 0 || resnum == -1) {

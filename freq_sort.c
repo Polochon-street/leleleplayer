@@ -146,13 +146,13 @@ float freq_sort(int16_t *cheat_array) {
 	for(i=60;i<=117;++i)
 		tab_bandes[4]+=spectre_moy[i];
 	tab_bandes[4]/=(116-59);
-	tab_sum = tab_bandes[3] + tab_bandes[4] - (tab_bandes[1] + tab_bandes[2] + tab_bandes[0]);
+	tab_sum = tab_bandes[4] + tab_bandes[3] + tab_bandes[2] - tab_bandes[0] - tab_bandes[1];
 
-	if (tab_sum > -28.)
+	if (tab_sum > -66.1)
 		resnum_freq = 2;
-	else if (tab_sum > -33.)
+	else if (tab_sum > -68.)
 		resnum_freq = 1;
-	else if (tab_sum > -38)
+	else if (tab_sum > -71)
 		resnum_freq = -1;
 	else
 		resnum_freq = -2;
@@ -171,7 +171,7 @@ float freq_sort(int16_t *cheat_array) {
 		printf("Moyennes fréquences: %f\n", tab_bandes[2]); // Marche bien pour Combichrist (?) (27.1 = no strict) TODO
 		printf("Moyennes-hautes fréquences: %f\n", tab_bandes[3]);
 		printf("Hautes fréquences: %f\n", tab_bandes[4]);
-		printf("Critères: fort > -47 > -51 > -55 > doux\n");
+		printf("Critères: fort > -66.1 > -68 > -71 > doux\n");
 		printf("Somme: %f\n", tab_sum);
 		printf("Résultat fréquences: %d\n", resnum_freq);
 	}

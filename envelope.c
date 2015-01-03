@@ -56,6 +56,7 @@ float envelope_sort(int16_t* sample_array) {
 	float dDownEnvelope[mSamples-2];
 	float dDownEnvelopeMax = 0.0f;
 	float moy = 0;
+	float peakLength = 0;
 	
 	file_env = fopen("file_env.txt", "w");
 
@@ -79,21 +80,32 @@ float envelope_sort(int16_t* sample_array) {
 		
 	for(i = 1; i < mSamples-2; ++i) {
 		moy += dDownEnvelope[i];
-		fprintf(file_env, "%d\n", sample_array[i]);
+		fprintf(file_env, "%f\n", dDownEnvelope[i]);
+		if(dDownEnvelope[i] >= 0.05)
+			printf("Alerte: forte attaque!\n");
 	}
+
+	for(i = 1; i < mSamples-2; ++i) {
+		if(dDownEnvelope[i] >= 0.014) {
+			for(d = i+1; dDownEnvelope[d] > 0; ++d) 
+				peakLength++;
+			for(d = i-1; dDownEnvelope[d] > 0; --d)
+				peakLength++;
+		}
+	}			
+
+	printf("%f\n", peakLength/mSamples);
 	moy/=mSamples-1;
 	
 	if(debug) {
 	printf("-> Debug attaque\n");
 	printf("Moyenne dérivée enveloppe: %f\n", moy*1000);
-	printf("Critère: fort > 1 > 0.6 > doux\n");
+	printf("Proportion de pics: %f\n", peakLength/mSamples);
+	printf("Critère: fort > 0.2 > doux\n");
 	}
 
-	if(moy*1000 > 1)
-		return 2; // Much fort
-	else if(moy*1000 > 0.30) {
-		return 1; // Quelques attaques
-	}
+	if(peakLength/mSamples > 0.2)
+		return 1; // Much fort
 	else
 		return 0; // Calme plat
 }

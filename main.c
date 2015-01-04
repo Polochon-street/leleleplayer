@@ -32,28 +32,24 @@ int main (int argc, char **argv) {
 	resnum_amp = amp_sort((int16_t*)current_sample_array); // Amplitude sort
 
 	free(current_sample_array);
-	resnum = resnum_amp + resnum_freq;
+	resnum = resnum_amp + resnum_freq + resnum_env;
 	
 	if(debug)
-		printf("RÉSULTAT FINAL: %d\n", resnum);
+		printf("FINAL RESULT: %d\n", resnum);
 
-	if(resnum_env == 1)
-		return 0;
-
-	if(resnum == 0 || resnum == -1) {
-		if(resnum_env == 1 || resnum == 0)
-			return 0;
-		else if(resnum_env == 0)
-			return 1;
+	if(resnum == 0) {
+		if(debug)
+			printf("Can't conclude...\n");
+		return 2;
 	}
 	else if(resnum >= 1) {
 		if(debug)
-			printf("Fort\n");
+			printf("Loud\n");
 		return 0;
 	}
 	else if(resnum < -1) {
 		if(debug)
-			printf("Doux\n");
+			printf("Calm\n");
 		return 1;
 	}
 }

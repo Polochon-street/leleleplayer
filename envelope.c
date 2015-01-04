@@ -49,6 +49,7 @@ void signalNormalize(float *signal, long length) {
 float envelope_sort(int16_t* sample_array) {
 	int i, d, e, g;
 	float *envelope;
+	int result = 0;
 	FILE *file_env;
 	const float analyzePrecision = 5.0f;
 	unsigned long mSamples = analyzePrecision*nSamples/sample_rate;
@@ -81,8 +82,6 @@ float envelope_sort(int16_t* sample_array) {
 	for(i = 1; i < mSamples-2; ++i) {
 		moy += dDownEnvelope[i];
 		fprintf(file_env, "%f\n", dDownEnvelope[i]);
-		if(dDownEnvelope[i] >= 0.05)
-			printf("Alerte: forte attaque!\n");
 	}
 
 	for(i = 1; i < mSamples-2; ++i) {
@@ -94,20 +93,23 @@ float envelope_sort(int16_t* sample_array) {
 		}
 	}			
 
-	printf("%f\n", peakLength/mSamples);
 	moy/=mSamples-1;
-	
+
+	if(moy*1000 > 1.)
+		result+=2;
+	if(peakLength/mSamples > 0.3)
+		result+=2;
+
 	if(debug) {
 	printf("-> Debug attaque\n");
 	printf("Moyenne dérivée enveloppe: %f\n", moy*1000);
-	printf("Proportion de pics: %f\n", peakLength/mSamples);
+	printf("Critère: fort > 1 > doux\n");
+	printf("Proportion de pics: %f\n", peakLength/(mSamples-1));
 	printf("Critère: fort > 0.2 > doux\n");
+	printf("Envelope result: %d\n", result);
 	}
 
-	if(peakLength/mSamples > 0.2)
-		return 1; // Much fort
-	else
-		return 0; // Calme plat
+	return result;
 }
 
 

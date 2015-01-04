@@ -165,15 +165,15 @@ float freq_sort(int16_t *cheat_array) {
 		free(sample_array32);
 
 	if (debug) {
-		printf("-> Debug fréquentiel\n");
-		printf("Basses fréquences: %f\n", tab_bandes[0]);
-		printf("Moyennes-basses fréquences: %f\n", tab_bandes[1]);
-		printf("Moyennes fréquences: %f\n", tab_bandes[2]); // Marche bien pour Combichrist (?) (27.1 = no strict) TODO
-		printf("Moyennes-hautes fréquences: %f\n", tab_bandes[3]);
-		printf("Hautes fréquences: %f\n", tab_bandes[4]);
-		printf("Critères: fort > -66.1 > -68 > -71 > doux\n");
-		printf("Somme: %f\n", tab_sum);
-		printf("Résultat fréquences: %d\n", resnum_freq);
+		printf("-> Freq debug\n");
+		printf("Low frequencies: %f\n", tab_bandes[0]);
+		printf("Mid-low frequencices: %f\n", tab_bandes[1]);
+		printf("Mid frequencies: %f\n", tab_bandes[2]); // Marche bien pour Combichrist (?) (27.1 = no strict) TODO
+		printf("Mid-high frequencies: %f\n", tab_bandes[3]);
+		printf("High frequencies: %f\n", tab_bandes[4]);
+		printf("Criterion: Loud > -66.1 > -68 > -71 > Calm\n");
+		printf("Sum: %f\n", tab_sum);
+		printf("Freq result: %d\n", resnum_freq);
 	}
 
 	return (resnum_freq);

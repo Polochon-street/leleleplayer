@@ -28,7 +28,7 @@ int main (int argc, char **argv) {
 
 	current_sample_array = audio_decode(current_sample_array, filename); // Decode audio track
 	resnum_freq = freq_sort((int16_t*)current_sample_array); // Freq sort 
-	resnum_env = envelope_sort((int16_t*)current_sample_array); // Attack sort // TODO better implementation of final sort
+	resnum_env = envelope_sort((int16_t*)current_sample_array); // Attack sort // TODO better implementation of final sort TODO different modes (nazi...)
 	resnum_amp = amp_sort((int16_t*)current_sample_array); // Amplitude sort
 
 	free(current_sample_array);

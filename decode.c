@@ -100,7 +100,7 @@ int8_t *audio_decode(int8_t* sample_array, const char *filename) { // decode the
 				}
 				else if(planar == 0) {
 					memcpy(index*nb_bytes_per_sample+beginning, decoded_frame->extended_data[0], data_size);
-	        		index+=data_size/nb_bytes_per_sample; // TODO better management int16_t and int32_t (p+index+sizeof(type de p))
+	        		index+=data_size/nb_bytes_per_sample; 
 				}
 			} 
 		}

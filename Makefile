@@ -1,6 +1,6 @@
 CC=gcc
 CFLAGS=
-LDFLAGS=-lavformat -lavutil -lavcodec -lm -std=c99
+LDFLAGS=-g -lavformat -lavutil -lavcodec -lm -std=c99
 EXEC=analyse
 
 all: $(EXEC) 

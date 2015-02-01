@@ -1,115 +1,57 @@
 #include "analyse.h"
+
 #define max( a, b ) ( ((a) > (b)) ? (a) : (b) )
-
-void makeEnvelope(int16_t* sample_array, float* envelope, float attackS, float releaseS) {
-	unsigned long i = 0;
-	const float attack = pow(0.01f, 1.0f/(attackS*sample_rate));
-	const float release = pow(0.01f, 1.0f/(releaseS*sample_rate));
-	int16_t *p16;
-	int d;
-	
-	p16 = sample_array;
-
-	float e = 0;
-	for(i = 0; i < nSamples; ++i) {
-		float v = (float)abs((*(p16++)));
-		float b = v > e ? attack : release;
-		e = b*(e-v)+v;
-		envelope[i] = e;
-	}
-}
-
-void signalDownsample(float* dst, int dstLen, float* src, int srcLen) {
-	unsigned long i, j;
-	unsigned long ratio = srcLen/dstLen;
-
-	for(j = 0; j < dstLen; ++j)
-		dst[j] = 0.0f;
-
-	for(i = 0; i < srcLen; ++i)
-		dst[i/ratio] += src[i]/ratio;
-}
-
-void signalNormalize(float *signal, long length) {
-	unsigned long i;
-	float v;
-	float m = 0.0f;
-	for(i = 0; i < length; ++i) {
-		float v = abs(signal[i]);
-		if(v > m)
-			m = v;
-	}
-	
-	for(i = 0;i < length; ++i)
-		signal[i] /= m;
-}
-		
-
+#define QUANT_FREQ 44100
+#define DECR_SPEED ( 32768 / (int)( ((float)1/2)*QUANT_FREQ)) 
 
 float envelope_sort(int16_t* sample_array) {
-	int i, d, e, g;
-	float *envelope;
-	int result = 0;
+	int i, g;
 	FILE *file_env;
-	const float analyzePrecision = 5.0f;
-	unsigned long mSamples = analyzePrecision*nSamples/sample_rate;
-	float downEnvelope[mSamples+1];
-	float dDownEnvelope[mSamples-2];
-	float dDownEnvelopeMax = 0.0f;
-	float moy = 0;
-	float peakLength = 0;
+	int16_t *enveloppe;
+	int16_t *dEnveloppe;
+	float peaklength = 0;
+	int passe;
+	enveloppe = (int16_t*)malloc(nSamples*sizeof(int16_t));
+	dEnveloppe = (int16_t*)malloc(nSamples*sizeof(int16_t));
+
+	for(i = 0; i < nSamples-1; ++i)
+		enveloppe[i] = 0;
 	
 	file_env = fopen("file_env.txt", "w");
+	for(i = 1; i < nSamples-1; ++i) {
+		/* if(enveloppe[i-1] - DECR_SPEED > abs(sample_array[i]))
+			enveloppe[i] = enveloppe[i-1];
+		else
+			enveloppe[i] = abs(sample_array[i]); */
+		//printf("%d, %d, %d\n", enveloppe[i-1] - DECR_SPEED, enveloppe[i], sample_array[i]);
+		enveloppe[i] = max(enveloppe[i-1] - DECR_SPEED, abs(sample_array[i]));	
+	}	
 
-	envelope = (float*)malloc(nSamples*sizeof(float));
+/*	for(i = 0; i < nSamples-1; ++i)
+		enveloppe_temp[i] = enveloppe[i];
 
-	makeEnvelope(sample_array, envelope, 5.0f, 10.0f);
-
-	signalDownsample(downEnvelope, mSamples, envelope, nSamples);
-	signalNormalize(downEnvelope, mSamples);
-
-	for(i = 1; i < mSamples-1; ++i) {
-		dDownEnvelope[i-1] = downEnvelope[i+1] - downEnvelope[i-1];
-		if(dDownEnvelopeMax < fabs(dDownEnvelope[i-1]))
-			dDownEnvelopeMax = dDownEnvelope[i-1];
-	}
-
-	for(i = 1; i < mSamples-1; ++i) {
-		//dDownEnvelope[i-1] /= dDownEnvelopeMax;
-		dDownEnvelope[i-1] = pow(dDownEnvelope[i-1], 2.0f)*(dDownEnvelope[i-1] > 0.0f ? 1.0f : -1.0f);
-	}
-		
-	for(i = 1; i < mSamples-2; ++i) {
-		moy += dDownEnvelope[i];
-		fprintf(file_env, "%f\n", dDownEnvelope[i]);
-	}
-
-	for(i = 1; i < mSamples-2; ++i) {
-		if(dDownEnvelope[i] >= 0.014) {
-			for(d = i+1; dDownEnvelope[d] > 0; ++d) 
-				peakLength++;
-			for(d = i-1; dDownEnvelope[d] > 0; --d)
-				peakLength++;
+	for(g=0;g<=passe;++g) {
+		enveloppe_smooth[0]=enveloppe_temp[0];
+		enveloppe_smooth[1]=(float)1/4*(enveloppe_temp[0]+2*enveloppe_temp[1]+enveloppe_temp[2]);
+		enveloppe_smooth[2]=(float)1/9*(enveloppe_temp[0]+2*enveloppe_temp[1]+3*enveloppe_temp[2]+2*enveloppe_temp[3]+enveloppe_temp[4]);
+		for(i=3;i<=nSamples-5;++i)
+			enveloppe_smooth[i]=(float)1/27*(enveloppe_temp[i-3]+enveloppe_temp[i-2]*3+6*enveloppe_temp[i-1]+7*enveloppe_temp[i]+6*enveloppe_temp[i+1]+enveloppe_temp[i+2]*3+enveloppe_temp[i+3]);
+		for(i=3;i<=nSamples-5;++i)
+			enveloppe_temp[i]=enveloppe_smooth[i];
+	} */
+	
+	for(i = 1; i <= nSamples-1; ++i)
+		dEnveloppe[i-1] = enveloppe[i+1] - enveloppe[i-1]; 
+	for(i = 1; i <= nSamples-1; ++i)
+		if(dEnveloppe[i] >= 500) {
+			++peaklength;
+			while(dEnveloppe[i] >= 500)
+				++i;
 		}
-	}			
 
-	moy/=mSamples-1;
+	peaklength/=nSamples;
+	printf("%f\n", peaklength);
 
-	if(moy*1000 > 1.)
-		result+=2;
-	if(peakLength/mSamples > 0.3)
-		result+=2;
-
-	if(debug) {
-	printf("-> Debug attaque\n");
-	printf("Moyenne dérivée enveloppe: %f\n", moy*1000);
-	printf("Critère: fort > 1 > doux\n");
-	printf("Proportion de pics: %f\n", peakLength/(mSamples-1));
-	printf("Critère: fort > 0.2 > doux\n");
-	printf("Envelope result: %d\n", result);
-	}
-
-	return result;
+	for(i = 44100*24; i < 44100*36;++i)
+		fprintf(file_env, "%d\n", dEnveloppe[i]);
 }
-
-

@@ -1,12 +1,12 @@
 CC=gcc
-CFLAGS=
-LDFLAGS=-g -lavformat -lavutil -lavcodec -lm -std=c99
+CFLAGS=-g
+LDFLAGS=-lavformat -lavutil -lavcodec -lm -std=c99
 EXEC=analyse
 
 all: $(EXEC) 
 
 analyse: amp_sort.o decode.o envelope.o main.o freq_sort.o
-	gcc -o analyse amp_sort.o decode.o envelope.o main.o freq_sort.o $(LDFLAGS)
+	gcc -o analyse amp_sort.o decode.o envelope.o main.o freq_sort.o $(LDFLAGS) $(CFLAGS)
 	@rm -Rf *.o
 
 amp_sort.o: amp_sort.c

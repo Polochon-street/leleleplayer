@@ -1,57 +1,112 @@
 #include "analyse.h"
+#include <libavcodec/avfft.h>
 
+#define WIN_BITS 9
+#define WIN_SIZE (1 << WIN_BITS)
 #define max( a, b ) ( ((a) > (b)) ? (a) : (b) )
 #define QUANT_FREQ 44100
-#define DECR_SPEED ( 32768 / (int)( ((float)1/2)*QUANT_FREQ)) 
+#define SAMPLE_MAX 32768
+#define DECR_SPEED ( (float)SAMPLE_MAX / ((1.0f/1.34f)*(float)QUANT_FREQ) )
 
 float envelope_sort(int16_t* sample_array) {
-	int i, g;
+	FFTSample *d_freq;
+	FFTSample *x;
+	RDFTContext *fft;
+
+	int nFrames;
 	FILE *file_env;
-	int16_t *enveloppe;
+	size_t rbuf_head = 0;
+	int16_t ringbuf[350*2];
+	int16_t d_envelope;
+	int16_t enveloppe;
 	int16_t *dEnveloppe;
-	float peaklength = 0;
-	int passe;
-	enveloppe = (int16_t*)malloc(nSamples*sizeof(int16_t));
-	dEnveloppe = (int16_t*)malloc(nSamples*sizeof(int16_t));
-
-	for(i = 0; i < nSamples-1; ++i)
-		enveloppe[i] = 0;
-	
+	uint64_t atk =0;
+	uint64_t time;
+	float final;
+	long attack = 0;
+	float env, env_prev = 0;
+	size_t i, d;
+	int mSamples = nSamples/350;
 	file_env = fopen("file_env.txt", "w");
-	for(i = 1; i < nSamples-1; ++i) {
-		/* if(enveloppe[i-1] - DECR_SPEED > abs(sample_array[i]))
-			enveloppe[i] = enveloppe[i-1];
-		else
-			enveloppe[i] = abs(sample_array[i]); */
-		//printf("%d, %d, %d\n", enveloppe[i-1] - DECR_SPEED, enveloppe[i], sample_array[i]);
-		enveloppe[i] = max(enveloppe[i-1] - DECR_SPEED, abs(sample_array[i]));	
-	}	
 
-/*	for(i = 0; i < nSamples-1; ++i)
-		enveloppe_temp[i] = enveloppe[i];
+	d_freq = (FFTSample*)av_malloc(WIN_SIZE*sizeof(FFTSample));
 
-	for(g=0;g<=passe;++g) {
-		enveloppe_smooth[0]=enveloppe_temp[0];
-		enveloppe_smooth[1]=(float)1/4*(enveloppe_temp[0]+2*enveloppe_temp[1]+enveloppe_temp[2]);
-		enveloppe_smooth[2]=(float)1/9*(enveloppe_temp[0]+2*enveloppe_temp[1]+3*enveloppe_temp[2]+2*enveloppe_temp[3]+enveloppe_temp[4]);
-		for(i=3;i<=nSamples-5;++i)
-			enveloppe_smooth[i]=(float)1/27*(enveloppe_temp[i-3]+enveloppe_temp[i-2]*3+6*enveloppe_temp[i-1]+7*enveloppe_temp[i]+6*enveloppe_temp[i+1]+enveloppe_temp[i+2]*3+enveloppe_temp[i+3]);
-		for(i=3;i<=nSamples-5;++i)
-			enveloppe_temp[i]=enveloppe_smooth[i];
-	} */
+	for(i = 0; i <= WIN_SIZE; ++i)
+		d_freq[i] = 0.0f;
+
+	if(nSamples%WIN_SIZE > 0)
+		nSamples = (nSamples/WIN_SIZE+1)*WIN_SIZE;
+
+	nFrames = nSamples/WIN_SIZE;
+	x = (FFTSample*)av_malloc(WIN_SIZE*sizeof(FFTSample));
+	fft = av_rdft_init(WIN_BITS, DFT_R2C);
+	d = 0;
 	
-	for(i = 1; i <= nSamples-1; ++i)
-		dEnveloppe[i-1] = enveloppe[i+1] - enveloppe[i-1]; 
-	for(i = 1; i <= nSamples-1; ++i)
-		if(dEnveloppe[i] >= 500) {
-			++peaklength;
-			while(dEnveloppe[i] >= 500)
-				++i;
+	for(i = 0; i < nSamples; ++i) {
+		//env = max(env_prev - DECR_SPEED, abs(sample_array[i]));
+		
+		if(d == WIN_SIZE) {
+//			printf("Yolo\n");
+			av_rdft_calc(fft, x);
+		//	printf("Swag\n");
+			for(d = 1; d < WIN_SIZE/2; ++d) {
+				float re = x[d*2];
+				float im = x[d*2+1];
+				float raw = re*re + im*im;
+				d_freq[d] += raw;
+			}
+			d = 0;
 		}
+		
+		env = max(env_prev - ((float)DECR_SPEED) * (0.1f + (env_prev/((float)32768))), abs(sample_array[i]));
 
-	peaklength/=nSamples;
-	printf("%f\n", peaklength);
+		env_prev = env;
+		time += env;
+		
+		ringbuf[rbuf_head] = (int16_t)env;
 
-	for(i = 44100*24; i < 44100*36;++i)
-		fprintf(file_env, "%d\n", dEnveloppe[i]);
+		if( i > 1 && i % 350 == 0) {
+			d_envelope = max(0, ringbuf[rbuf_head] - ringbuf[(rbuf_head+1) % (350*2)]);
+		
+			//if(i > 126*24*350 && i < 126*34*350)
+				//fprintf(file_env, "%d\n", d_envelope);
+	
+			atk += d_envelope;
+			x[d++] = (float)d_envelope;
+		}
+		rbuf_head = (rbuf_head+1) % (350*2);
+	}
+
+	fclose(file_env);
+	
+	//printf("%lu\n", atk/(nSamples));
+//	printf("%d\n", time);
+	final = 0;
+	for(i = 1; i < WIN_SIZE/2; ++i) {
+		printf("%f\n", d_freq[i]);
+		final = max(final, d_freq[i]);
+	}
+
+	//printf("PROUT: %f\n", final/pow(10, 10));
+
+/*	enveloppe = calloc(nSamples, sizeof(int16_t));
+	dEnveloppe = calloc(mSamples, sizeof(int16_t));
+
+	for(i 
+
+	for(i = 1; i < nSamples-1; ++i) 
+		enveloppe[i] = max(enveloppe[i-1] - (int16_t)( ((float)DECR_SPEED)*(0.1f+((float)(enveloppe[i-1])/((float)32768))) ), abs(sample_array[i]));	
+		//enveloppe[i] = max(enveloppe[i-1] - DECR_SPEED, abs(sample_array[i]));
+
+	for(i = 1; i <= mSamples-1; i++) {
+		dEnveloppe[i-1] = enveloppe[(i+1)*350] - enveloppe[(i-1)*350];
+	}
+
+	for(i = 44100*24; i < 44100*34;++i)
+		fprintf(file_env, "%d\n", enveloppe[i]);
+	
+	for(i = 1; i < mSamples; ++i) 
+		attack += ((dEnveloppe[i] - dEnveloppe[i-1] > 0) ? dEnveloppe[i] - dEnveloppe[i-1] : 0);
+	
+	printf("%d\n", attack/mSamples);*/
 }

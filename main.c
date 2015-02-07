@@ -2,11 +2,11 @@
 
 int main (int argc, char **argv) {
 	int8_t *current_sample_array;
-	int resnum_freq;
-	int resnum_amp;
-	int resnum_env;
+	float resnum_freq;
+	float resnum_amp;
+	float resnum_env;
 	int i, d;
-	char resnum;
+	float resnum;
 	char *filename = argv[1];
 
 	debug = 0;
@@ -37,7 +37,7 @@ int main (int argc, char **argv) {
 	if(debug)
 		printf("FINAL RESULT: %d\n", resnum);
 
-	if(resnum == 0) {
+/*	if(resnum == 0) {
 		if(debug)
 			printf("Can't conclude...\n");
 		return 2;
@@ -51,6 +51,7 @@ int main (int argc, char **argv) {
 		if(debug)
 			printf("Calm\n");
 		return 1;
-	}
+	} */
+	printf("%f\n", resnum);
 }
 

@@ -19,7 +19,6 @@ float envelope_sort(int16_t* sample_array) {
 	int16_t ringbuf[350*2];
 	int16_t d_envelope;
 	int16_t enveloppe;
-	int16_t *dEnveloppe;
 	uint64_t atk =0;
 	uint64_t time;
 	float final;
@@ -45,50 +44,64 @@ float envelope_sort(int16_t* sample_array) {
 	for(i = 0; i < nSamples; ++i) {
 		//env = max(env_prev - DECR_SPEED, abs(sample_array[i]));
 		
-		if(d == WIN_SIZE) {
-//			printf("Yolo\n");
-			av_rdft_calc(fft, x);
-		//	printf("Swag\n");
-			for(d = 1; d < WIN_SIZE/2; ++d) {
-				float re = x[d*2];
-				float im = x[d*2+1];
-				float raw = re*re + im*im;
-				d_freq[d] += raw;
-			}
-			d = 0;
-		}
-		
 		env = max(env_prev - ((float)DECR_SPEED) * (0.1f + (env_prev/((float)32768))), abs(sample_array[i]));
 
 		env_prev = env;
-		time += env;
-		
+		time += env;	
 		ringbuf[rbuf_head] = (int16_t)env;
 
 		if( i > 1 && i % 350 == 0) {
 			d_envelope = max(0, ringbuf[rbuf_head] - ringbuf[(rbuf_head+1) % (350*2)]);
+			atk = max(d_envelope, atk);
 		
-			//if(i > 126*24*350 && i < 126*34*350)
-				//fprintf(file_env, "%d\n", d_envelope);
-	
-			atk += d_envelope;
-			x[d++] = (float)d_envelope;
+			if(i > 0 && i < 126*60*350)
+				fprintf(file_env, "%d\n", d_envelope);
+
+			if((i/350) % WIN_SIZE != 0)
+				x[(i/350)%WIN_SIZE - 1] = (float)d_envelope;
+			else {
+				x[WIN_SIZE - 1] = (float)d_envelope;
+			//	printf("Yolo\n");
+				av_rdft_calc(fft, x);
+		//		printf("Swag\n");
+				for(d = 1; d < WIN_SIZE/2; ++d) {
+					float re = x[d*2];
+					float im = x[d*2+1];
+					float raw = re*re + im*im;
+					d_freq[d] += raw;
+				}
+			}
 		}
 		rbuf_head = (rbuf_head+1) % (350*2);
 	}
-
-	fclose(file_env);
 	
 	//printf("%lu\n", atk/(nSamples));
 //	printf("%d\n", time);
 	final = 0;
 	for(i = 1; i < WIN_SIZE/2; ++i) {
-		printf("%f\n", d_freq[i]);
+		//fprintf(file_env, "%f\n", d_freq[i]);
 		final = max(final, d_freq[i]);
+	}	
+
+	final /= pow(10, 10);
+	final = (final - 70.0f)/(final + 70.0f);
+	final *= 2.0f;
+
+	if(atk >= 30000)
+		final += 2.0f;
+
+	if(debug) {
+		printf("%f\n", final);
+		printf("%lu\n", atk);
 	}
+		
+	//printf("SWAG: %f\n", (float)atk/nSamples);
 
-	//printf("PROUT: %f\n", final/pow(10, 10));
-
+	fclose(file_env);
+	if(final > 0)
+		return final;
+	else
+		return 0;
 /*	enveloppe = calloc(nSamples, sizeof(int16_t));
 	dEnveloppe = calloc(mSamples, sizeof(int16_t));
 

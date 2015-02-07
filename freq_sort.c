@@ -38,7 +38,7 @@ float freq_sort(int16_t *cheat_array) {
 	}
 
 	float peak;
-	char resnum_freq = 0;
+	float resnum_freq = 0;
 
 	if (nb_bytes_per_sample == 2) {
 		sample_array16 = (int16_t*)malloc(size);
@@ -173,8 +173,9 @@ float freq_sort(int16_t *cheat_array) {
 		printf("High frequencies: %f\n", tab_bandes[4]);
 		printf("Criterion: Loud > -66.1 > -68 > -71 > Calm\n");
 		printf("Sum: %f\n", tab_sum);
+		printf("TEST: %f\n", -2*(tab_sum + 68.0f)/(tab_sum - 68.0f));
 		printf("Freq result: %d\n", resnum_freq);
 	}
-
+	resnum_freq = -2*(tab_sum + 68.0f)/(tab_sum - 68.0f);
 	return (resnum_freq);
 }

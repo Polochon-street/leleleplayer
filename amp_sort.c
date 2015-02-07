@@ -15,7 +15,7 @@ float amp_sort(int16_t* sample_array) {
 	int passe;
 	int16_t* p16;
 	FILE *file_amp;
-	int resnum_amp = 0;
+	float resnum_amp = 0;
 	
 	for(i=0;i<SIZE;++i)
 		histogram[i] = '\0';
@@ -84,9 +84,10 @@ float amp_sort(int16_t* sample_array) {
 	if (debug) {
 	printf("-> Debug amplitudes\n");
 	printf("Criterion: loud < 25 < 30 < 35 < calm\n");
-	printf("Histogram integration: %f\n", histogram_integ); 
+	printf("Histogram integration: %f\n", histogram_integ);
+	printf("Test: %f\n", -(histogram_integ - 30.0f)/(histogram_integ + 30.0f));
 	printf("Amplitude result: %d\n", resnum_amp);
 	}
-
+	resnum_amp = -(histogram_integ - 30.0f)/(histogram_integ + 30.0f);
 	return (resnum_amp);
 }

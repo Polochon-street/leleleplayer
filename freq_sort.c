@@ -41,20 +41,22 @@ float freq_sort(int16_t *cheat_array) {
 	float resnum_freq = 0;
 
 	if (nb_bytes_per_sample == 2) {
-		sample_array16 = (int16_t*)malloc(size);
+		sample_array16 = (int16_t*)malloc(size/2);
 		p16 = sample_array16;
 		for (i = 0; i < nSamples; i+=2) {
 			*(p16++) = (cheat_array[i]+cheat_array[i+1])/2;
 		}
 	}
 	else if (nb_bytes_per_sample == 4) {
-		sample_array32 = (int32_t*)malloc(size);
+		sample_array32 = (int32_t*)malloc(size/2);
 		p32 = sample_array32;
 		for (i = 0; i < nSamples; i+=2) {	
 			*(p32++) = (((int32_t*)cheat_array)[i]+((int32_t*)cheat_array)[i+1])/2;
 		}
 	}
 	
+	p32 = (int32_t*)cheat_array;
+
 	if (debug) {
 		if (nb_bytes_per_sample == 2)
 			fwrite(sample_array16, 1, nSamples, file3);
@@ -68,7 +70,6 @@ float freq_sort(int16_t *cheat_array) {
 
 	/* FFT init */
 
-	spectre_moy = (FFTSample*)av_malloc((WIN_SIZE/2)*sizeof(FFTSample));
 	spectre_moy = (FFTSample*)av_malloc((WIN_SIZE*sizeof(FFTSample)));
 
 	for(i=0;i<=WIN_SIZE/2;++i)
@@ -91,15 +92,18 @@ float freq_sort(int16_t *cheat_array) {
 	/* End of FFT init */
 	/* FFT computation */
 
-	for(i=0, iFrame = 0; iFrame<nFrames;i+=WIN_SIZE, iFrame++) {
+	for(i=0, iFrame = 0; iFrame < nFrames;i+=2*WIN_SIZE, iFrame++) {
 		if (nb_bytes_per_sample == 2) {
 			for(d = 0; d < WIN_SIZE; d++)
-				x[d] = (float)(sample_array16[i+d])*hann_window[d];
+				//x[d] = (float)(sample_array16[i+d])*hann_window[d]; // TODO
+				x[d] = (float)(cheat_array[i+2*d])*hann_window[d];
 		}
 
 		else if (nb_bytes_per_sample == 4) {
-			for(d = 0; d < WIN_SIZE; d++)
-				x[d] = (float)(sample_array32[i+d])*hann_window[d];
+			for(d = 0; d < WIN_SIZE; d++) {
+			//	x[d] = (float)(sample_array32[i+d])*hann_window[d];
+				x[d] = (float)(p32[i+2*d])*hann_window[d];
+			}
 		}
 
 		av_rdft_calc(fft, x);

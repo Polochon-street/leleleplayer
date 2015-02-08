@@ -55,7 +55,7 @@ float envelope_sort(int16_t* sample_array) {
 			atk = max(d_envelope, atk);
 		
 			if(i > 0 && i < 126*60*350)
-				fprintf(file_env, "%d\n", d_envelope);
+				//fprintf(file_env, "%d\n", d_envelope);
 
 			if((i/350) % WIN_SIZE != 0)
 				x[(i/350)%WIN_SIZE - 1] = (float)d_envelope;
@@ -79,7 +79,7 @@ float envelope_sort(int16_t* sample_array) {
 //	printf("%d\n", time);
 	final = 0;
 	for(i = 1; i < WIN_SIZE/2; ++i) {
-		//fprintf(file_env, "%f\n", d_freq[i]);
+	//	fprintf(file_env, "%f\n", d_freq[i]);
 		final = max(final, d_freq[i]);
 	}	
 
@@ -94,6 +94,7 @@ float envelope_sort(int16_t* sample_array) {
 		printf("%f\n", final);
 		printf("%lu\n", atk);
 	}
+
 		
 	//printf("SWAG: %f\n", (float)atk/nSamples);
 
@@ -102,6 +103,7 @@ float envelope_sort(int16_t* sample_array) {
 		return final;
 	else
 		return 0;
+}
 /*	enveloppe = calloc(nSamples, sizeof(int16_t));
 	dEnveloppe = calloc(mSamples, sizeof(int16_t));
 
@@ -121,5 +123,5 @@ float envelope_sort(int16_t* sample_array) {
 	for(i = 1; i < mSamples; ++i) 
 		attack += ((dEnveloppe[i] - dEnveloppe[i-1] > 0) ? dEnveloppe[i] - dEnveloppe[i-1] : 0);
 	
-	printf("%d\n", attack/mSamples);*/
-}
+	printf("%d\n", attack/mSamples);*
+} */

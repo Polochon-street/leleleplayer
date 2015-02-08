@@ -28,8 +28,8 @@ int main (int argc, char **argv) {
 
 	current_sample_array = audio_decode(current_sample_array, filename); // Decode audio track
 	resnum_freq = freq_sort((int16_t*)current_sample_array); // Freq sort 
-	resnum_env = envelope_sort((int16_t*)current_sample_array); // Attack sort // TODO better implementation of final sort
-	resnum_amp = amp_sort((int16_t*)current_sample_array); // Amplitude sort
+//	resnum_env = envelope_sort((int16_t*)current_sample_array); // Attack sort // TODO better implementation of final sort
+//	resnum_amp = amp_sort((int16_t*)current_sample_array); // Amplitude sort
 
 	free(current_sample_array);
 	resnum = resnum_amp + resnum_freq + resnum_env;
@@ -37,21 +37,21 @@ int main (int argc, char **argv) {
 	if(debug)
 		printf("FINAL RESULT: %d\n", resnum);
 
-/*	if(resnum == 0) {
+	if(resnum == 0) {
 		if(debug)
 			printf("Can't conclude...\n");
 		return 2;
 	}
-	else if(resnum >= 1) {
+	else if(resnum > 0) {
 		if(debug)
 			printf("Loud\n");
 		return 0;
 	}
-	else if(resnum < -1) {
+	else if(resnum < 0) {
 		if(debug)
 			printf("Calm\n");
 		return 1;
-	} */
+	} 
 	printf("%f\n", resnum);
 }
 

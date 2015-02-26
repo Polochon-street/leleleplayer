@@ -10,17 +10,12 @@
 #define AIGU_INF 17
 #define AIGU_SUP 104
 
-float freq_sort(int16_t *cheat_array) {
+float freq_sort(int16_t *sample_array) {
 	float hann_window[WIN_SIZE];
 	FFTSample *spectre_moy;
 	float tab_bandes[4];
 	float tab_sum;
 	int nFrames;
-	int16_t *sample_array16;
-	int16_t *p16;
-	int32_t *sample_array32;
-	int32_t *p32;
-	 
 	int d, iFrame;
 	size_t i;
 	FFTSample* x;
@@ -40,30 +35,6 @@ float freq_sort(int16_t *cheat_array) {
 	float peak;
 	float resnum_freq = 0;
 
-	if (nb_bytes_per_sample == 2) {
-		sample_array16 = (int16_t*)malloc(size/2);
-		p16 = sample_array16;
-		for (i = 0; i < nSamples; i+=2) {
-			*(p16++) = (cheat_array[i]+cheat_array[i+1])/2;
-		}
-	}
-	else if (nb_bytes_per_sample == 4) {
-		sample_array32 = (int32_t*)malloc(size/2);
-		p32 = sample_array32;
-		for (i = 0; i < nSamples; i+=2) {	
-			*(p32++) = (((int32_t*)cheat_array)[i]+((int32_t*)cheat_array)[i+1])/2;
-		}
-	}
-	
-	p32 = (int32_t*)cheat_array;
-
-	if (debug) {
-		if (nb_bytes_per_sample == 2)
-			fwrite(sample_array16, 1, nSamples, file3);
-		else if (nb_bytes_per_sample == 4)
-			fwrite(sample_array32, 1, size, file3);
-	}
-
 	peak=0;
 	for(i = 0; i < WIN_SIZE; ++i)
 		hann_window[i] = .5f - .5f*cos(2*M_PI*i/(WIN_SIZE-1));
@@ -81,7 +52,7 @@ float freq_sort(int16_t *cheat_array) {
 	nSamples/=2; // Only one channel
 
 	if(nSamples%WIN_SIZE > 0)
-		nSamples = (nSamples/WIN_SIZE+1)*WIN_SIZE; //in order for the fft to work
+		nSamples -= nSamples%WIN_SIZE;
 
 	nFrames = nSamples/WIN_SIZE;
 
@@ -92,18 +63,15 @@ float freq_sort(int16_t *cheat_array) {
 	/* End of FFT init */
 	/* FFT computation */
 
-	for(i=0, iFrame = 0; iFrame < nFrames;i+=2*WIN_SIZE, iFrame++) {
+	for(i=0, iFrame = 0; iFrame < nFrames; i+=2*WIN_SIZE, iFrame++) {
 		if (nb_bytes_per_sample == 2) {
 			for(d = 0; d < WIN_SIZE; d++)
-				//x[d] = (float)(sample_array16[i+d])*hann_window[d]; // TODO
-				x[d] = (float)(cheat_array[i+2*d])*hann_window[d];
+				x[d] = (float)((sample_array[i+2*d]+sample_array[i+2*d+1])/2)*hann_window[d]; 
 		}
 
 		else if (nb_bytes_per_sample == 4) {
-			for(d = 0; d < WIN_SIZE; d++) {
-			//	x[d] = (float)(sample_array32[i+d])*hann_window[d];
-				x[d] = (float)(p32[i+2*d])*hann_window[d];
-			}
+			for(d = 0; d < WIN_SIZE; d++) 
+				x[d] = (float)(( ((int32_t*)sample_array)[i+2*d] + ((int32_t*)sample_array)[i+2*d+1] ) / 2)*hann_window[d];
 		}
 
 		av_rdft_calc(fft, x);
@@ -160,13 +128,11 @@ float freq_sort(int16_t *cheat_array) {
 		resnum_freq = -1;
 	else
 		resnum_freq = -2;
-
+	
+	resnum_freq = ((float)1/3)*tab_sum + ((float)68/3);
+	
 	free(spectre_moy);
 	free(x);
-	if(nb_bytes_per_sample == 2)
-		free(sample_array16);
-	if(nb_bytes_per_sample == 4)
-		free(sample_array32);
 
 	if (debug) {
 		printf("-> Freq debug\n");
@@ -177,9 +143,8 @@ float freq_sort(int16_t *cheat_array) {
 		printf("High frequencies: %f\n", tab_bandes[4]);
 		printf("Criterion: Loud > -66.1 > -68 > -71 > Calm\n");
 		printf("Sum: %f\n", tab_sum);
-		printf("TEST: %f\n", -2*(tab_sum + 68.0f)/(tab_sum - 68.0f));
-		printf("Freq result: %d\n", resnum_freq);
+		printf("Freq result: %f\n", resnum_freq);
 	}
-	resnum_freq = -2*(tab_sum + 68.0f)/(tab_sum - 68.0f);
+	//resnum_freq = -2*(tab_sum + 68.0f)/(tab_sum - 68.0f);
 	return (resnum_freq);
 }

@@ -1,4 +1,4 @@
-#include "analyse.h"
+#include "analyze.h"
 #include <libavcodec/avfft.h>
 
 #define WIN_BITS 9

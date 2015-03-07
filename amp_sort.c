@@ -1,4 +1,4 @@
-#include "analyse.h"
+#include "analyze.h"
 #define SIZE 32768
 #define INT_INF 0
 #define INT_SUP 2000
@@ -81,6 +81,8 @@ float amp_sort(int16_t* sample_array) {
 	else
 		resnum_amp = -2;
 
+//	resnum_amp = -(histogram_integ - 30.0f)/(histogram_integ + 30.0f);
+	resnum_amp = -0.2f * histogram_integ + 6.0f;
 	if (debug) {
 	printf("-> Debug amplitudes\n");
 	printf("Criterion: loud < 25 < 30 < 35 < calm\n");
@@ -88,7 +90,6 @@ float amp_sort(int16_t* sample_array) {
 	printf("Test: %f\n", -(histogram_integ - 30.0f)/(histogram_integ + 30.0f));
 	printf("Amplitude result: %f\n", resnum_amp);	
 	}
-//	resnum_amp = -(histogram_integ - 30.0f)/(histogram_integ + 30.0f);
-	resnum_amp = -0.2f * histogram_integ + 6.0f;
+
 	return (resnum_amp);
 }

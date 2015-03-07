@@ -1,6 +1,6 @@
 #include <math.h>
 #include <libavcodec/avfft.h>
-#include "analyse.h"
+#include "analyze.h"
 
 #define WIN_BITS 9 // 9
 #define WIN_SIZE (1 << WIN_BITS)
@@ -131,9 +131,6 @@ float freq_sort(int16_t *sample_array) {
 	
 	resnum_freq = ((float)1/3)*tab_sum + ((float)68/3);
 	
-	free(spectre_moy);
-	free(x);
-
 	if (debug) {
 		printf("-> Freq debug\n");
 		printf("Low frequencies: %f\n", tab_bandes[0]);

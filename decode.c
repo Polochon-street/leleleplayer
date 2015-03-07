@@ -2,7 +2,7 @@
 #define AUDIO_INBUF_SIZE 20480
 #define AUDIO_REFILL_THRESH 4096
 
-#include "analyse.h"
+#include "analyze.h"
 
 int8_t *audio_decode(int8_t* sample_array, const char *filename) { // decode the track
 	AVCodec *codec = NULL;

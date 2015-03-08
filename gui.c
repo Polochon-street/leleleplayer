@@ -3,6 +3,7 @@
 
 int tag;
 GTimer *elapsed;
+int endless_check;
 
 bool InitOpenAL(void) {
 	ALCdevice *Device = alcOpenDevice(NULL);
@@ -57,7 +58,6 @@ void explore(GDir *dir, char* folder) {
 
 static gboolean endless(gpointer label) {
 	float resnum = 0;
-	
 	FILE *file;
 	char line[1000];
 	int i;
@@ -73,6 +73,7 @@ static gboolean endless(gpointer label) {
 		;
 
 	while(resnum != 1) {
+		free(current_sample_array);
 		rewind(file);
 		pline = line;
 		for(i = 0; i < g_random_int_range(0, count); ++i)
@@ -88,6 +89,7 @@ static gboolean endless(gpointer label) {
 	status = 0;
 	play(NULL, label);
 }
+
 /* When a folder is selected, use that as the new location of the other chooser. */
 static void folder_changed (GtkFileChooser *chooser1, GtkLabel *label) {
 	float resnum = 0;
@@ -106,10 +108,11 @@ static void folder_changed (GtkFileChooser *chooser1, GtkLabel *label) {
 
 	file = fopen("list.txt", "r");
 	
-	for(; fgets(line, 1000, file) != NULL; ++count)
+	for(; fgets(line, 1000, file) != NULL; ++count) 
 		;
 
 	while(resnum != 1) {
+		free(current_sample_array);
 		rewind(file);
 		pline = line;
 		for(i = 0; i < g_random_int_range(0, count); ++i)
@@ -150,6 +153,9 @@ int play(GtkWidget *button, GtkLabel *label) {
 	alGetSourcei(source, AL_SOURCE_STATE, &status);
 
 	if(status == 0 || status == AL_STOPPED) {
+		alDeleteBuffers(1, &buffer);
+		alSourcei(source, AL_BUFFER, 0);
+		alDeleteSources(1, &source);
 		g_timer_start(elapsed);
 		alGenBuffers(1, &buffer);
 		alGenSources(1, &source);
@@ -161,29 +167,39 @@ int play(GtkWidget *button, GtkLabel *label) {
 		alGetSourcei(source, AL_SOURCE_STATE, &status);
 		alSourcePlay(source); // finally playing the track!
 		g_source_remove(tag);
-		tag = g_timeout_add_seconds(duration, endless, label);
+		if(endless_check)
+			tag = g_timeout_add_seconds(duration, endless, label);
 		return 0;
 	}
 
 	if(status == AL_PLAYING) {
-		g_timer_stop(elapsed);
-		g_source_remove(tag);
+		if(endless_check) {
+			g_timer_stop(elapsed);
+			g_source_remove(tag);
+		}
 		alSourcePause(source);
 		return 0;
 	} 
 	else {
-		g_timer_continue(elapsed);
 		alSourcePlay(source);
-		tag = g_timeout_add_seconds(duration - (int)g_timer_elapsed(elapsed, NULL), endless, label);
+		if(endless_check) {
+			g_timer_continue(elapsed);
+			tag = g_timeout_add_seconds(duration - (int)g_timer_elapsed(elapsed, NULL), endless, label);
+		}
 		return 0;
 	}
 }
 
+static void check_toggled (GtkToggleButton *check, gpointer data) {
+	endless_check = !endless_check;
+}
+
 int main(int argc, char **argv) {
 	InitOpenAL();
-	source =0;
+	source = 0;
+	endless_check = 0;
 	elapsed = g_timer_new();
-	GtkWidget *window, *button, *chooser1, *chooser2, *vbox, *label;
+	GtkWidget *window, *button, *chooser1, *chooser2, *vbox, *label, *check;
 	GtkFileFilter *filter1, *filter2;
 
 	gtk_init(&argc, &argv);
@@ -196,8 +212,12 @@ int main(int argc, char **argv) {
 	gtk_widget_set_size_request(window, 500, 200);
 
 	button = gtk_button_new_with_mnemonic("_Play/Pause");
+	check = gtk_check_button_new_with_label ("Endless mode.");
+
 	g_signal_connect (G_OBJECT (window), "destroy", G_CALLBACK (destroy), NULL);
-  	g_signal_connect(G_OBJECT(button), "clicked", G_CALLBACK(play), (gpointer)label);
+  	g_signal_connect (G_OBJECT(button), "clicked", G_CALLBACK(play), (gpointer)label);
+	g_signal_connect (G_OBJECT(check), "toggled", G_CALLBACK(check_toggled), NULL);
+
 
   /* Create two buttons, one to select a folder and one to select a file. */
 
@@ -231,6 +251,7 @@ int main(int argc, char **argv) {
 	gtk_box_pack_start_defaults (GTK_BOX (vbox), chooser2);
 	gtk_box_pack_start_defaults (GTK_BOX (vbox), button);
 	gtk_box_pack_start_defaults (GTK_BOX (vbox), label);
+	gtk_box_pack_start_defaults (GTK_BOX (vbox), check);
 
 	gtk_container_add (GTK_CONTAINER (window), vbox);
 	

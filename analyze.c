@@ -14,6 +14,7 @@ int analyze (char *filename) {
 
 	resnum = resnum_amp + resnum_freq + resnum_env; 
 
+	printf("%f\n", resnum);
 	if(debug)
 		printf("FINAL RESULT: %f\n", resnum);
 	if(resnum == 0) {

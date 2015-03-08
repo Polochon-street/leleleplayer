@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include "analyze.h"
 
-int gui(int argc, char **argv) {
+int main(int argc, char **argv) {
 	char *filename = argv[1];
 
 	if(argc <= 1) {

@@ -46,6 +46,7 @@ int8_t *audio_decode(int8_t* sample_array, const char *filename) { // decode the
 	}
 
 	sample_rate = c->sample_rate;
+	duration = pFormatCtx->duration/AV_TIME_BASE+1;
 	size = (((uint64_t)(pFormatCtx->duration)*(uint64_t)sample_rate)/(uint64_t)AV_TIME_BASE)*c->channels*av_get_bytes_per_sample(c->sample_fmt);
 	nSamples = (((uint64_t)(pFormatCtx->duration)*(uint64_t)sample_rate)/(uint64_t)AV_TIME_BASE)*c->channels;
 	sample_array = malloc(size);

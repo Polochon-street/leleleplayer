@@ -79,6 +79,7 @@ int8_t *audio_decode(int8_t* sample_array, const char *filename) { // decode the
 				//exit(1);
 				avpkt.size=0;
 			}
+			av_free_packet(&avpkt);
 			/* interesting part: copying decoded data into a huge array */
 			/* flac has a different behaviour from mp3, hence the planar condition */
 			if(got_frame) {

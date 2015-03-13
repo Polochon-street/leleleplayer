@@ -13,6 +13,15 @@ int debug;
 int cli;
 int planar;
 
+struct song {
+	int duration;
+	int seconds;
+	int minutes;
+	char *artist;
+	char *title;
+	char *album;
+};
+
 float amp_sort(int16_t* array);
 float envelope_sort(int16_t* array);
 int8_t* audio_decode(int8_t*array, const char *file);

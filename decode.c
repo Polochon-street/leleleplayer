@@ -8,7 +8,7 @@ int8_t *audio_decode(int8_t* sample_array, const char *filename) { // decode the
 	AVCodec *codec = NULL;
 	AVCodecContext *c = NULL;
 	AVFormatContext *pFormatCtx;
-	int i, d;
+	int i, d, e;
 	int len;
 	AVPacket avpkt;
 	AVFrame *decoded_frame = NULL;
@@ -31,10 +31,10 @@ int8_t *audio_decode(int8_t* sample_array, const char *filename) { // decode the
 		printf("Couldn't find stream information\n");
 		exit(1);
 	} 
-	
+
 	audioStream = av_find_best_stream(pFormatCtx, AVMEDIA_TYPE_AUDIO, -1, -1, &codec, 0);
 	c = pFormatCtx->streams[audioStream]->codec;
-
+	
 	if (!codec) {
 		printf("Codec not found!\n");
 		exit(1);
@@ -44,7 +44,7 @@ int8_t *audio_decode(int8_t* sample_array, const char *filename) { // decode the
 		printf("Could not open codec\n");
 		exit(1);
 	}
-
+	
 	sample_rate = c->sample_rate;
 	duration = pFormatCtx->duration/AV_TIME_BASE+1;
 	size = (((uint64_t)(pFormatCtx->duration)*(uint64_t)sample_rate)/(uint64_t)AV_TIME_BASE)*c->channels*av_get_bytes_per_sample(c->sample_fmt);
@@ -61,13 +61,12 @@ int8_t *audio_decode(int8_t* sample_array, const char *filename) { // decode the
 	while(av_read_frame(pFormatCtx, &avpkt) >= 0) {
 		if(avpkt.stream_index == audioStream) {
 			got_frame = 0; 
-	
+		
 			if(!decoded_frame) {
 				if(!(decoded_frame = av_frame_alloc())) {
 					printf("Could not allocate audio frame\n");
 					exit(1);
 				}
-		
 			}
 			else 
 				av_frame_unref(decoded_frame);
@@ -93,10 +92,9 @@ int8_t *audio_decode(int8_t* sample_array, const char *filename) { // decode the
 				
 				if(planar == 1) {
 					for(i = 0; i < decoded_frame->nb_samples*nb_bytes_per_sample; i+=nb_bytes_per_sample) { 
-						for(d = 0; d < nb_bytes_per_sample; ++d) 
-							*(p++) = ((int8_t*)(decoded_frame->extended_data[0]))[i+d];
-						for(d = 0; d < nb_bytes_per_sample; ++d) 
-							*(p++) = ((int8_t*)(decoded_frame->extended_data[1]))[i+d];
+						for(e = 0; e < c->channels; ++e)
+							for(d = 0; d < nb_bytes_per_sample; ++d) 
+								*(p++) = ((int8_t*)(decoded_frame->extended_data[e]))[i+d];
 					}
 					index+=data_size/nb_bytes_per_sample;
 				}

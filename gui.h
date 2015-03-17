@@ -8,10 +8,11 @@
 #include <glib/gstdio.h>
 #include <glib.h>
 
-struct play_arguments {
+struct arguments {
 	ALint status;
 	//ALint source;
 	int tag;
+	int first;
 	int bartag;
 	GTimer *elapsed;
 	int endless_check;
@@ -20,18 +21,12 @@ struct play_arguments {
 	GtkAdjustment *adjust;
 };
 
-struct changed_arguments {
-	GtkAdjustment *adjust;
-	GtkWidget *label;
-	GTimer *elapsed;
-	int bartag;
-};
 
 static void destroy (GtkWidget*, gpointer);
-static void folder_changed (GtkFileChooser*, struct changed_arguments*);
-static void file_changed (GtkFileChooser*, struct changed_arguments*);
+static void folder_changed (GtkFileChooser*, struct arguments*);
+static void file_changed (GtkFileChooser*, struct arguments*);
 void explore(GDir *dir, char *folder);
-int play(GtkWidget*, struct play_arguments*);
+int play(GtkWidget*, struct arguments*);
 bool InitOpenAL(void);
 void ShutdownOpenAL(void);
 

@@ -52,7 +52,7 @@ void explore(GDir *dir, char* folder) {
 	fclose(liste);
 }
 
-static gboolean endless(gpointer play_argument) {
+static gboolean endless(gpointer argument) {
 	float resnum = 0;
 	FILE *file;
 	char line[1000];
@@ -70,45 +70,6 @@ static gboolean endless(gpointer play_argument) {
 
 	while(resnum != 1) {
 		free(current_sample_array);
-		rewind(file);
-		pline = line;
-		for(i = 0; i < g_random_int_range(0, count); ++i)
-			fgets(line, 1000, file);
-
-		for(;*pline != '\n';++pline)
-			;
-		*pline = '\0';
-		resnum = analyze(line);
-	}
-
-	gtk_label_set_text((GtkLabel*)(((struct play_arguments*)play_argument)->label), line);
-	status = 0;
-	play(NULL, play_argument);
-}
-
-/* When a folder is selected, use that as the new location of the other chooser. */
-static void folder_changed (GtkFileChooser *chooser1, struct changed_arguments *changed_argument) {
-	float resnum = 0;
-	gchar *folder = gtk_file_chooser_get_filename (GTK_FILE_CHOOSER (chooser1));
-	GDir *dir = g_dir_open (folder, 0, NULL);
-	explore(dir, folder);
-
-	FILE *file;
-	char line[1000];
-	int i;
-	int count;
-	int rand;
-	char *pline;
-	
-	pline = line;
-
-	file = fopen("list.txt", "r");
-	
-	for(; fgets(line, 1000, file) != NULL; ++count) 
-		;
-
-	while(resnum != 1) {
-		free(current_sample_array);
 		int rand = g_random_int_range(0, count);
 		rewind(file);
 		pline = line;
@@ -118,52 +79,73 @@ static void folder_changed (GtkFileChooser *chooser1, struct changed_arguments *
 		for(;*pline != '\n';++pline)
 			;
 		*pline = '\0';
-	
 		resnum = analyze(line);
-		gtk_label_set_text((GtkLabel*)changed_argument->label, line);
 	}
+
+
+	gtk_label_set_text((GtkLabel*)(((struct arguments*)argument)->label), line);
+	gtk_adjustment_configure(((struct arguments*)argument)->adjust, 0, 0, duration, 1, 1, 1);
+	gtk_adjustment_changed(((struct arguments*)argument)->adjust);
+
+	if(((struct arguments*)argument)->continue_count-- > 0 || ((struct arguments*)argument)->endless_check && !(((struct arguments*)argument)->first))
+		play(NULL, argument);
+}
+
+/* When a folder is selected, use that as the new location of the other chooser. */
+static void folder_changed (GtkFileChooser *chooser1, struct arguments *argument) {
+	float resnum = 0;
+	gchar *folder = gtk_file_chooser_get_filename (GTK_FILE_CHOOSER (chooser1));
+	GDir *dir = g_dir_open (folder, 0, NULL);
+	explore(dir, folder);
+
+	endless(argument);
 }
 /* When a file is selected, display the full path in the GtkLabel widget. */
 
-static void file_changed (GtkFileChooser *chooser2, struct changed_arguments *changed_argument) {
+static void next (GtkButton *next_button, struct arguments *argument) {
+	endless(argument);
+}
+
+static void file_changed (GtkFileChooser *chooser2, struct arguments *argument) {
 	int resnum = 0;
 	gchar *filename = gtk_file_chooser_get_filename (GTK_FILE_CHOOSER (chooser2));
 
 	resnum = analyze(filename);
-	gtk_adjustment_configure(changed_argument->adjust, 0, 0, duration, 1, 1, 1);
-	gtk_adjustment_changed(changed_argument->adjust);
+	gtk_adjustment_configure(argument->adjust, 0, 0, duration, 1, 1, 1);
+	gtk_adjustment_changed(argument->adjust);
 
 	if(resnum == 2) {
-  		gtk_label_set_text ((GtkLabel*)changed_argument->label, "Can't Conclude");
+  		gtk_label_set_text ((GtkLabel*)argument->label, "Can't Conclude");
 
 	}
 	else if(resnum == 0) {
-  		gtk_label_set_text ((GtkLabel*)changed_argument->label, "Much loud");
+  		gtk_label_set_text ((GtkLabel*)argument->label, "Much loud");
 
 	}
 	else if(resnum == 1) {
-  		gtk_label_set_text ((GtkLabel*)changed_argument->label, "Such calm");
+  		gtk_label_set_text ((GtkLabel*)argument->label, "Such calm");
 
 	}
 }
 
-static timer_progressbar(gpointer play_argument) {
-	gtk_adjustment_set_value (((struct play_arguments*)play_argument)->adjust, g_timer_elapsed(((struct play_arguments*)play_argument)->elapsed, NULL));
-	gtk_adjustment_changed(((struct play_arguments*)play_argument)->adjust);
-	g_source_remove(((struct play_arguments*)play_argument)->bartag);
-	((struct play_arguments*)play_argument)->bartag = g_timeout_add_seconds(1, timer_progressbar, play_argument);
+static timer_progressbar(gpointer argument) {
+	gtk_adjustment_set_value (((struct arguments*)argument)->adjust, g_timer_elapsed(((struct arguments*)argument)->elapsed, NULL));
+	gtk_adjustment_changed(((struct arguments*)argument)->adjust);
+	g_source_remove(((struct arguments*)argument)->bartag);
+	((struct arguments*)argument)->bartag = g_timeout_add_seconds(1, timer_progressbar, argument);
 }
 
-int play(GtkWidget *button, struct play_arguments *play_argument) {
+int play(GtkWidget *button, struct arguments *argument) {
 	ALenum format;
 	ALuint buffer;
 	alGetSourcei(source, AL_SOURCE_STATE, &status);
 
 	if(status == 0 || status == AL_STOPPED) {
+		argument->first = 0;
 		alDeleteBuffers(1, &buffer);
 		alSourcei(source, AL_BUFFER, 0);
 		alDeleteSources(1, &source);
-		g_timer_start(play_argument->elapsed);
+		g_timer_start(argument->elapsed);
 		alGenBuffers(1, &buffer);
 		alGenSources(1, &source);
 
@@ -173,32 +155,30 @@ int play(GtkWidget *button, struct play_arguments *play_argument) {
 		alSourcei(source, AL_BUFFER, buffer);
 		alGetSourcei(source, AL_SOURCE_STATE, &status);
 		alSourcePlay(source);
-		g_source_remove(play_argument->tag);
-		if(play_argument->endless_check || play_argument->continue_count-- > 0)
-			play_argument->tag = g_timeout_add_seconds(duration, endless, play_argument);
-		play_argument->bartag = g_timeout_add_seconds(1, timer_progressbar, play_argument);
+		g_source_remove(argument->tag);
+		if(argument->endless_check || argument->continue_count > 0)
+			argument->tag = g_timeout_add_seconds(duration, endless, argument);
+		argument->bartag = g_timeout_add_seconds(1, timer_progressbar, argument);
 		return 0;
 	}
 
 	if(status == AL_PLAYING) {
-		if(play_argument->endless_check) {
-			g_timer_stop(play_argument->elapsed);
-			g_source_remove(play_argument->tag);
+		if(argument->endless_check) {
+			g_timer_stop(argument->elapsed);
+			g_source_remove(argument->tag);
 		}
 		alSourcePause(source);
 		return 0;
 	} 
 	else {
 		alSourcePlay(source);
-		if(play_argument->endless_check) {
-			g_timer_continue(play_argument->elapsed);
-			play_argument->tag = g_timeout_add_seconds(duration - (int)g_timer_elapsed(play_argument->elapsed, NULL), endless, play_argument->label);
+		if(argument->endless_check) {
+			g_timer_continue(argument->elapsed);
+			argument->tag = g_timeout_add_seconds(duration - (int)g_timer_elapsed(argument->elapsed, NULL), endless, argument->label);
 		}
 		return 0;
 	}
 }
-
-
 
 static void check_toggled (GtkToggleButton *check, int *endless_check) {
 	*endless_check = !(*endless_check);
@@ -217,20 +197,17 @@ static void continue_spin_count(GtkSpinButton *spin_int, int *continue_count) {
 
 int main(int argc, char **argv) {
 
-	struct play_arguments play_argument;
-	struct play_arguments *pplay_argument = &play_argument;
-	struct changed_arguments changed_argument;
-	struct changed_arguments *pchanged_argument = &changed_argument;
-
-	pplay_argument->label = pchanged_argument->label;
-	pchanged_argument->elapsed = pplay_argument->elapsed;
-	pchanged_argument->bartag = pplay_argument->bartag;	
+	struct arguments argument;
+	struct arguments *pargument = &argument;
 
 	InitOpenAL();
 	source = 0;
-	pplay_argument->endless_check = 0;
-	pchanged_argument->elapsed = pplay_argument->elapsed = g_timer_new();
-	GtkWidget *window, *button, *chooser1, *chooser2, *vbox, *check, *continue_check, *button1, *button2, *spin_int, *progressbar;
+	pargument->first = 1;
+	pargument->endless_check = 0;
+	pargument->continue_count = -1;
+
+	pargument->elapsed = g_timer_new();
+	GtkWidget *window, *button, *chooser1, *chooser2, *vbox, *check, *continue_check, *next_button, *button2, *spin_int, *progressbar;
 	GtkFileFilter *filter1, *filter2;
 
 	gtk_init(&argc, &argv);
@@ -238,30 +215,32 @@ int main(int argc, char **argv) {
 	g_remove("list.txt");
 	window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
 	
-	pplay_argument->adjust = pchanged_argument->adjust = (GtkAdjustment*)gtk_adjustment_new(0, 0, 100, 1, 1, 1);
+	pargument->adjust = (GtkAdjustment*)gtk_adjustment_new(0, 0, 100, 1, 1, 1);
 
 	#if GTK3
 	progressbar = gtk_scale_new(GTK_ORIENTATION_HORIZONTAL, adjust);
 	#endif
-	progressbar = gtk_hscale_new(pchanged_argument->adjust);
+	progressbar = gtk_hscale_new(pargument->adjust);
+	gtk_scale_set_draw_value ((GtkScale*)progressbar, FALSE);
 	gtk_window_set_title(GTK_WINDOW(window), "lelele player");
-	pchanged_argument->label = pplay_argument->label = gtk_label_new ("");
+	pargument->label = pargument->label = gtk_label_new ("");
 	gtk_container_set_border_width(GTK_CONTAINER(window), 25);
 	gtk_widget_set_size_request(window, 500, 200);
 
 	spin_int = gtk_spin_button_new_with_range(1, 10000, 1);
 	button = gtk_button_new_with_mnemonic("_Play/Pause");
-	button1 = gtk_button_new_with_mnemonic("test1");
+	next_button = gtk_button_new_with_mnemonic("Next");
 	button2 = gtk_button_new_with_mnemonic("test2");
 	check = gtk_check_button_new_with_label ("Endless mode.");
 	continue_check = gtk_check_button_new_with_label("Play this number of songs.");
 
 
 	g_signal_connect (G_OBJECT (window), "destroy", G_CALLBACK (destroy), NULL);
-  	g_signal_connect (G_OBJECT(button), "clicked", G_CALLBACK(play), pplay_argument);
-	g_signal_connect (G_OBJECT(check), "toggled", G_CALLBACK(check_toggled), &(pplay_argument->endless_check));
+  	g_signal_connect (G_OBJECT(button), "clicked", G_CALLBACK(play), pargument);
+	g_signal_connect (G_OBJECT(next_button), "clicked", G_CALLBACK(next), pargument);
+	g_signal_connect (G_OBJECT(check), "toggled", G_CALLBACK(check_toggled), &(pargument->endless_check));
 	g_signal_connect(G_OBJECT(continue_check), "toggled", G_CALLBACK(continue_check_toggled), spin_int);
-	g_signal_connect(G_OBJECT(spin_int), "value-changed", G_CALLBACK(continue_spin_count), &(pplay_argument->continue_count));
+	g_signal_connect(G_OBJECT(spin_int), "value-changed", G_CALLBACK(continue_spin_count), &(pargument->continue_count));
 
 
   /* Create two buttons, one to select a folder and one to select a file. */
@@ -270,8 +249,9 @@ int main(int argc, char **argv) {
 	chooser2 = gtk_file_chooser_button_new ("Chooser a Folder", GTK_FILE_CHOOSER_ACTION_OPEN);
 
   /* Monitor when the selected folder or file are changed. */
-	g_signal_connect (G_OBJECT (chooser2), "selection_changed", G_CALLBACK (file_changed), pchanged_argument);
-	g_signal_connect (G_OBJECT (chooser1), "selection_changed", G_CALLBACK(folder_changed), pchanged_argument);
+	g_signal_connect (G_OBJECT (chooser2), "selection_changed", G_CALLBACK (file_changed), pargument);
+	g_signal_connect (G_OBJECT (chooser1), "selection_changed", G_CALLBACK(folder_changed), pargument);
+
   /* Set both file chooser buttons to the location of the user's home directory. */
 	gtk_file_chooser_set_current_folder (GTK_FILE_CHOOSER (chooser2), g_get_home_dir());
 
@@ -296,12 +276,12 @@ int main(int argc, char **argv) {
 	gtk_box_pack_start_defaults (GTK_BOX (vbox), chooser1);
 	gtk_box_pack_start_defaults (GTK_BOX (vbox), chooser2);
 	gtk_box_pack_start_defaults (GTK_BOX (vbox), button);
-	gtk_box_pack_start_defaults (GTK_BOX (vbox), pchanged_argument->label);
+	gtk_box_pack_start_defaults (GTK_BOX (vbox), pargument->label);
 	gtk_box_pack_start_defaults (GTK_BOX (vbox), check);
 	gtk_box_pack_start_defaults (GTK_BOX(vbox), progressbar);
 	gtk_box_pack_start_defaults (GTK_BOX(vbox), continue_check);
 	gtk_box_pack_start_defaults (GTK_BOX(vbox), spin_int);
-
+	gtk_box_pack_start_defaults (GTK_BOX(vbox), next_button);
 
 
 #ifdef GTK3
@@ -309,9 +289,13 @@ int main(int argc, char **argv) {
  	gtk_box_pack_start (GTK_BOX (vbox), chooser1, TRUE, TRUE, 3);
 	gtk_box_pack_start (GTK_BOX (vbox), chooser2, TRUE, TRUE, 3);
 	gtk_box_pack_start (GTK_BOX (vbox), button, TRUE, TRUE, 3);
-	gtk_box_pack_start (GTK_BOX (vbox), pchanged_argument->label, TRUE, TRUE, 3);
+	gtk_box_pack_start (GTK_BOX (vbox), pargument->label, TRUE, TRUE, 3);
 	gtk_box_pack_start (GTK_BOX (vbox), check, TRUE, TRUE, 3);
 	gtk_box_pack_start (GTK_BOX(vbox), progressbar, TRUE, TRUE, 3);
+	gtk_box_pack_start (GTK_BOX(vbox), continue_check, TRUE, TRUE, 3);
+	gtk_box_pack_start (GTK_BOX(vbox), spin_int, TRUE, TRUE, 3);
+	gtk_box_pack_start (GTK_BOX(vbox), next_button, TRUE, TRUE, 3);
+
 #endif
 
 

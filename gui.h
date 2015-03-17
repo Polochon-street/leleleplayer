@@ -12,6 +12,7 @@ struct arguments {
 	ALint status;
 	//ALint source;
 	int tag;
+	gdouble offset;
 	int first;
 	int bartag;
 	GTimer *elapsed;

@@ -129,10 +129,13 @@ static void file_changed (GtkFileChooser *chooser2, struct arguments *argument) 
 }
 
 static timer_progressbar(gpointer argument) {
-	gtk_adjustment_set_value (((struct arguments*)argument)->adjust, g_timer_elapsed(((struct arguments*)argument)->elapsed, NULL));
-	gtk_adjustment_changed(((struct arguments*)argument)->adjust);
-	g_source_remove(((struct arguments*)argument)->bartag);
-	((struct arguments*)argument)->bartag = g_timeout_add_seconds(1, timer_progressbar, argument);
+	alGetSourcei(source, AL_SOURCE_STATE, &status);
+	if(status == AL_PLAYING) {
+		gtk_adjustment_set_value (((struct arguments*)argument)->adjust, g_timer_elapsed(((struct arguments*)argument)->elapsed, NULL) + ((struct arguments*)argument)->offset);
+		gtk_adjustment_changed(((struct arguments*)argument)->adjust);
+		g_source_remove(((struct arguments*)argument)->bartag);
+		((struct arguments*)argument)->bartag = g_timeout_add_seconds(1, timer_progressbar, argument);
+	}
 }
 
 int play(GtkWidget *button, struct arguments *argument) {
@@ -195,6 +198,35 @@ static void continue_spin_count(GtkSpinButton *spin_int, int *continue_count) {
 	*continue_count = gtk_spin_button_get_value(spin_int);
 }
 
+static void slider_changed(GtkRange *progressbar, struct arguments *argument) {
+	//printf("%f, %d\n", gtk_adjustment_get_value(argument->adjust) - g_timer_elapsed(argument->elapsed, NULL) - argument->offset, duration);
+
+
+	if(fabs(gtk_adjustment_get_value(argument->adjust) - g_timer_elapsed(argument->elapsed, NULL) - argument->offset) > 0.005f) {
+	//	int sign = gtk_adjustment_get_value(argument->adjust) - g_timer_elapsed(argument->elapsed, NULL) - argument->offset > 0 ? 1 : -1;
+	//	printf("%d, %d\n", (int)((gdouble) (nb_bytes_per_sample * sample_rate) * (gdouble) gtk_adjustment_get_value(argument->adjust)), nSamples * nb_bytes_per_sample);
+		argument->offset = gtk_adjustment_get_value(argument->adjust);
+		alSourcei(source, AL_BUFFER, 0);
+		alDeleteSources(1, &source);
+		ALenum format;
+		ALuint buffer;
+		alSourcei(source, AL_BUFFER, 0);
+		g_timer_start(argument->elapsed);
+		alGenBuffers(1, &buffer);
+		alGenSources(1, &source);
+		format = AL_FORMAT_STEREO16;
+		alBufferData(buffer, format, current_sample_array + (int) ((gdouble) (nb_bytes_per_sample * sample_rate) * (gdouble) gtk_adjustment_get_value(argument->adjust)), (nSamples - (int) ( (gdouble) gtk_adjustment_get_value(argument->adjust) * (gdouble) sample_rate )) * sizeof(ALint), sample_rate);
+		alSourcei(source, AL_BUFFER, buffer);
+		alGetSourcei(source, AL_SOURCE_STATE, &status);
+		alSourcePlay(source);
+		g_source_remove(argument->tag);
+	
+		if(argument->endless_check || argument->continue_count > 0)
+			argument->tag = g_timeout_add_seconds(duration - (int)gtk_adjustment_get_value(argument->adjust), endless, argument);
+		argument->bartag = g_timeout_add_seconds(1, timer_progressbar, argument);
+	}
+}
+
 int main(int argc, char **argv) {
 
 	struct arguments argument;
@@ -205,7 +237,7 @@ int main(int argc, char **argv) {
 	pargument->first = 1;
 	pargument->endless_check = 0;
 	pargument->continue_count = -1;
-
+	pargument->offset = 0;
 	pargument->elapsed = g_timer_new();
 	GtkWidget *window, *button, *chooser1, *chooser2, *vbox, *check, *continue_check, *next_button, *button2, *spin_int, *progressbar;
 	GtkFileFilter *filter1, *filter2;
@@ -225,7 +257,7 @@ int main(int argc, char **argv) {
 	gtk_window_set_title(GTK_WINDOW(window), "lelele player");
 	pargument->label = pargument->label = gtk_label_new ("");
 	gtk_container_set_border_width(GTK_CONTAINER(window), 25);
-	gtk_widget_set_size_request(window, 500, 200);
+	gtk_widget_set_size_request(window, 500, 500);
 
 	spin_int = gtk_spin_button_new_with_range(1, 10000, 1);
 	button = gtk_button_new_with_mnemonic("_Play/Pause");
@@ -241,6 +273,7 @@ int main(int argc, char **argv) {
 	g_signal_connect (G_OBJECT(check), "toggled", G_CALLBACK(check_toggled), &(pargument->endless_check));
 	g_signal_connect(G_OBJECT(continue_check), "toggled", G_CALLBACK(continue_check_toggled), spin_int);
 	g_signal_connect(G_OBJECT(spin_int), "value-changed", G_CALLBACK(continue_spin_count), &(pargument->continue_count));
+	g_signal_connect(G_OBJECT(progressbar), "value-changed", G_CALLBACK(slider_changed), pargument);
 
 
   /* Create two buttons, one to select a folder and one to select a file. */

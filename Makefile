@@ -9,7 +9,7 @@ EXEC=analyze
 all: $(EXEC) 
 
 analyze: amp_sort.o decode.o envelope.o freq_sort.o gui_dummy.o analyze.o
-	$(CC) -o analyze analyze.o gui_dummy.o amp_sort.o decode.o envelope.o freq_sort.o $(LDFLAGS) 
+	$(CC) -g -o analyze analyze.o gui_dummy.o amp_sort.o decode.o envelope.o freq_sort.o $(LDFLAGS) 
 	@rm -Rf *.o
 
 player: amp_sort.o decode.o envelope.o freq_sort.o gui.o analyze.o

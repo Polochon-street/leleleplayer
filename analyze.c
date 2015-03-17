@@ -7,6 +7,7 @@ int analyze (char *filename) {
 	int i, d;
 	float resnum;
 
+
 	current_sample_array = audio_decode(current_sample_array, filename); // Decode audio track
 	resnum_env = envelope_sort((int16_t*)current_sample_array); // Attack sort // TODO better implementation of final sort
 	resnum_amp = amp_sort((int16_t*)current_sample_array); // Amplitude sort
@@ -14,7 +15,6 @@ int analyze (char *filename) {
 
 	resnum = resnum_amp + resnum_freq + resnum_env; 
 
-	printf("%f\n", resnum);
 	if(debug)
 		printf("FINAL RESULT: %f\n", resnum);
 	if(resnum == 0) {

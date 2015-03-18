@@ -82,23 +82,57 @@ static gboolean endless(gpointer argument) {
 		resnum = analyze(line);
 	}
 
-
 	gtk_label_set_text((GtkLabel*)(((struct arguments*)argument)->label), line);
+	g_timer_reset(((struct arguments*)argument)->elapsed);
+	((struct arguments*)argument)->offset = 0;
 	gtk_adjustment_configure(((struct arguments*)argument)->adjust, 0, 0, duration, 1, 1, 1);
 	gtk_adjustment_changed(((struct arguments*)argument)->adjust);
 
-	if(((struct arguments*)argument)->continue_count-- > 0 || ((struct arguments*)argument)->endless_check && !(((struct arguments*)argument)->first))
+	if(((struct arguments*)argument)->continue_count-- > 0 || ((struct arguments*)argument)->endless_check) {
 		play(NULL, argument);
+	}
 }
 
 /* When a folder is selected, use that as the new location of the other chooser. */
 static void folder_changed (GtkFileChooser *chooser1, struct arguments *argument) {
-	float resnum = 0;
 	gchar *folder = gtk_file_chooser_get_filename (GTK_FILE_CHOOSER (chooser1));
 	GDir *dir = g_dir_open (folder, 0, NULL);
 	explore(dir, folder);
+	float resnum = 0;
+	FILE *file;
+	char line[1000];
+	int i;
+	int count;
+	int rand;
+	char *pline;
+	
+	pline = line;
 
-	endless(argument);
+	file = fopen("list.txt", "r");
+	
+	for(; fgets(line, 1000, file) != NULL; ++count)
+		;
+
+	while(resnum != 1) {
+		free(current_sample_array);
+		int rand = g_random_int_range(0, count);
+		rewind(file);
+		pline = line;
+		for(i = 0; i < rand; ++i)
+			fgets(line, 1000, file);
+
+		for(;*pline != '\n';++pline)
+			;
+		*pline = '\0';
+		resnum = analyze(line);
+	}
+
+	gtk_label_set_text((GtkLabel*)(((struct arguments*)argument)->label), line);
+	gtk_adjustment_configure(((struct arguments*)argument)->adjust, 0, 0, duration, 1, 1, 1);
+	((struct arguments*)argument)->offset = 0;
+	gtk_adjustment_changed(((struct arguments*)argument)->adjust);
+
+
 }
 /* When a file is selected, display the full path in the GtkLabel widget. */
 
@@ -159,8 +193,9 @@ int play(GtkWidget *button, struct arguments *argument) {
 		alGetSourcei(source, AL_SOURCE_STATE, &status);
 		alSourcePlay(source);
 		g_source_remove(argument->tag);
-		if(argument->endless_check || argument->continue_count > 0)
+		if(argument->endless_check || argument->continue_count > 0) {
 			argument->tag = g_timeout_add_seconds(duration, endless, argument);
+		}
 		argument->bartag = g_timeout_add_seconds(1, timer_progressbar, argument);
 		return 0;
 	}
@@ -173,7 +208,7 @@ int play(GtkWidget *button, struct arguments *argument) {
 		alSourcePause(source);
 		return 0;
 	} 
-	else {
+	else{
 		alSourcePlay(source);
 		if(argument->endless_check) {
 			g_timer_continue(argument->elapsed);
@@ -183,8 +218,12 @@ int play(GtkWidget *button, struct arguments *argument) {
 	}
 }
 
-static void check_toggled (GtkToggleButton *check, int *endless_check) {
-	*endless_check = !(*endless_check);
+static void check_toggled (GtkToggleButton *check, struct arguments *argument) {
+	if(status == AL_PLAYING && argument->endless_check) {
+		g_source_remove(argument->tag);
+		argument->tag = g_timeout_add_seconds(duration - (int)g_timer_elapsed(argument->elapsed, NULL), endless, argument);
+	}
+	argument->endless_check = !(argument->endless_check);
 }
 
 static void continue_check_toggled(GtkToggleButton *continue_check, GtkWidget *spin_int) {
@@ -199,12 +238,7 @@ static void continue_spin_count(GtkSpinButton *spin_int, int *continue_count) {
 }
 
 static void slider_changed(GtkRange *progressbar, struct arguments *argument) {
-	//printf("%f, %d\n", gtk_adjustment_get_value(argument->adjust) - g_timer_elapsed(argument->elapsed, NULL) - argument->offset, duration);
-
-
 	if(fabs(gtk_adjustment_get_value(argument->adjust) - g_timer_elapsed(argument->elapsed, NULL) - argument->offset) > 0.005f) {
-	//	int sign = gtk_adjustment_get_value(argument->adjust) - g_timer_elapsed(argument->elapsed, NULL) - argument->offset > 0 ? 1 : -1;
-	//	printf("%d, %d\n", (int)((gdouble) (nb_bytes_per_sample * sample_rate) * (gdouble) gtk_adjustment_get_value(argument->adjust)), nSamples * nb_bytes_per_sample);
 		argument->offset = gtk_adjustment_get_value(argument->adjust);
 		alSourcei(source, AL_BUFFER, 0);
 		alDeleteSources(1, &source);
@@ -215,7 +249,7 @@ static void slider_changed(GtkRange *progressbar, struct arguments *argument) {
 		alGenBuffers(1, &buffer);
 		alGenSources(1, &source);
 		format = AL_FORMAT_STEREO16;
-		alBufferData(buffer, format, current_sample_array + (int) ((gdouble) (nb_bytes_per_sample * sample_rate) * (gdouble) gtk_adjustment_get_value(argument->adjust)), (nSamples - (int) ( (gdouble) gtk_adjustment_get_value(argument->adjust) * (gdouble) sample_rate )) * sizeof(ALint), sample_rate);
+		alBufferData(buffer, format, current_sample_array + channels * (int) ((gdouble) (nb_bytes_per_sample * sample_rate) * (gdouble) gtk_adjustment_get_value(argument->adjust)), (nSamples - (int) ( (gdouble) gtk_adjustment_get_value(argument->adjust) * (gdouble) sample_rate )) * sizeof(ALint), sample_rate);
 		alSourcei(source, AL_BUFFER, buffer);
 		alGetSourcei(source, AL_SOURCE_STATE, &status);
 		alSourcePlay(source);
@@ -235,7 +269,7 @@ int main(int argc, char **argv) {
 	InitOpenAL();
 	source = 0;
 	pargument->first = 1;
-	pargument->endless_check = 0;
+	pargument->endless_check = 0;	
 	pargument->continue_count = -1;
 	pargument->offset = 0;
 	pargument->elapsed = g_timer_new();
@@ -270,7 +304,7 @@ int main(int argc, char **argv) {
 	g_signal_connect (G_OBJECT (window), "destroy", G_CALLBACK (destroy), NULL);
   	g_signal_connect (G_OBJECT(button), "clicked", G_CALLBACK(play), pargument);
 	g_signal_connect (G_OBJECT(next_button), "clicked", G_CALLBACK(next), pargument);
-	g_signal_connect (G_OBJECT(check), "toggled", G_CALLBACK(check_toggled), &(pargument->endless_check));
+	g_signal_connect (G_OBJECT(check), "toggled", G_CALLBACK(check_toggled), pargument);
 	g_signal_connect(G_OBJECT(continue_check), "toggled", G_CALLBACK(continue_check_toggled), spin_int);
 	g_signal_connect(G_OBJECT(spin_int), "value-changed", G_CALLBACK(continue_spin_count), &(pargument->continue_count));
 	g_signal_connect(G_OBJECT(progressbar), "value-changed", G_CALLBACK(slider_changed), pargument);

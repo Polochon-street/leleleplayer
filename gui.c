@@ -35,21 +35,17 @@ static void destroy (GtkWidget *window, gpointer data) {
 	gtk_main_quit ();
 }
 
-void explore(GDir *dir, char* folder) {
-	const gchar *file;
-	FILE *liste;
-
-	liste = fopen("list.txt", "a");
-	while((file = g_dir_read_name(dir))) {
-		if(g_str_has_suffix(file, "flac") || g_str_has_suffix(file, "mp3")) {
-			g_fprintf(liste, "%s\n", g_build_path("/", folder, file, NULL));
+void explore(GDir *dir, char *folder, FILE *list) {
+	gchar file[1000];
+	
+	while((g_stpcpy(file, g_dir_read_name(dir)))) {
+		if( g_file_test(g_build_path("/", folder, file, NULL), G_FILE_TEST_IS_REGULAR) && ( g_str_has_suffix(file, "flac") || g_str_has_suffix(file, "mp3") ) ) {
+			g_fprintf(list, "%s\n", g_build_path("/", folder, file, NULL));
 		}
 		else {
-		//	printf("%s\n", g_build_path("/", folder, file, NULL));
-			explore(g_dir_open(g_build_path("/", folder, file, NULL), 0, NULL), g_build_path("/", folder, file, NULL));
+			explore(g_dir_open(g_build_path("/", folder, file, NULL), 0, NULL), g_build_path("/", folder, file, NULL), list);
 		}
 	}
-	fclose(liste);
 }
 
 static gboolean endless(gpointer argument) {
@@ -97,46 +93,56 @@ static gboolean endless(gpointer argument) {
 static void folder_changed (GtkFileChooser *chooser1, struct arguments *argument) {
 	gchar *folder = gtk_file_chooser_get_filename (GTK_FILE_CHOOSER (chooser1));
 	GDir *dir = g_dir_open (folder, 0, NULL);
-	explore(dir, folder);
+	FILE *list;
+	list = fopen("list.txt", "w+");
+	explore(dir, folder, list);
 	float resnum = 0;
-	FILE *file;
 	char line[1000];
 	int i;
-	int count;
+	int count, tmpcount;
 	int rand;
 	char *pline;
 	
-	pline = line;
-
-	file = fopen("list.txt", "r");
-	
-	for(; fgets(line, 1000, file) != NULL; ++count)
+	rewind(list);
+	for(; fgets(line, 1000, list) != NULL; ++count)
 		;
-
-	while(resnum != 1) {
+	
+	tmpcount = count;
+	
+	while(resnum != 1 && tmpcount-- > 0) {
 		free(current_sample_array);
 		int rand = g_random_int_range(0, count);
-		rewind(file);
-		pline = line;
+		rewind(list);
+		
 		for(i = 0; i < rand; ++i)
-			fgets(line, 1000, file);
-
-		for(;*pline != '\n';++pline)
-			;
-		*pline = '\0';
+			fgets(line, 1000, list);
+		line[strcspn(line, "\n")] = '\0';
+		
 		resnum = analyze(line);
 	}
 
+	if (tmpcount > 0) {
 	gtk_label_set_text((GtkLabel*)(((struct arguments*)argument)->label), line);
 	gtk_adjustment_configure(((struct arguments*)argument)->adjust, 0, 0, duration, 1, 1, 1);
 	((struct arguments*)argument)->offset = 0;
 	gtk_adjustment_changed(((struct arguments*)argument)->adjust);
+	}
+	else
+		gtk_label_set_text((GtkLabel*)(((struct arguments*)argument)->label), "No calm songs found!");
 
 
 }
 /* When a file is selected, display the full path in the GtkLabel widget. */
 
 static void next (GtkButton *next_button, struct arguments *argument) {
+	if (argument->continue_count < 0) {
+		argument->continue_count = 1;
+		alSourceStop(source);
+	}
+	else {
+		argument->continue_count++; 
+		alSourceStop(source);
+	}
 	endless(argument);
 }
 
@@ -173,9 +179,13 @@ static timer_progressbar(gpointer argument) {
 }
 
 int play(GtkWidget *button, struct arguments *argument) {
+
 	ALenum format;
 	ALuint buffer;
 	alGetSourcei(source, AL_SOURCE_STATE, &status);
+
+	if(argument->first == 1)
+		InitOpenAL();
 
 	if(status == 0 || status == AL_STOPPED) {
 		argument->first = 0;
@@ -190,7 +200,6 @@ int play(GtkWidget *button, struct arguments *argument) {
 		alBufferData(buffer, format, current_sample_array, nSamples * sizeof(ALint), sample_rate);
 
 		alSourcei(source, AL_BUFFER, buffer);
-		alGetSourcei(source, AL_SOURCE_STATE, &status);
 		alSourcePlay(source);
 		g_source_remove(argument->tag);
 		if(argument->endless_check || argument->continue_count > 0) {
@@ -265,8 +274,8 @@ int main(int argc, char **argv) {
 
 	struct arguments argument;
 	struct arguments *pargument = &argument;
-
-	InitOpenAL();
+	
+	//InitOpenAL(); // potential memory leak
 	source = 0;
 	pargument->first = 1;
 	pargument->endless_check = 0;	
@@ -278,7 +287,7 @@ int main(int argc, char **argv) {
 
 	gtk_init(&argc, &argv);
 	
-	g_remove("list.txt");
+	//g_remove("list.txt");
 	window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
 	
 	pargument->adjust = (GtkAdjustment*)gtk_adjustment_new(0, 0, 100, 1, 1, 1);

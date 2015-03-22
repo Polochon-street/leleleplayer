@@ -23,13 +23,13 @@ int8_t *audio_decode(int8_t* sample_array, const char *filename) { // decode the
 	pFormatCtx = avformat_alloc_context();
 
 	if(avformat_open_input(&pFormatCtx, filename, NULL, NULL) < 0) {
-		printf("Couldn't open file\n");
-		exit(1);
+		printf("Couldn't open file: %s\n", filename);
+		return NULL;
 	}
 
 	if(avformat_find_stream_info(pFormatCtx, NULL) < 0) {
 		printf("Couldn't find stream information\n");
-		exit(1);
+		return NULL;
 	} 
 
 	audioStream = av_find_best_stream(pFormatCtx, AVMEDIA_TYPE_AUDIO, -1, -1, &codec, 0);
@@ -37,12 +37,12 @@ int8_t *audio_decode(int8_t* sample_array, const char *filename) { // decode the
 	
 	if (!codec) {
 		printf("Codec not found!\n");
-		exit(1);
+		return NULL;
 	}
 
 	if(avcodec_open2(c, codec, NULL) < 0) {
 		printf("Could not open codec\n");
-		exit(1);
+		return NULL;
 	}
 	
 	sample_rate = c->sample_rate;
@@ -56,6 +56,8 @@ int8_t *audio_decode(int8_t* sample_array, const char *filename) { // decode the
 
 	planar = av_sample_fmt_is_planar(c->sample_fmt);
 	nb_bytes_per_sample = av_get_bytes_per_sample(c->sample_fmt);
+
+	channels = c->channels;
 
 	/* End of codec init */
 	while(av_read_frame(pFormatCtx, &avpkt) >= 0) {

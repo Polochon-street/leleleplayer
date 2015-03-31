@@ -37,14 +37,16 @@ static void destroy (GtkWidget *window, gpointer data) {
 
 void explore(GDir *dir, char *folder, FILE *list) {
 	gchar file[1000];
-	
-	while((g_stpcpy(file, g_dir_read_name(dir)))) {
-		if( g_file_test(g_build_path("/", folder, file, NULL), G_FILE_TEST_IS_REGULAR) && ( g_str_has_suffix(file, "flac") || g_str_has_suffix(file, "mp3") ) ) {
-			g_fprintf(list, "%s\n", g_build_path("/", folder, file, NULL));
-		}
-		else {
+	const gchar *dirname;	
+
+	while((dir != NULL) && (dirname = g_dir_read_name(dir)) && (g_stpcpy(file, dirname))) {
+		if( g_file_test(g_build_path("/", folder, file, NULL), G_FILE_TEST_IS_REGULAR) && ( g_str_has_suffix(file, "flac") || g_str_has_suffix(file, "mp3") ) ) 
+			g_fprintf(list, "%s\n", g_build_path("/", folder, file, NULL));	
+		else if(g_file_test(g_build_path("/", folder, file, NULL), G_FILE_TEST_IS_DIR))
 			explore(g_dir_open(g_build_path("/", folder, file, NULL), 0, NULL), g_build_path("/", folder, file, NULL), list);
-		}
+	}
+	if (dirname == NULL) {
+		g_dir_close(dir);
 	}
 }
 
@@ -78,13 +80,24 @@ static gboolean endless(gpointer argument) {
 		resnum = analyze(line);
 	}
 
-	gtk_label_set_text((GtkLabel*)(((struct arguments*)argument)->label), line);
+	char artist[strlen(current_song.artist) + 9];
+	char title[strlen(current_song.title) + 8];
+	char album[strlen(current_song.album) + 8];
+	strcpy(artist, "Artist: ");
+	strcpy(title, "Title: ");
+	strcpy(album, "Album: ");
+
+	gtk_label_set_text((GtkLabel*)(((struct arguments*)argument)->label), "");
+	gtk_label_set_text((GtkLabel*)(((struct arguments*)argument)->artist_label), strcat(artist, current_song.artist));
+	gtk_label_set_text((GtkLabel*)(((struct arguments*)argument)->title_label), strcat(title, current_song.title));
+	gtk_label_set_text((GtkLabel*)(((struct arguments*)argument)->album_label), strcat(album, current_song.album));
+
 	g_timer_reset(((struct arguments*)argument)->elapsed);
 	((struct arguments*)argument)->offset = 0;
-	gtk_adjustment_configure(((struct arguments*)argument)->adjust, 0, 0, duration, 1, 1, 1);
+	gtk_adjustment_configure(((struct arguments*)argument)->adjust, 0, 0, current_song.duration, 1, 1, 1);
 	gtk_adjustment_changed(((struct arguments*)argument)->adjust);
 
-	if(((struct arguments*)argument)->continue_count-- > 0 || ((struct arguments*)argument)->endless_check) {
+	if(--((struct arguments*)argument)->continue_count != 0) {
 		play(NULL, argument);
 	}
 }
@@ -99,7 +112,7 @@ static void folder_changed (GtkFileChooser *chooser1, struct arguments *argument
 	float resnum = 0;
 	char line[1000];
 	int i;
-	int count, tmpcount;
+	int count = 0, tmpcount;
 	int rand;
 	char *pline;
 	
@@ -122,15 +135,73 @@ static void folder_changed (GtkFileChooser *chooser1, struct arguments *argument
 	}
 
 	if (tmpcount > 0) {
-	gtk_label_set_text((GtkLabel*)(((struct arguments*)argument)->label), line);
-	gtk_adjustment_configure(((struct arguments*)argument)->adjust, 0, 0, duration, 1, 1, 1);
-	((struct arguments*)argument)->offset = 0;
-	gtk_adjustment_changed(((struct arguments*)argument)->adjust);
+		char artist[strlen(current_song.artist) + 9];
+		char title[strlen(current_song.title) + 8];
+		char album[strlen(current_song.album) + 8];
+		strcpy(artist, "Artist: ");
+		strcpy(title, "Title: ");
+		strcpy(album, "Album: ");
+
+		gtk_label_set_text((GtkLabel*)(((struct arguments*)argument)->label), "");
+		gtk_label_set_text((GtkLabel*)(((struct arguments*)argument)->artist_label), strcat(artist, current_song.artist));
+		gtk_label_set_text((GtkLabel*)(((struct arguments*)argument)->title_label), strcat(title, current_song.title));
+		gtk_label_set_text((GtkLabel*)(((struct arguments*)argument)->album_label), strcat(album, current_song.album));
+
+		gtk_adjustment_configure(((struct arguments*)argument)->adjust, 0, 0, current_song.duration, 1, 1, 1);
+		((struct arguments*)argument)->offset = 0;
+		gtk_adjustment_changed(((struct arguments*)argument)->adjust);
 	}
 	else
 		gtk_label_set_text((GtkLabel*)(((struct arguments*)argument)->label), "No calm songs found!");
 
+}
 
+static void config_folder_changed (GtkFileChooser *chooser1, struct arguments *argument) {
+	gchar *folder = gtk_file_chooser_get_filename (GTK_FILE_CHOOSER (chooser1));
+	GDir *dir = g_dir_open (folder, 0, NULL);
+	FILE *list;
+	list = fopen("list.txt", "w+");
+	float resnum_temp;
+	explore(dir, folder, list);
+	float resnum = 0;
+	ssize_t len = 0;
+	char *line = NULL;
+	int count = 0;
+
+	fseek(list, 0, SEEK_SET);
+
+	while (fgets(line, 1000, list) != NULL) {
+		free(current_sample_array);
+		line[strcspn(line, "\n")] = '\0';
+		resnum_temp = analyze(line);
+		resnum += resnum_temp > 0 ? resnum_temp : 0;
+		if(resnum_temp != 0)
+			++count;
+		printf("%s, %f\n", line, resnum/count);
+	}
+	
+	free(line);
+	fclose(list);
+	/*tmpcount = count;
+	
+	while(tmpcount-- > 0) {
+		free(current_sample_array);
+		int rand = g_random_int_range(0, count);
+		rewind(list);
+		
+		for(i = count; i > tmpcount; --i)
+			fgets(line, 1000, list);
+		line[strcspn(line, "\n")] = '\0';
+		printf("%s, %f\n", line, resnum_temp);
+		resnum_temp = analyze(line);
+		resnum += resnum_temp;
+		if(resnum_temp == 0) {
+			--count;
+			--tmpcount;
+		}
+	}*/
+
+	printf("%f\n", resnum/count);
 }
 /* When a file is selected, display the full path in the GtkLabel widget. */
 
@@ -151,21 +222,41 @@ static void file_changed (GtkFileChooser *chooser2, struct arguments *argument) 
 	gchar *filename = gtk_file_chooser_get_filename (GTK_FILE_CHOOSER (chooser2));
 
 	resnum = analyze(filename);
-	gtk_adjustment_configure(argument->adjust, 0, 0, duration, 1, 1, 1);
+	gtk_adjustment_configure(argument->adjust, 0, 0, current_song.duration, 1, 1, 1);
 	gtk_adjustment_changed(argument->adjust);
 
 	if(resnum == 2) {
   		gtk_label_set_text ((GtkLabel*)argument->label, "Can't Conclude");
+		gtk_label_set_text((GtkLabel*)argument->artist_label, current_song.artist);
+		gtk_label_set_text((GtkLabel*)argument->title_label, current_song.title);
+		gtk_label_set_text((GtkLabel*)argument->album_label, current_song.album);
 
 	}
 	else if(resnum == 0) {
   		gtk_label_set_text ((GtkLabel*)argument->label, "Much loud");
+		gtk_label_set_text((GtkLabel*)argument->artist_label, current_song.artist);
+		gtk_label_set_text((GtkLabel*)argument->title_label, current_song.title);
+		gtk_label_set_text((GtkLabel*)argument->album_label, current_song.album);
 
 	}
 	else if(resnum == 1) {
+		gtk_label_set_text((GtkLabel*)argument->artist_label, current_song.artist);
+		gtk_label_set_text((GtkLabel*)argument->title_label, current_song.title);
+		gtk_label_set_text((GtkLabel*)argument->album_label, current_song.album);
   		gtk_label_set_text ((GtkLabel*)argument->label, "Such calm");
 
 	}
+	char artist[strlen(current_song.artist) + 9];
+	char title[strlen(current_song.title) + 8];
+	char album[strlen(current_song.album) + 8];
+	strcpy(artist, "Artist: ");
+	strcpy(title, "Title: ");
+	strcpy(album, "Album: ");
+
+	gtk_label_set_text((GtkLabel*)(((struct arguments*)argument)->artist_label), strcat(artist, current_song.artist));
+	gtk_label_set_text((GtkLabel*)(((struct arguments*)argument)->title_label), strcat(title, current_song.title));
+	gtk_label_set_text((GtkLabel*)(((struct arguments*)argument)->album_label), strcat(album, current_song.album));
+
 }
 
 static timer_progressbar(gpointer argument) {
@@ -202,8 +293,8 @@ int play(GtkWidget *button, struct arguments *argument) {
 		alSourcei(source, AL_BUFFER, buffer);
 		alSourcePlay(source);
 		g_source_remove(argument->tag);
-		if(argument->endless_check || argument->continue_count > 0) {
-			argument->tag = g_timeout_add_seconds(duration, endless, argument);
+		if(argument->endless_check || argument->continue_count != 0) {
+			argument->tag = g_timeout_add_seconds(current_song.duration, endless, argument);
 		}
 		argument->bartag = g_timeout_add_seconds(1, timer_progressbar, argument);
 		return 0;
@@ -221,7 +312,7 @@ int play(GtkWidget *button, struct arguments *argument) {
 		alSourcePlay(source);
 		if(argument->endless_check) {
 			g_timer_continue(argument->elapsed);
-			argument->tag = g_timeout_add_seconds(duration - (int)g_timer_elapsed(argument->elapsed, NULL), endless, argument->label);
+			argument->tag = g_timeout_add_seconds(current_song.duration - (int)g_timer_elapsed(argument->elapsed, NULL), endless, argument->label);
 		}
 		return 0;
 	}
@@ -230,7 +321,7 @@ int play(GtkWidget *button, struct arguments *argument) {
 static void check_toggled (GtkToggleButton *check, struct arguments *argument) {
 	if(status == AL_PLAYING && argument->endless_check) {
 		g_source_remove(argument->tag);
-		argument->tag = g_timeout_add_seconds(duration - (int)g_timer_elapsed(argument->elapsed, NULL), endless, argument);
+		argument->tag = g_timeout_add_seconds(current_song.duration - (int)g_timer_elapsed(argument->elapsed, NULL), endless, argument);
 	}
 	argument->endless_check = !(argument->endless_check);
 }
@@ -242,8 +333,8 @@ static void continue_check_toggled(GtkToggleButton *continue_check, GtkWidget *s
 		gtk_widget_set_sensitive(spin_int, FALSE);
 }
 
-static void continue_spin_count(GtkSpinButton *spin_int, int *continue_count) {
-	*continue_count = gtk_spin_button_get_value(spin_int);
+static void continue_spin_count(GtkSpinButton *spin_int, struct arguments *argument) {
+	argument->continue_count = gtk_spin_button_get_value(spin_int);
 }
 
 static void slider_changed(GtkRange *progressbar, struct arguments *argument) {
@@ -264,8 +355,9 @@ static void slider_changed(GtkRange *progressbar, struct arguments *argument) {
 		alSourcePlay(source);
 		g_source_remove(argument->tag);
 	
-		if(argument->endless_check || argument->continue_count > 0)
-			argument->tag = g_timeout_add_seconds(duration - (int)gtk_adjustment_get_value(argument->adjust), endless, argument);
+		if(argument->continue_count != 0) {
+			argument->tag = g_timeout_add_seconds(current_song.duration - (int)gtk_adjustment_get_value(argument->adjust), endless, argument);
+		}
 		argument->bartag = g_timeout_add_seconds(1, timer_progressbar, argument);
 	}
 }
@@ -279,10 +371,11 @@ int main(int argc, char **argv) {
 	source = 0;
 	pargument->first = 1;
 	pargument->endless_check = 0;	
-	pargument->continue_count = -1;
+	pargument->continue_count = 0;
 	pargument->offset = 0;
 	pargument->elapsed = g_timer_new();
-	GtkWidget *window, *button, *chooser1, *chooser2, *vbox, *check, *continue_check, *next_button, *button2, *spin_int, *progressbar;
+	GtkWidget *window, *hpaned, *pause_button, *bitrate_label, *chooser1, *chooser2, *chooser3, *vboxl, *vboxr, *check,
+		 *continue_check, *continue_label, *next_button, *button2, *spin_int, *progressbar, *button_hbox, *continue_hbox;
 	GtkFileFilter *filter1, *filter2;
 
 	gtk_init(&argc, &argv);
@@ -298,24 +391,33 @@ int main(int argc, char **argv) {
 	progressbar = gtk_hscale_new(pargument->adjust);
 	gtk_scale_set_draw_value ((GtkScale*)progressbar, FALSE);
 	gtk_window_set_title(GTK_WINDOW(window), "lelele player");
-	pargument->label = pargument->label = gtk_label_new ("");
-	gtk_container_set_border_width(GTK_CONTAINER(window), 25);
-	gtk_widget_set_size_request(window, 500, 500);
+	pargument->label = gtk_label_new ("");
+	pargument->title_label = gtk_label_new("");
+	pargument->album_label = gtk_label_new("");
+	pargument->artist_label = gtk_label_new("");	
+	gtk_label_set_line_wrap((GtkLabel*)pargument->title_label, TRUE);
+	gtk_label_set_line_wrap((GtkLabel*)pargument->artist_label, TRUE);
+	gtk_label_set_line_wrap((GtkLabel*)pargument->album_label, TRUE);
+	continue_label = gtk_label_new("Number of songs played\n -1 to go endless");
 
-	spin_int = gtk_spin_button_new_with_range(1, 10000, 1);
-	button = gtk_button_new_with_mnemonic("_Play/Pause");
+	gtk_container_set_border_width(GTK_CONTAINER(window), 10);
+	gtk_widget_set_size_request(window, 500, 250);
+	hpaned = gtk_hpaned_new();
+
+	spin_int = gtk_spin_button_new_with_range(-1, 10000, 1);
+	gtk_spin_button_set_value ((GtkSpinButton*)spin_int, 1);
+	pause_button = gtk_button_new_with_mnemonic("_Play/Pause");
 	next_button = gtk_button_new_with_mnemonic("Next");
-	button2 = gtk_button_new_with_mnemonic("test2");
 	check = gtk_check_button_new_with_label ("Endless mode.");
-	continue_check = gtk_check_button_new_with_label("Play this number of songs.");
+	//continue_check = gtk_check_button_new_with_label("Play this number of songs.");
 
 
 	g_signal_connect (G_OBJECT (window), "destroy", G_CALLBACK (destroy), NULL);
-  	g_signal_connect (G_OBJECT(button), "clicked", G_CALLBACK(play), pargument);
+  	g_signal_connect (G_OBJECT(pause_button), "clicked", G_CALLBACK(play), pargument);
 	g_signal_connect (G_OBJECT(next_button), "clicked", G_CALLBACK(next), pargument);
 	g_signal_connect (G_OBJECT(check), "toggled", G_CALLBACK(check_toggled), pargument);
-	g_signal_connect(G_OBJECT(continue_check), "toggled", G_CALLBACK(continue_check_toggled), spin_int);
-	g_signal_connect(G_OBJECT(spin_int), "value-changed", G_CALLBACK(continue_spin_count), &(pargument->continue_count));
+	//g_signal_connect(G_OBJECT(continue_check), "toggled", G_CALLBACK(continue_check_toggled), spin_int);
+	g_signal_connect(G_OBJECT(spin_int), "value-changed", G_CALLBACK(continue_spin_count), pargument);
 	g_signal_connect(G_OBJECT(progressbar), "value-changed", G_CALLBACK(slider_changed), pargument);
 
 
@@ -323,10 +425,12 @@ int main(int argc, char **argv) {
 
 	chooser1 = gtk_file_chooser_button_new ("Chooser a Folder", GTK_FILE_CHOOSER_ACTION_SELECT_FOLDER);
 	chooser2 = gtk_file_chooser_button_new ("Chooser a Folder", GTK_FILE_CHOOSER_ACTION_OPEN);
+	chooser3 = gtk_file_chooser_button_new ("Choose a folder for config (may take some time)", GTK_FILE_CHOOSER_ACTION_SELECT_FOLDER);
 
   /* Monitor when the selected folder or file are changed. */
 	g_signal_connect (G_OBJECT (chooser2), "selection_changed", G_CALLBACK (file_changed), pargument);
 	g_signal_connect (G_OBJECT (chooser1), "selection_changed", G_CALLBACK(folder_changed), pargument);
+	g_signal_connect (G_OBJECT (chooser3), "selection_changed", G_CALLBACK (config_folder_changed), pargument);
 
   /* Set both file chooser buttons to the location of the user's home directory. */
 	gtk_file_chooser_set_current_folder (GTK_FILE_CHOOSER (chooser2), g_get_home_dir());
@@ -347,35 +451,57 @@ int main(int argc, char **argv) {
 	gtk_file_chooser_add_filter (GTK_FILE_CHOOSER (chooser2), filter2);
 
 
-	gtk_widget_set_sensitive(spin_int, FALSE);
-	vbox = gtk_vbox_new (GTK_ORIENTATION_VERTICAL, 5);
-	gtk_box_pack_start_defaults (GTK_BOX (vbox), chooser1);
-	gtk_box_pack_start_defaults (GTK_BOX (vbox), chooser2);
-	gtk_box_pack_start_defaults (GTK_BOX (vbox), button);
-	gtk_box_pack_start_defaults (GTK_BOX (vbox), pargument->label);
-	gtk_box_pack_start_defaults (GTK_BOX (vbox), check);
-	gtk_box_pack_start_defaults (GTK_BOX(vbox), progressbar);
-	gtk_box_pack_start_defaults (GTK_BOX(vbox), continue_check);
-	gtk_box_pack_start_defaults (GTK_BOX(vbox), spin_int);
-	gtk_box_pack_start_defaults (GTK_BOX(vbox), next_button);
+	//gtk_widget_set_sensitive(spin_int, FALSE);
+	vboxl = gtk_vbox_new (TRUE, 5);
+	vboxr = gtk_vbox_new (TRUE, 5);
+	button_hbox = gtk_hbox_new (TRUE, 5);
+	continue_hbox= gtk_hbox_new (TRUE, 5);
 
+	gtk_box_set_homogeneous(GTK_BOX(vboxr), FALSE);
+	gtk_box_set_homogeneous(GTK_BOX(continue_hbox), FALSE);
+
+	gtk_box_pack_start_defaults (GTK_BOX (vboxl), chooser1);
+	gtk_box_pack_start_defaults (GTK_BOX (vboxl), chooser2);
+//	gtk_box_pack_start_defaults (GTK_BOX (vboxl), chooser3);
+	//gtk_box_pack_start_defaults (GTK_BOX (vboxl), check);
+	
+	gtk_box_pack_start_defaults (GTK_BOX (vboxl), continue_hbox);
+		gtk_box_pack_start_defaults (GTK_BOX(continue_hbox), continue_label);
+		gtk_box_pack_start_defaults (GTK_BOX(continue_hbox), spin_int);
+	gtk_box_pack_start_defaults (GTK_BOX (vboxl), button_hbox);
+		gtk_box_pack_start_defaults (GTK_BOX (button_hbox), pause_button);
+		gtk_box_pack_start_defaults (GTK_BOX(button_hbox), next_button);
+	gtk_box_pack_start_defaults (GTK_BOX(vboxl), progressbar);
+
+	gtk_box_pack_start(GTK_BOX (vboxr), pargument->label, FALSE, FALSE, 1);
+	gtk_box_pack_start(GTK_BOX (vboxr), pargument->title_label, FALSE, FALSE, 1);
+	gtk_box_pack_start(GTK_BOX (vboxr), pargument->album_label, FALSE, FALSE, 1);
+	gtk_box_pack_start(GTK_BOX (vboxr), pargument->artist_label, FALSE, FALSE, 1);
 
 #ifdef GTK3
-	vbox = gtk_box_new (GTK_ORIENTATION_VERTICAL, 5);
- 	gtk_box_pack_start (GTK_BOX (vbox), chooser1, TRUE, TRUE, 3);
-	gtk_box_pack_start (GTK_BOX (vbox), chooser2, TRUE, TRUE, 3);
-	gtk_box_pack_start (GTK_BOX (vbox), button, TRUE, TRUE, 3);
-	gtk_box_pack_start (GTK_BOX (vbox), pargument->label, TRUE, TRUE, 3);
-	gtk_box_pack_start (GTK_BOX (vbox), check, TRUE, TRUE, 3);
-	gtk_box_pack_start (GTK_BOX(vbox), progressbar, TRUE, TRUE, 3);
-	gtk_box_pack_start (GTK_BOX(vbox), continue_check, TRUE, TRUE, 3);
-	gtk_box_pack_start (GTK_BOX(vbox), spin_int, TRUE, TRUE, 3);
-	gtk_box_pack_start (GTK_BOX(vbox), next_button, TRUE, TRUE, 3);
+	vboxl = gtk_box_new (GTK_ORIENTATION_VERTICAL, 5);
+	vboxr = gtk_vboxr_new (GTK_ORIENTATION_VERTICAL, 5);
+ 	gtk_box_pack_start (GTK_BOX (vboxl), chooser1, TRUE, TRUE, 3);
+	gtk_box_pack_start (GTK_BOX (vboxl), chooser2, TRUE, TRUE, 3);
+	gtk_box_pack_start (GTK_BOX (vboxl), pause_button, TRUE, TRUE, 3);
+	gtk_box_pack_start (GTK_BOX(vboxl), next_button, TRUE, TRUE, 3);
+	gtk_box_pack_start (GTK_BOX (vboxl), pargument->label, TRUE, TRUE, 3);
+	gtk_box_pack_start (GTK_BOX (vboxl), check, TRUE, TRUE, 3);
+	gtk_box_pack_start (GTK_BOX(vboxl), continue_check, TRUE, TRUE, 3);
+	gtk_box_pack_start (GTK_BOX(vboxl), spin_int, TRUE, TRUE, 3);
+
+	gtk_box_pack_start (GTK_BOX(vboxl), progressbar, TRUE, TRUE, 3);
+	
+	gtk_box_pack_start (GTK_BOX (vboxr), pargument->label, TRUE, TRUE, 3);	
+	gtk_box_pack_start_defaults (GTK_BOX (vboxr), pargument->title_label, TRUE, TRUE, 3);
+	gtk_box_pack_start_defaults (GTK_BOX (vboxr), pargument->album_label, TRUE, TRUE, 3);
+	gtk_box_pack_start_defaults (GTK_BOX (vboxr), pargument->artist_label, TRUE, TRUE, 3);
 
 #endif
 
-
-	gtk_container_add (GTK_CONTAINER (window), vbox);
+	gtk_paned_pack1(GTK_PANED(hpaned), vboxl, FALSE, FALSE);
+	gtk_paned_pack2(GTK_PANED(hpaned), vboxr, TRUE, FALSE);
+	gtk_container_add (GTK_CONTAINER (window), hpaned);
 	
 	gtk_widget_show_all(window);
 

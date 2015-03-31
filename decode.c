@@ -23,7 +23,7 @@ int8_t *audio_decode(int8_t* sample_array, const char *filename) { // decode the
 	pFormatCtx = avformat_alloc_context();
 
 	if(avformat_open_input(&pFormatCtx, filename, NULL, NULL) < 0) {
-		printf("Couldn't open file: %s\n", filename);
+		printf("Couldn't open file: %s, %d\n", filename, errno);
 		return NULL;
 	}
 
@@ -46,7 +46,7 @@ int8_t *audio_decode(int8_t* sample_array, const char *filename) { // decode the
 	}
 	
 	sample_rate = c->sample_rate;
-	duration = pFormatCtx->duration/AV_TIME_BASE+1;
+	current_song.duration = pFormatCtx->duration/AV_TIME_BASE+1;
 	size = (((uint64_t)(pFormatCtx->duration)*(uint64_t)sample_rate)/(uint64_t)AV_TIME_BASE)*c->channels*av_get_bytes_per_sample(c->sample_fmt);
 	nSamples = (((uint64_t)(pFormatCtx->duration)*(uint64_t)sample_rate)/(uint64_t)AV_TIME_BASE)*c->channels;
 	sample_array = malloc(size);
@@ -59,6 +59,16 @@ int8_t *audio_decode(int8_t* sample_array, const char *filename) { // decode the
 
 	channels = c->channels;
 
+
+	/* Get tags */
+	current_song.title = malloc(strlen(av_dict_get(pFormatCtx->metadata, "title", NULL, AV_DICT_IGNORE_SUFFIX)->value) + 1);
+	current_song.artist = malloc(strlen(av_dict_get(pFormatCtx->metadata, "artist", NULL, AV_DICT_IGNORE_SUFFIX)->value) + 1);
+	current_song.album = malloc(strlen(av_dict_get(pFormatCtx->metadata, "album", NULL, AV_DICT_IGNORE_SUFFIX)->value) + 1);
+	strcpy(current_song.title, av_dict_get(pFormatCtx->metadata, "title", NULL, AV_DICT_IGNORE_SUFFIX)->value);
+	strcpy(current_song.artist, av_dict_get(pFormatCtx->metadata, "artist", NULL, AV_DICT_IGNORE_SUFFIX)->value);
+	strcpy(current_song.album, av_dict_get(pFormatCtx->metadata, "album", NULL, AV_DICT_IGNORE_SUFFIX)->value);
+
+	
 	/* End of codec init */
 	while(av_read_frame(pFormatCtx, &avpkt) >= 0) {
 		if(avpkt.stream_index == audioStream) {
@@ -108,9 +118,11 @@ int8_t *audio_decode(int8_t* sample_array, const char *filename) { // decode the
 		}
 	}
 	/* cleaning memory */
+
+	avformat_close_input(&pFormatCtx);
 	avcodec_close(c);
-	av_free(c);
-	//avformat_close_input(&pFormatCtx);
-	av_frame_free(&decoded_frame);
+//	av_frame_free(&decoded_frame);
+//	av_free_packet(&avpkt);
+
 	return beginning;
 } 

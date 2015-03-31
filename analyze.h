@@ -5,11 +5,11 @@
 //int16_t *current_sample_array;
 size_t size;
 int nSamples;
-int duration;
 int sample_rate;
 int nb_bytes_per_sample;
 int8_t *current_sample_array;
 int debug;
+int channels;
 int cli;
 int planar;
 
@@ -21,6 +21,8 @@ struct song {
 	char *title;
 	char *album;
 };
+
+struct song current_song;
 
 float amp_sort(int16_t* array);
 float envelope_sort(int16_t* array);

@@ -18,7 +18,7 @@ struct arguments {
 	GTimer *elapsed;
 	int endless_check;
 	int continue_count;
-	GtkWidget *label;
+	GtkWidget *label, *album_label, *title_label, *artist_label;
 	GtkAdjustment *adjust;
 };
 
@@ -26,7 +26,7 @@ struct arguments {
 static void destroy (GtkWidget*, gpointer);
 static void folder_changed (GtkFileChooser*, struct arguments*);
 static void file_changed (GtkFileChooser*, struct arguments*);
-void explore(GDir *dir, char *folder);
+void explore(GDir *dir, char *folder, FILE *);
 int play(GtkWidget*, struct arguments*);
 bool InitOpenAL(void);
 void ShutdownOpenAL(void);

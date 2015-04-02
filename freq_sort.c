@@ -48,8 +48,9 @@ float freq_sort(int16_t *sample_array) {
 
 	for(i=0;i<11;++i)
 		tab_bandes[i] = 0.0f;
+	
+	nSamples/=channels; // Only one channel
 
-	nSamples/=2; // Only one channel
 
 	if(nSamples%WIN_SIZE > 0)
 		nSamples -= nSamples%WIN_SIZE;
@@ -63,7 +64,7 @@ float freq_sort(int16_t *sample_array) {
 	/* End of FFT init */
 	/* FFT computation */
 
-	for(i=0, iFrame = 0; iFrame < nFrames; i+=2*WIN_SIZE, iFrame++) {
+	for(i=0, iFrame = 0; iFrame < nFrames; i+=channels*WIN_SIZE, iFrame++) {
 		if (nb_bytes_per_sample == 2) {
 			for(d = 0; d < WIN_SIZE; d++)
 				x[d] = (float)((sample_array[i+2*d]+sample_array[i+2*d+1])/2)*hann_window[d]; 

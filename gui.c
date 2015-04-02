@@ -2,8 +2,85 @@
 #include "gui.h"
 
 static void destroy (GtkWidget *window, gpointer data) {
-//	ShutdownOpenAL();
+	ShutdownOpenAL();
 	gtk_main_quit ();
+}
+
+bool InitOpenAL(void) {
+	ALCdevice *Device = alcOpenDevice(NULL);
+	if(!Device) {
+		printf("Error while opening the device\n");
+		exit(1);
+	}
+	
+	ALCcontext *Context = alcCreateContext(Device, NULL);
+	if(!Context) {
+		printf("Error while creating context\n");
+		exit(1);
+	}
+
+	if(!alcMakeContextCurrent(Context)) {
+		printf("Error while activating context\n");
+		exit(1);
+	}
+	return 0;
+}
+
+static void ShutdownOpenAL(void) {
+	ALCcontext *Context = alcGetCurrentContext();
+	ALCdevice *Device = alcGetContextsDevice(Context);
+
+	alcMakeContextCurrent(NULL);
+	alcDestroyContext(Context);
+	alcCloseDevice(Device);
+}
+
+int play(GtkWidget *button, struct arguments *argument) {
+	ALenum format;
+	ALuint buffer;
+	alGetSourcei(argument->source, AL_SOURCE_STATE, &argument->status);
+
+	if(argument->first == 1)
+		InitOpenAL();
+
+	if(argument->status == 0 || argument->status == AL_STOPPED) {
+		argument->first = 0;
+		alDeleteBuffers(1, &buffer);
+		alSourcei(argument->source, AL_BUFFER, 0);
+		alDeleteSources(1, &argument->source);
+		g_timer_start(argument->elapsed);
+		alGenBuffers(1, &buffer);
+		alGenSources(1, &argument->source);
+
+		if(nb_bytes_per_sample == 1 && channels == 1)
+			format = AL_FORMAT_MONO8;
+		else if(nb_bytes_per_sample == 1 && channels == 2)
+			format = AL_FORMAT_STEREO8;
+		else if(nb_bytes_per_sample == 2 && channels == 1)
+			format = AL_FORMAT_MONO16;
+		else if(nb_bytes_per_sample == 2 && channels == 2)
+			format = AL_FORMAT_STEREO16;
+		else if(nb_bytes_per_sample == 4 && channels == 1)
+			format = AL_FORMAT_MONO_FLOAT32;
+		else if(nb_bytes_per_sample == 4 && channels == 2)
+			format = AL_FORMAT_STEREO_FLOAT32;
+
+		alBufferData(buffer, format, current_sample_array, nSamples * sizeof(ALint), sample_rate);
+
+		alSourcei(argument->source, AL_BUFFER, buffer);
+		alSourcePlay(argument->source);
+		g_source_remove(argument->tag);
+		return 0;
+	}
+
+	if(argument->status == AL_PLAYING) {
+		alSourcePause(argument->source);
+		return 0;
+	} 
+	else{
+		alSourcePlay(argument->source);
+		return 0;
+	}
 }
 
 static void setup_tree_view(GtkWidget *treeview) {
@@ -50,7 +127,7 @@ static void setup_tree_view(GtkWidget *treeview) {
 
 }
 
-static void row_activated(GtkTreeView *treeview, GtkTreePath *path, GtkTreeViewColumn *column, gpointer data) {
+static void row_activated(GtkTreeView *treeview, GtkTreePath *path, GtkTreeViewColumn *column, struct arguments *argument) {
 	GtkTreeModel *model;
 	GtkTreeIter iter;
 	char *tempfile;
@@ -59,7 +136,8 @@ static void row_activated(GtkTreeView *treeview, GtkTreePath *path, GtkTreeViewC
 	if(gtk_tree_model_get_iter(model, &iter, path)) {
 		gtk_tree_model_get(model, &iter, AFILE, &tempfile, -1);
 	}
-	printf("%s\n", tempfile);
+	analyze(tempfile);
+	play(NULL, argument);
 }
 
 static void display_library(GtkTreeView *treeview, GtkTreeIter iter, GtkListStore *store) {
@@ -97,9 +175,15 @@ static void display_library(GtkTreeView *treeview, GtkTreeIter iter, GtkListStor
 }
 
 int main(int argc, char **argv) {
-	GtkWidget *window, *treeview, *scrolled_win, *vboxh;
+	struct arguments argument;
+	struct arguments *pargument = &argument;
+
+	GtkWidget *window, *treeview, *scrolled_win, *vboxv, *p_button;
 	GtkListStore *store;
 	GtkTreeIter iter;
+
+	pargument->first = 1;	
+	pargument->status = 0;
 
 	gtk_init(&argc, &argv);
 	
@@ -113,15 +197,22 @@ int main(int argc, char **argv) {
 	store = gtk_list_store_new(COLUMNS, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING);
 	gtk_tree_view_set_model(GTK_TREE_VIEW(treeview), GTK_TREE_MODEL(store));
 	gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(scrolled_win), GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
-	vboxh = gtk_hbox_new(TRUE, 5);
+	pargument->elapsed = g_timer_new();
+	p_button = gtk_button_new_with_mnemonic("_Play/Pause");
+	vboxv = gtk_vbox_new(TRUE, 5);
 
-	g_signal_connect(G_OBJECT(treeview), "row-activated", G_CALLBACK(row_activated), NULL);
-	g_signal_connect(G_OBJECT(window), "destroy", G_CALLBACK(destroy), NULL);
+	/* Signal management */
+	g_signal_connect(G_OBJECT(p_button), "clicked", G_CALLBACK(play), pargument);
+	g_signal_connect(G_OBJECT(treeview), "row-activated", G_CALLBACK(row_activated), pargument);
+	g_signal_connect(G_OBJECT(window), "destroy", G_CALLBACK(destroy), NULL);	
 
 	gtk_container_add(GTK_CONTAINER(scrolled_win), treeview);
-	gtk_box_pack_start_defaults(GTK_BOX(vboxh), scrolled_win);
 
-	gtk_container_add(GTK_CONTAINER(window), vboxh);
+	/* Add objects to the box */
+//	gtk_box_pack_start_defaults(GTK_BOX(vboxv), p_button);
+	gtk_box_pack_start_defaults(GTK_BOX(vboxv), scrolled_win);
+
+	gtk_container_add(GTK_CONTAINER(window), vboxv);
 
 	/* temporary */
 	display_library(GTK_TREE_VIEW(treeview), iter, store);

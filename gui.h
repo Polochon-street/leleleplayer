@@ -8,28 +8,15 @@
 #include <glib/gstdio.h>
 #include <glib.h>
 
-struct arguments {
-	ALint status;
-	//ALint source;
-	int tag;
-	gdouble offset;
-	int first;
-	int bartag;
-	GTimer *elapsed;
-	int endless_check;
-	int continue_count;
-	GtkWidget *label, *album_label, *title_label, *artist_label;
-	GtkAdjustment *adjust;
+enum {
+	TRACK = 0,
+	ALBUM,
+	ARTIST,
+	FORCE,
+	AFILE,
+	COLUMNS
 };
 
-
-static void destroy (GtkWidget*, gpointer);
-static void folder_changed (GtkFileChooser*, struct arguments*);
-static void file_changed (GtkFileChooser*, struct arguments*);
-void explore(GDir *dir, char *folder, FILE *);
-int play(GtkWidget*, struct arguments*);
-bool InitOpenAL(void);
-void ShutdownOpenAL(void);
-
-ALint status;
-ALuint source;
+static void setup_tree_view(GtkWidget *);
+static void row_activated(GtkTreeView *, GtkTreePath *, GtkTreeViewColumn *, gpointer);
+static void destroy(GtkWidget *, gpointer);

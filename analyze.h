@@ -8,6 +8,7 @@ int nSamples;
 int sample_rate;
 int nb_bytes_per_sample;
 int8_t *current_sample_array;
+int8_t *next_sample_array;
 int debug;
 int channels;
 int cli;
@@ -20,13 +21,14 @@ struct song {
 	char *artist;
 	char *title;
 	char *album;
+	char *tracknumber;
 };
 
 struct song current_song;
 
 float amp_sort(int16_t* array);
 float envelope_sort(int16_t* array);
-int8_t* audio_decode(int8_t*array, const char *file);
-int analyze(char *filename);
+int8_t* audio_decode(int8_t* array, const char *file);
+int analyze(char *filename, int8_t *);
 float freq_sort(int16_t *array);
 int gui(int argc, char **argv);

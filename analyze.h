@@ -15,7 +15,7 @@ int cli;
 int planar;
 
 struct song {
-	int duration;
+	float duration;
 	int seconds;
 	int minutes;
 	char *artist;

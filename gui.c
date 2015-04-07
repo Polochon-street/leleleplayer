@@ -46,11 +46,15 @@ static void row_activated(GtkTreeView *treeview, GtkTreePath *path, GtkTreeViewC
 		gtk_tree_model_get(model, &iter, AFILE, &tempfile, -1);
 	}
 	current_sample_array = audio_decode(current_sample_array, tempfile);
+	bufferize(argument);
+	//current_song.duration--;
 	play(NULL, argument);
 	free(current_sample_array);
 	if(gtk_tree_model_iter_next(model, &iter)) {
 		gtk_tree_model_get(model, &iter, AFILE, &tempfile, -1);
 		current_sample_array = audio_decode(current_sample_array, tempfile);
+		bufferize(argument);
+		//current_song.duration--;
 	}
 	argument->iter = iter;
 }
@@ -60,55 +64,69 @@ static gboolean continue_track(gpointer argument) {
 	GtkTreeModel *model;
 	char *tempfile;
 
-	play(NULL, argument);
+	//play(NULL, argument);
+//	alDeleteBuffers(1, argument->buffer_old);
 	free(current_sample_array);
 	model = gtk_tree_view_get_model((GtkTreeView *)(((struct arguments*)argument)->treeview));
 	if(gtk_tree_model_iter_next(model, &(((struct arguments*)argument)->iter))) {
 			gtk_tree_model_get(model, &(((struct arguments *)argument)->iter), AFILE, &tempfile, -1);
 			current_sample_array = audio_decode(current_sample_array, tempfile);
+			bufferize(argument);
+		//	current_song.duration--;
 	}
 }
 
-int play(GtkWidget *button, struct arguments *argument) {
+int bufferize(struct arguments *argument) {
 	ALenum format;
-	ALuint buffer;
-	alGetSourcei(argument->source, AL_SOURCE_STATE, &argument->status);
 
-	if(argument->first == 1)
+	if(argument->first == 1) {
 		InitOpenAL();
-
-	if(argument->status == 0 || argument->status == AL_STOPPED) {
-		argument->first = 0;
-		alDeleteBuffers(1, &buffer);
 		alSourcei(argument->source, AL_BUFFER, 0);
 		alDeleteSources(1, &argument->source);
-		g_timer_start(argument->elapsed);
-		alGenBuffers(1, &buffer);
 		alGenSources(1, &argument->source);
+	}
+	
+	argument->first = 0;
+	argument->buffer_old = argument->buffer;
+	alGenBuffers(1, &(argument->buffer));
 
-		if(nb_bytes_per_sample == 1 && channels == 1)
-			format = AL_FORMAT_MONO8;
-		else if(nb_bytes_per_sample == 1 && channels == 2)
-			format = AL_FORMAT_STEREO8;
-		else if(nb_bytes_per_sample == 2 && channels == 1)
-			format = AL_FORMAT_MONO16;
-		else if(nb_bytes_per_sample == 2 && channels == 2)
-			format = AL_FORMAT_STEREO16;
-		else if(nb_bytes_per_sample == 4 && channels == 1)
-			format = AL_FORMAT_MONO_FLOAT32;
-		else if(nb_bytes_per_sample == 4 && channels == 2)
-			format = AL_FORMAT_STEREO_FLOAT32;
+	if(nb_bytes_per_sample == 1 && channels == 1)
+		format = AL_FORMAT_MONO8;
+	else if(nb_bytes_per_sample == 1 && channels == 2)
+		format = AL_FORMAT_STEREO8;
+	else if(nb_bytes_per_sample == 2 && channels == 1)
+		format = AL_FORMAT_MONO16;
+	else if(nb_bytes_per_sample == 2 && channels == 2)
+		format = AL_FORMAT_STEREO16;
+	else if(nb_bytes_per_sample == 4 && channels == 1)
+		format = AL_FORMAT_MONO_FLOAT32;
+	else if(nb_bytes_per_sample == 4 && channels == 2)
+		format = AL_FORMAT_STEREO_FLOAT32;
 
-		alBufferData(buffer, format, current_sample_array, nSamples * sizeof(ALint) / channels, sample_rate);
+	alBufferData(argument->buffer, format, current_sample_array, nSamples * sizeof(ALint) / channels, sample_rate);
+	alSourceQueueBuffers(argument->source, 1, &(argument->buffer));
+//	alSourcei(argument->source, AL_BUFFER, buffer);
+}
 
-		alSourcei(argument->source, AL_BUFFER, buffer);
+int play(GtkWidget *button, struct arguments *argument) {
+		ALenum format;
+	//ALuint buffer;
+	//alGetSourcei(argument->source, AL_SOURCE_STATE, &argument->status);
+
+	//if(argument->first == 1)
+	//	InitOpenAL();
+
+	//if(argument->status == 0 || argument->status == AL_STOPPED) {
+	//	argument->first = 0;
+		g_timer_start(argument->elapsed);
+
+		//alSourcei(argument->source, AL_BUFFER, argument->buffer);
 		alSourcePlay(argument->source);
 		g_source_remove(argument->tag);
 		argument->tag = g_timeout_add_seconds(current_song.duration, continue_track, argument);
 		return 0;
-	}
 
-	if(argument->status == AL_PLAYING) {
+	/*if(argument->status == AL_PLAYING) {
 		g_timer_stop(argument->elapsed);
 		g_source_remove(argument->tag);
 		alSourcePause(argument->source);
@@ -119,7 +137,7 @@ int play(GtkWidget *button, struct arguments *argument) {
 		argument->tag = g_timeout_add_seconds(current_song.duration - (int)g_timer_elapsed(argument->elapsed, NULL), continue_track, argument);
 		alSourcePlay(argument->source);
 		return 0;
-	}
+	}*/
 }
 
 static void setup_tree_view(GtkWidget *treeview) {

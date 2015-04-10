@@ -49,6 +49,8 @@ static void row_activated(GtkTreeView *treeview, GtkTreePath *path, GtkTreeViewC
 		gtk_tree_model_get(model, &iter, AFILE, &tempfile, -1);
 	}
 	current_sample_array = audio_decode(current_sample_array, tempfile);
+	gtk_adjustment_configure(argument->adjust, 0, 0, current_song.duration, 1, 1, 1);
+	gtk_adjustment_changed(argument->adjust);
 	bufferize(argument);
 	play(NULL, argument);
 	free(current_sample_array);
@@ -65,6 +67,9 @@ static gboolean continue_track(gpointer argument) {
 	GtkTreeModel *model;
 	char *tempfile;
 
+    g_timer_reset(((struct arguments*)argument)->elapsed);
+	gtk_adjustment_configure(((struct arguments*)argument)->adjust, 0, 0, current_song.duration, 1, 1, 1);
+	gtk_adjustment_changed(((struct arguments*)argument)->adjust);
 	free(current_sample_array);
 	model = gtk_tree_view_get_model((GtkTreeView *)(((struct arguments*)argument)->treeview));
 	if(gtk_tree_model_iter_next(model, &(((struct arguments*)argument)->iter))) {
@@ -104,6 +109,7 @@ int bufferize(struct arguments *argument) {
 		;
 	alBufferData(argument->buffer, format, current_sample_array, (nSamples / channels) * sizeof(ALint), sample_rate);
 	alSourceQueueBuffers(argument->source, 1, &(argument->buffer));
+
 }
 
 int play(GtkWidget *button, struct arguments *argument) {
@@ -112,8 +118,19 @@ int play(GtkWidget *button, struct arguments *argument) {
 
 	alSourcePlay(argument->source);
 	g_source_remove(argument->tag);
+	argument->bartag = g_timeout_add_seconds(1, timer_progressbar, argument);
 	argument->tag = g_timeout_add_seconds(current_song.duration, continue_track, argument);
 	return 0;
+}
+
+static timer_progressbar(gpointer argument) {
+	alGetSourcei(((struct arguments*)argument)->source, AL_SOURCE_STATE, &((struct arguments*)argument)->status);
+	if(((struct arguments*)argument)->status == AL_PLAYING) {
+		gtk_adjustment_set_value (((struct arguments*)argument)->adjust, g_timer_elapsed(((struct arguments*)argument)->elapsed, NULL) + ((struct arguments*)argument)->offset);
+		gtk_adjustment_changed(((struct arguments*)argument)->adjust);
+		g_source_remove(((struct arguments*)argument)->bartag);
+		((struct arguments*)argument)->bartag = g_timeout_add_seconds(1, timer_progressbar, argument);
+	}
 }
 
 static void setup_tree_view(GtkWidget *treeview) {
@@ -121,7 +138,6 @@ static void setup_tree_view(GtkWidget *treeview) {
 	GtkTreeViewColumn *column;
 
 	renderer = gtk_cell_renderer_text_new();
-	g_object_set(G_OBJECT(renderer), "foreground", "Orange", "foreground-set", TRUE, NULL);
 	column = gtk_tree_view_column_new_with_attributes("Track number", renderer, "text", TRACKNUMBER, NULL);
 	gtk_tree_view_column_set_resizable (column, TRUE);
 	gtk_tree_view_column_set_sort_column_id(column, TRACKNUMBER);
@@ -209,13 +225,14 @@ int main(int argc, char **argv) {
 	struct arguments argument;
 	struct arguments *pargument = &argument;
 
-	GtkWidget *window, *treeview, *scrolled_win, *vboxv, *p_button;
+	GtkWidget *window, *treeview, *scrolled_win, *vboxv, *p_button, *progressbar;
 	GtkListStore *store;
 	GtkTreeSortable *sortable;
 	GtkTreeIter iter;
 
 	pargument->first = 1;	
 	pargument->status = 0;
+	pargument->offset = 0;
 	pargument->elapsed = g_timer_new();
 
 	gtk_init(&argc, &argv);
@@ -241,6 +258,9 @@ int main(int argc, char **argv) {
 	gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(scrolled_win), GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
 	pargument->elapsed = g_timer_new();
 	p_button = gtk_button_new_with_mnemonic("_Play/Pause");
+	pargument->adjust = (GtkAdjustment*)gtk_adjustment_new(0, 0, 100, 1, 1, 1);
+	progressbar = gtk_hscale_new(pargument->adjust);
+	gtk_scale_set_draw_value((GtkScale*)progressbar, FALSE);
 	vboxv = gtk_vbox_new(TRUE, 5);
 
 	/* Signal management */
@@ -250,9 +270,13 @@ int main(int argc, char **argv) {
 
 	gtk_container_add(GTK_CONTAINER(scrolled_win), treeview);
 
+	gtk_box_set_homogeneous(GTK_BOX(vboxv), FALSE);
+	
 	/* Add objects to the box */
 //	gtk_box_pack_start_defaults(GTK_BOX(vboxv), p_button);
+	gtk_box_pack_start(GTK_BOX(vboxv), progressbar, FALSE, FALSE, 1);
 	gtk_box_pack_start_defaults(GTK_BOX(vboxv), scrolled_win);
+
 
 	gtk_container_add(GTK_CONTAINER(window), vboxv);
 

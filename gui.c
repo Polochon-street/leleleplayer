@@ -41,20 +41,21 @@ static void row_activated(GtkTreeView *treeview, GtkTreePath *path, GtkTreeViewC
 	char *tempfile;
 
 
+	alDeleteSources(1, &argument->source);
+	alGenSources(1, &argument->source);
+
 	model = gtk_tree_view_get_model(treeview);
 	if(gtk_tree_model_get_iter(model, &iter, path)) {
 		gtk_tree_model_get(model, &iter, AFILE, &tempfile, -1);
 	}
 	current_sample_array = audio_decode(current_sample_array, tempfile);
 	bufferize(argument);
-	//current_song.duration--;
 	play(NULL, argument);
 	free(current_sample_array);
 	if(gtk_tree_model_iter_next(model, &iter)) {
 		gtk_tree_model_get(model, &iter, AFILE, &tempfile, -1);
 		current_sample_array = audio_decode(current_sample_array, tempfile);
 		bufferize(argument);
-		//current_song.duration--;
 	}
 	argument->iter = iter;
 }
@@ -64,30 +65,26 @@ static gboolean continue_track(gpointer argument) {
 	GtkTreeModel *model;
 	char *tempfile;
 
-	//play(NULL, argument);
-//	alDeleteBuffers(1, argument->buffer_old);
 	free(current_sample_array);
 	model = gtk_tree_view_get_model((GtkTreeView *)(((struct arguments*)argument)->treeview));
 	if(gtk_tree_model_iter_next(model, &(((struct arguments*)argument)->iter))) {
 			gtk_tree_model_get(model, &(((struct arguments *)argument)->iter), AFILE, &tempfile, -1);
 			current_sample_array = audio_decode(current_sample_array, tempfile);
 			bufferize(argument);
-		//	current_song.duration--;
 	}
 }
 
 int bufferize(struct arguments *argument) {
 	ALenum format;
-
+	int i;
 	if(argument->first == 1) {
 		InitOpenAL();
 		alSourcei(argument->source, AL_BUFFER, 0);
 		alDeleteSources(1, &argument->source);
 		alGenSources(1, &argument->source);
 	}
-	
 	argument->first = 0;
-	argument->buffer_old = argument->buffer;
+	alDeleteBuffers(1, &(argument->buffer));
 	alGenBuffers(1, &(argument->buffer));
 
 	if(nb_bytes_per_sample == 1 && channels == 1)
@@ -103,41 +100,20 @@ int bufferize(struct arguments *argument) {
 	else if(nb_bytes_per_sample == 4 && channels == 2)
 		format = AL_FORMAT_STEREO_FLOAT32;
 
-	alBufferData(argument->buffer, format, current_sample_array, nSamples * sizeof(ALint) / channels, sample_rate);
+	for(; ((int16_t*)current_sample_array)[nSamples] == 0; --nSamples)
+		;
+	alBufferData(argument->buffer, format, current_sample_array, (nSamples / channels) * sizeof(ALint), sample_rate);
 	alSourceQueueBuffers(argument->source, 1, &(argument->buffer));
-//	alSourcei(argument->source, AL_BUFFER, buffer);
 }
 
 int play(GtkWidget *button, struct arguments *argument) {
-		ALenum format;
-	//ALuint buffer;
-	//alGetSourcei(argument->source, AL_SOURCE_STATE, &argument->status);
+	ALenum format;
+	g_timer_start(argument->elapsed);
 
-	//if(argument->first == 1)
-	//	InitOpenAL();
-
-	//if(argument->status == 0 || argument->status == AL_STOPPED) {
-	//	argument->first = 0;
-		g_timer_start(argument->elapsed);
-
-		//alSourcei(argument->source, AL_BUFFER, argument->buffer);
-		alSourcePlay(argument->source);
-		g_source_remove(argument->tag);
-		argument->tag = g_timeout_add_seconds(current_song.duration, continue_track, argument);
-		return 0;
-
-	/*if(argument->status == AL_PLAYING) {
-		g_timer_stop(argument->elapsed);
-		g_source_remove(argument->tag);
-		alSourcePause(argument->source);
-		return 0;
-	} 
-	else{
-		g_timer_continue(argument->elapsed);
-		argument->tag = g_timeout_add_seconds(current_song.duration - (int)g_timer_elapsed(argument->elapsed, NULL), continue_track, argument);
-		alSourcePlay(argument->source);
-		return 0;
-	}*/
+	alSourcePlay(argument->source);
+	g_source_remove(argument->tag);
+	argument->tag = g_timeout_add_seconds(current_song.duration, continue_track, argument);
+	return 0;
 }
 
 static void setup_tree_view(GtkWidget *treeview) {
@@ -145,6 +121,7 @@ static void setup_tree_view(GtkWidget *treeview) {
 	GtkTreeViewColumn *column;
 
 	renderer = gtk_cell_renderer_text_new();
+	g_object_set(G_OBJECT(renderer), "foreground", "Orange", "foreground-set", TRUE, NULL);
 	column = gtk_tree_view_column_new_with_attributes("Track number", renderer, "text", TRACKNUMBER, NULL);
 	gtk_tree_view_column_set_resizable (column, TRUE);
 	gtk_tree_view_column_set_sort_column_id(column, TRACKNUMBER);
@@ -166,7 +143,7 @@ static void setup_tree_view(GtkWidget *treeview) {
 	gtk_tree_view_column_set_resizable (column, TRUE);
 	gtk_tree_view_column_set_sort_column_id(column, ALBUM);
 	gtk_tree_view_column_set_sizing(column, GTK_TREE_VIEW_COLUMN_FIXED);
-	gtk_tree_view_column_set_fixed_width(column, 200);
+	gtk_tree_view_column_set_fixed_width(column, 150);
 	gtk_tree_view_append_column(GTK_TREE_VIEW(treeview), column);
 
 	renderer = gtk_cell_renderer_text_new();
@@ -174,7 +151,7 @@ static void setup_tree_view(GtkWidget *treeview) {
 	gtk_tree_view_column_set_resizable (column, TRUE);
 	gtk_tree_view_column_set_sort_column_id(column, ARTIST);
 	gtk_tree_view_column_set_sizing(column, GTK_TREE_VIEW_COLUMN_FIXED);
-	gtk_tree_view_column_set_fixed_width(column, 200);
+	gtk_tree_view_column_set_fixed_width(column, 150);
 	gtk_tree_view_append_column(GTK_TREE_VIEW(treeview), column);
 
 	renderer = gtk_cell_renderer_text_new();
@@ -234,6 +211,7 @@ int main(int argc, char **argv) {
 
 	GtkWidget *window, *treeview, *scrolled_win, *vboxv, *p_button;
 	GtkListStore *store;
+	GtkTreeSortable *sortable;
 	GtkTreeIter iter;
 
 	pargument->first = 1;	
@@ -244,14 +222,22 @@ int main(int argc, char **argv) {
 	
 	window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
 	gtk_window_set_title(GTK_WINDOW(window), "lelele player");
-	gtk_widget_set_size_request(window, 800, 500);	
+	gtk_widget_set_size_request(window, 900, 500);
 
-	treeview = gtk_tree_view_new();
-	pargument->treeview = treeview;
-	setup_tree_view(treeview);
+	//treeview = gtk_tree_view_new();
+
 	scrolled_win = gtk_scrolled_window_new(NULL, NULL);
 	store = gtk_list_store_new(COLUMNS, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING);
-	gtk_tree_view_set_model(GTK_TREE_VIEW(treeview), GTK_TREE_MODEL(store));
+	sortable = GTK_TREE_SORTABLE(store);
+	gtk_tree_sortable_set_sort_column_id(sortable, 0, GTK_SORT_ASCENDING);
+	treeview = gtk_tree_view_new_with_model(GTK_TREE_MODEL(store));
+	setup_tree_view(treeview);
+	pargument->treeview = treeview;
+
+	//gtk_tree_view_set_model(GTK_TREE_VIEW(treeview), GTK_TREE_MODEL(store));
+
+
+	//sorted_model.set_sort_column_id(1, Gtk.SortType.ASCENDING);
 	gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(scrolled_win), GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
 	pargument->elapsed = g_timer_new();
 	p_button = gtk_button_new_with_mnemonic("_Play/Pause");

@@ -12,6 +12,7 @@
 
 float freq_sort(int16_t *sample_array) {
 	float hann_window[WIN_SIZE];
+	int Samples;
 	FFTSample *spectre_moy;
 	float tab_bandes[4];
 	float tab_sum;
@@ -39,8 +40,6 @@ float freq_sort(int16_t *sample_array) {
 	for(i = 0; i < WIN_SIZE; ++i)
 		hann_window[i] = .5f - .5f*cos(2*M_PI*i/(WIN_SIZE-1));
 
-	/* FFT init */
-
 	spectre_moy = (FFTSample*)av_malloc((WIN_SIZE*sizeof(FFTSample)));
 
 	for(i=0;i<=WIN_SIZE/2;++i)
@@ -49,20 +48,18 @@ float freq_sort(int16_t *sample_array) {
 	for(i=0;i<11;++i)
 		tab_bandes[i] = 0.0f;
 	
-	nSamples/=channels; // Only one channel
+	Samples = nSamples;
+	Samples /= channels; // Only one channel
 
 
-	if(nSamples%WIN_SIZE > 0)
-		nSamples -= nSamples%WIN_SIZE;
+	if(Samples%WIN_SIZE > 0)
+		Samples -= Samples%WIN_SIZE;
 
-	nFrames = nSamples/WIN_SIZE;
+	nFrames = Samples/WIN_SIZE;
 
 	x = (FFTSample*)av_malloc(WIN_SIZE*sizeof(FFTSample));
 	
 	fft = av_rdft_init(WIN_BITS, DFT_R2C);
-
-	/* End of FFT init */
-	/* FFT computation */
 
 	for(i=0, iFrame = 0; iFrame < nFrames; i+=channels*WIN_SIZE, iFrame++) {
 		if (nb_bytes_per_sample == 2) {
@@ -143,6 +140,6 @@ float freq_sort(int16_t *sample_array) {
 		printf("Sum: %f\n", tab_sum);
 		printf("Freq result: %f\n", resnum_freq);
 	}
-	//resnum_freq = -2*(tab_sum + 68.0f)/(tab_sum - 68.0f);
-	return (resnum_freq);
+	//resnum_freq = -2*(tab_sum + 68.0f)/(tab_sum - 68.0f); 
+	return (1); 
 }

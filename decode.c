@@ -46,7 +46,7 @@ int8_t *audio_decode(int8_t* sample_array, const char *filename) { // decode the
 	}
 	
 	sample_rate = c->sample_rate;
-	current_song.duration = pFormatCtx->duration/AV_TIME_BASE+1;
+	current_song.duration = pFormatCtx->duration/AV_TIME_BASE;
 	size = (((uint64_t)(pFormatCtx->duration)*(uint64_t)sample_rate)/(uint64_t)AV_TIME_BASE)*c->channels*av_get_bytes_per_sample(c->sample_fmt);
 	nSamples = (((uint64_t)(pFormatCtx->duration)*(uint64_t)sample_rate)/(uint64_t)AV_TIME_BASE)*c->channels;
 	sample_array = malloc(size);
@@ -61,13 +61,35 @@ int8_t *audio_decode(int8_t* sample_array, const char *filename) { // decode the
 
 
 	/* Get tags */
-	current_song.title = malloc(strlen(av_dict_get(pFormatCtx->metadata, "title", NULL, AV_DICT_IGNORE_SUFFIX)->value) + 1);
-	current_song.artist = malloc(strlen(av_dict_get(pFormatCtx->metadata, "artist", NULL, AV_DICT_IGNORE_SUFFIX)->value) + 1);
-	current_song.album = malloc(strlen(av_dict_get(pFormatCtx->metadata, "album", NULL, AV_DICT_IGNORE_SUFFIX)->value) + 1);
-	strcpy(current_song.title, av_dict_get(pFormatCtx->metadata, "title", NULL, AV_DICT_IGNORE_SUFFIX)->value);
-	strcpy(current_song.artist, av_dict_get(pFormatCtx->metadata, "artist", NULL, AV_DICT_IGNORE_SUFFIX)->value);
-	strcpy(current_song.album, av_dict_get(pFormatCtx->metadata, "album", NULL, AV_DICT_IGNORE_SUFFIX)->value);
-
+	if(av_dict_get(pFormatCtx->metadata, "track", NULL, AV_DICT_IGNORE_SUFFIX) != NULL) {
+		current_song.tracknumber = malloc(strlen(av_dict_get(pFormatCtx->metadata, "track", NULL, AV_DICT_IGNORE_SUFFIX)->value) + 1);
+		strcpy(current_song.tracknumber, av_dict_get(pFormatCtx->metadata, "track", NULL, AV_DICT_IGNORE_SUFFIX)->value);
+		current_song.tracknumber[strcspn(current_song.tracknumber, "/")] = '\0';
+	}
+	if(av_dict_get(pFormatCtx->metadata, "title", NULL, AV_DICT_IGNORE_SUFFIX) != NULL) {
+		current_song.title = malloc(strlen(av_dict_get(pFormatCtx->metadata, "title", NULL, AV_DICT_IGNORE_SUFFIX)->value) + 1);
+		strcpy(current_song.title, av_dict_get(pFormatCtx->metadata, "title", NULL, AV_DICT_IGNORE_SUFFIX)->value);
+	}
+	else {
+		current_song.title = malloc(11*sizeof(char));
+		strcpy(current_song.title, "<no title>");
+	}
+	if(av_dict_get(pFormatCtx->metadata, "artist", NULL, AV_DICT_IGNORE_SUFFIX) != NULL) {
+		current_song.artist= malloc(strlen(av_dict_get(pFormatCtx->metadata, "artist", NULL, AV_DICT_IGNORE_SUFFIX)->value) + 1);
+		strcpy(current_song.artist, av_dict_get(pFormatCtx->metadata, "artist", NULL, AV_DICT_IGNORE_SUFFIX)->value);
+	}
+	else {
+		current_song.artist= malloc(11*sizeof(char));
+		strcpy(current_song.artist, "<no artist>");
+	}
+	if(av_dict_get(pFormatCtx->metadata, "album", NULL, AV_DICT_IGNORE_SUFFIX) != NULL) {
+		current_song.album= malloc(strlen(av_dict_get(pFormatCtx->metadata, "album", NULL, AV_DICT_IGNORE_SUFFIX)->value) + 1);
+		strcpy(current_song.album, av_dict_get(pFormatCtx->metadata, "album", NULL, AV_DICT_IGNORE_SUFFIX)->value);
+	}
+	else {
+		current_song.album= malloc(11*sizeof(char));
+		strcpy(current_song.album, "<no album>");
+	}
 	
 	/* End of codec init */
 	while(av_read_frame(pFormatCtx, &avpkt) >= 0) {

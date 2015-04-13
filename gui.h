@@ -19,6 +19,7 @@ enum {
 	COLUMNS
 };
 
+struct song old_song;
 
 struct arguments {
 	ALuint source;

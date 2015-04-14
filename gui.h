@@ -19,12 +19,11 @@ enum {
 	COLUMNS
 };
 
-struct song old_song;
-
 struct arguments {
 	ALuint source;
 	ALint status;
 	ALuint buffer;
+	ALuint next_buffer;
 	ALuint buffer_old;
 	//ALint source;
 	int tag;
@@ -49,5 +48,5 @@ static void row_activated(GtkTreeView *, GtkTreePath *, GtkTreeViewColumn *, str
 static void destroy(GtkWidget *, gpointer);
 static void ShutdownOpenAL(void);
 bool InitOpenAL(void);
-int bufferize(struct arguments *);
+int bufferize(int8_t *, struct arguments *);
 int play(GtkWidget *, struct arguments *);

@@ -9,7 +9,7 @@ int analyze (char *filename, int8_t *current_sample_array) {
 
 	debug = 1;
 
-	current_sample_array = audio_decode(current_sample_array, filename); // Decode audio track
+	current_sample_array = audio_decode(&current_song, filename); // Decode audio track
 //	resnum_env = envelope_sort((int16_t*)current_sample_array); // Attack sort // TODO better implementation of final sort
 //	resnum_amp = amp_sort((int16_t*)current_sample_array); // Amplitude sort
 	resnum_freq = freq_sort((int16_t*)current_sample_array); // Freq sort 

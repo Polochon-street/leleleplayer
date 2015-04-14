@@ -25,10 +25,11 @@ struct song {
 };
 
 struct song current_song;
+struct song next_song;
 
 float amp_sort(int16_t* array);
 float envelope_sort(int16_t* array);
-int8_t* audio_decode(int8_t* array, const char *file);
+int8_t* audio_decode(struct song *, const char *file);
 int analyze(char *filename, int8_t *);
 float freq_sort(int16_t *array);
 int gui(int argc, char **argv);

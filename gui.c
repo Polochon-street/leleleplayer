@@ -47,20 +47,21 @@ static void row_activated(GtkTreeView *treeview, GtkTreePath *path, GtkTreeViewC
 	if(gtk_tree_model_get_iter(model, &iter, path)) {
 		gtk_tree_model_get(model, &iter, AFILE, &tempfile, -1);
 	}
-	current_sample_array = audio_decode(current_sample_array, tempfile);
-	old_song.duration = current_song.duration;
+	next_sample_array = audio_decode(&next_song, tempfile);
+	current_sample_array = next_sample_array;
+	current_song = next_song;
+
 	gtk_adjustment_configure(argument->adjust, 0, 0, current_song.duration, 1, 1, 1);
 	gtk_adjustment_changed(argument->adjust);
-	bufferize(argument);
+	bufferize(next_sample_array, argument);
 	argument->buffer_old = argument->buffer;
 
 	play(NULL, argument);
-
 	free(current_sample_array);
 	if(gtk_tree_model_iter_next(model, &iter)) {
 		gtk_tree_model_get(model, &iter, AFILE, &tempfile, -1);
-		current_sample_array = audio_decode(current_sample_array, tempfile);
-		bufferize(argument);
+		next_sample_array = audio_decode(&next_song, tempfile);
+		bufferize(next_sample_array, argument);
 	}
 	argument->iter = iter;
 }
@@ -73,22 +74,29 @@ static gboolean continue_track(gpointer argument) {
 
 	((struct arguments*)argument)->offset = 0;
 
-	alDeleteBuffers(1, &(((struct arguments*)argument)->buffer_old));
+	alDeleteBuffers(1, &(((struct arguments*)argument)->buffer_old)); // ?
+	current_sample_array = next_sample_array;
+	current_song = next_song;
+
 	free(current_sample_array);
-	old_song.duration = current_song.duration;
 	((struct arguments*)argument)->buffer_old = ((struct arguments*)argument)->buffer;
 	model = gtk_tree_view_get_model((GtkTreeView *)(((struct arguments*)argument)->treeview));
-	usleep(1000000); // FIXME
+	do {
 	alGetSourcei(((struct arguments*)argument)->source, AL_BUFFERS_PROCESSED, &buffers);
+	}
+	while(buffers == 0);
 	alSourceUnqueueBuffers(((struct arguments*)argument)->source, 1, &(((struct arguments*)argument)->buffer_old));
+	gtk_adjustment_configure(((struct arguments*)argument)->adjust, 0, 0, current_song.duration, 1, 1, 1);
+	gtk_adjustment_changed(((struct arguments*)argument)->adjust);
+
 	if(gtk_tree_model_iter_next(model, &(((struct arguments*)argument)->iter))) {
 			gtk_tree_model_get(model, &(((struct arguments *)argument)->iter), AFILE, &tempfile, -1);
-			current_sample_array = audio_decode(current_sample_array, tempfile);
-			bufferize(argument);
+			next_sample_array = audio_decode(&next_song, tempfile);
+			bufferize(next_sample_array, argument);
 	}	
 }
 
-int bufferize(struct arguments *argument) {
+int bufferize(int8_t *sample_array, struct arguments *argument) {
 	ALenum format;
 	int i;
 	if(argument->first == 1) {
@@ -113,12 +121,12 @@ int bufferize(struct arguments *argument) {
 	else if(nb_bytes_per_sample == 4 && channels == 2)
 		format = AL_FORMAT_STEREO_FLOAT32;
 
-	for(; ((int16_t*)current_sample_array)[nSamples] == 0; --nSamples)
+	for(; ((int16_t*)sample_array)[nSamples] == 0; --nSamples)
 		;
 	if(nSamples % 2)
 		nSamples--;
 
-	alBufferData(argument->buffer, format, current_sample_array, nSamples * nb_bytes_per_sample, sample_rate);
+	alBufferData(argument->buffer, format, sample_array, nSamples * nb_bytes_per_sample, sample_rate);
 	alSourceQueueBuffers(argument->source, 1, &(argument->buffer));
 }
 
@@ -168,8 +176,8 @@ static void slider_changed(GtkRange *progressbar, struct arguments *argument) {
 		printf("%f, %f\n", gtk_adjustment_get_value(argument->adjust), timef);
 		alSourcei(argument->source, AL_BYTE_OFFSET, channels * (int) ((gdouble) gtk_adjustment_get_value(argument->adjust) * ((gdouble) (sample_rate * nb_bytes_per_sample))));
 		g_source_remove(argument->tag);
-		argument->tag = g_timeout_add_seconds((int) (((gdouble)old_song.duration) - ((gdouble)gtk_adjustment_get_value(argument->adjust))), continue_track, argument);
-		printf("Timeout dans %d secondes sur %d sec.\n", (int) (((gdouble)old_song.duration) - ((gdouble)gtk_adjustment_get_value(argument->adjust))), (int)old_song.duration);
+		argument->tag = g_timeout_add_seconds((int) (((gdouble)current_song.duration) - ((gdouble)gtk_adjustment_get_value(argument->adjust))), continue_track, argument);
+		printf("Timeout dans %d secondes sur %d sec.\n", (int) (((gdouble)current_song.duration) - ((gdouble)gtk_adjustment_get_value(argument->adjust))), (int)current_song.duration);
 		argument->offset = gtk_adjustment_get_value(argument->adjust);
 
 	//	printf("%f\n", argument->offset);

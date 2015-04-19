@@ -10,18 +10,18 @@ bool InitOpenAL(void) {
 	ALCdevice *Device = alcOpenDevice(NULL);
 	if(!Device) {
 		printf("Error while opening the device\n");
-		exit(1);
+		//exit(1);
 	}
 	
 	ALCcontext *Context = alcCreateContext(Device, NULL);
 	if(!Context) {
 		printf("Error while creating context\n");
-		exit(1);
+		//exit(1);
 	}
 
 	if(!alcMakeContextCurrent(Context)) {
 		printf("Error while activating context\n");
-		exit(1);
+	//	exit(1);
 	}
 	return 0;
 }
@@ -39,7 +39,7 @@ static void row_activated(GtkTreeView *treeview, GtkTreePath *path, GtkTreeViewC
 	GtkTreeModel *model;
 	GtkTreeIter iter;
 	char *tempfile;
-
+	
 	alDeleteSources(1, &argument->source);
 	alGenSources(1, &argument->source);
 
@@ -47,6 +47,9 @@ static void row_activated(GtkTreeView *treeview, GtkTreePath *path, GtkTreeViewC
 	if(gtk_tree_model_get_iter(model, &iter, path)) {
 		gtk_tree_model_get(model, &iter, AFILE, &tempfile, -1);
 	}
+	argument->playing_iter = iter;
+	gtk_list_store_set(argument->store, &(argument->playing_iter), PLAYING, "▶", -1);
+
 	next_sample_array = audio_decode(&next_song, tempfile);
 	current_sample_array = next_sample_array;
 	current_song = next_song;
@@ -77,14 +80,18 @@ static gboolean continue_track(gpointer argument) {
 	alDeleteBuffers(1, &(((struct arguments*)argument)->buffer_old)); // ?
 	current_sample_array = next_sample_array;
 	current_song = next_song;
+	gtk_list_store_set(((struct arguments*)argument)->store, &(((struct arguments*)argument)->playing_iter), PLAYING, "", -1);
+	((struct arguments*)argument)->playing_iter = ((struct arguments*)argument)->iter;
+	gtk_list_store_set(((struct arguments*)argument)->store, &(((struct arguments*)argument)->playing_iter), PLAYING, "▶", -1);
 
 	free(current_sample_array);
 	((struct arguments*)argument)->buffer_old = ((struct arguments*)argument)->buffer;
 	model = gtk_tree_view_get_model((GtkTreeView *)(((struct arguments*)argument)->treeview));
 	do {
-	alGetSourcei(((struct arguments*)argument)->source, AL_BUFFERS_PROCESSED, &buffers);
+		alGetSourcei(((struct arguments*)argument)->source, AL_BUFFERS_PROCESSED, &buffers);
 	}
 	while(buffers == 0);
+
 	alSourceUnqueueBuffers(((struct arguments*)argument)->source, 1, &(((struct arguments*)argument)->buffer_old));
 	gtk_adjustment_configure(((struct arguments*)argument)->adjust, 0, 0, current_song.duration, 1, 1, 1);
 	gtk_adjustment_changed(((struct arguments*)argument)->adjust);
@@ -149,7 +156,6 @@ static timer_progressbar(gpointer argument) {
 	
 	timef = bytes / (float)(sample_rate * channels * nb_bytes_per_sample);
 
-	printf("%d, %f\n", buffers, timef);
 	alGetSourcei(((struct arguments*)argument)->source, AL_BUFFERS_PROCESSED, &buffers);
 
 	alGetSourcei(((struct arguments*)argument)->source, AL_SOURCE_STATE, &((struct arguments*)argument)->status);
@@ -189,11 +195,18 @@ static void setup_tree_view(GtkWidget *treeview) {
 	GtkTreeViewColumn *column;
 
 	renderer = gtk_cell_renderer_text_new();
-	column = gtk_tree_view_column_new_with_attributes("Track number", renderer, "text", TRACKNUMBER, NULL);
+	column = gtk_tree_view_column_new_with_attributes("", renderer, "text", PLAYING, NULL);
+	gtk_tree_view_column_set_sort_column_id(column, PLAYING);
+	gtk_tree_view_column_set_sizing(column, GTK_TREE_VIEW_COLUMN_FIXED);
+	gtk_tree_view_column_set_fixed_width(column, 20);
+	gtk_tree_view_append_column(GTK_TREE_VIEW(treeview), column);
+
+	renderer = gtk_cell_renderer_text_new();
+	column = gtk_tree_view_column_new_with_attributes("N°", renderer, "text", TRACKNUMBER, NULL);
 	gtk_tree_view_column_set_resizable (column, TRUE);
 	gtk_tree_view_column_set_sort_column_id(column, TRACKNUMBER);
 	gtk_tree_view_column_set_sizing(column, GTK_TREE_VIEW_COLUMN_FIXED);
-	gtk_tree_view_column_set_fixed_width(column, 150);
+	gtk_tree_view_column_set_fixed_width(column, 50);
 	gtk_tree_view_append_column(GTK_TREE_VIEW(treeview), column);
 
 	renderer = gtk_cell_renderer_text_new();
@@ -267,9 +280,9 @@ static void display_library(GtkTreeView *treeview, GtkTreeIter iter, GtkListStor
 			strcpy(tempforce, "Can't conclude");
 
 		gtk_list_store_append(store, &iter);
-		gtk_list_store_set(store, &iter, TRACKNUMBER, temptracknumber, TRACK, temptrack, ALBUM, tempalbum, ARTIST, tempartist, FORCE, tempforce, AFILE, tempfile, -1);
+		gtk_list_store_set(store, &iter, PLAYING, "", TRACKNUMBER, temptracknumber, TRACK, temptrack, ALBUM, tempalbum, ARTIST, tempartist, FORCE, tempforce, AFILE, tempfile, -1);
 	}
-	g_object_unref(store);
+	//g_object_unref(store);
 }
 
 int main(int argc, char **argv) {
@@ -277,7 +290,6 @@ int main(int argc, char **argv) {
 	struct arguments *pargument = &argument;
 
 	GtkWidget *window, *treeview, *scrolled_win, *vboxv, *p_button, *progressbar;
-	GtkListStore *store;
 	GtkTreeSortable *sortable;
 	GtkTreeIter iter;
 
@@ -295,10 +307,10 @@ int main(int argc, char **argv) {
 	//treeview = gtk_tree_view_new();
 
 	scrolled_win = gtk_scrolled_window_new(NULL, NULL);
-	store = gtk_list_store_new(COLUMNS, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING);
-	sortable = GTK_TREE_SORTABLE(store);
-	gtk_tree_sortable_set_sort_column_id(sortable, 0, GTK_SORT_ASCENDING);
-	treeview = gtk_tree_view_new_with_model(GTK_TREE_MODEL(store));
+	pargument->store = gtk_list_store_new(COLUMNS, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING);
+	sortable = GTK_TREE_SORTABLE(pargument->store);
+	gtk_tree_sortable_set_sort_column_id(sortable, TRACKNUMBER, GTK_SORT_ASCENDING);
+	treeview = gtk_tree_view_new_with_model(GTK_TREE_MODEL(pargument->store));
 	setup_tree_view(treeview);
 	pargument->treeview = treeview;
 
@@ -333,7 +345,7 @@ int main(int argc, char **argv) {
 	gtk_container_add(GTK_CONTAINER(window), vboxv);
 
 	/* temporary */
-	display_library(GTK_TREE_VIEW(treeview), iter, store);
+	display_library(GTK_TREE_VIEW(treeview), iter, pargument->store);
 	/* temporary */
 
 	gtk_widget_show_all(window);

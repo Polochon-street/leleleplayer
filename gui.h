@@ -10,7 +10,8 @@
 #include <glib.h>
 
 enum {
-	TRACKNUMBER = 0,
+	PLAYING = 0,
+	TRACKNUMBER,
 	TRACK,
 	ALBUM,
 	ARTIST,
@@ -33,7 +34,9 @@ struct arguments {
 	GTimer *elapsed;
 	GtkWidget *treeview;
 	GtkTreePath *path;
+	GtkTreeIter playing_iter;
 	GtkTreeIter iter;
+	GtkListStore *store;
 	GtkTreeViewColumn *column;
 //	int endless_check;
 //	int continue_count;

@@ -52,6 +52,7 @@ static gboolean continue_track(gpointer);
 static timer_progressbar(gpointer);
 static void row_activated(GtkTreeView *, GtkTreePath *, GtkTreeViewColumn *, struct arguments *);
 static void toggle(GtkWidget *, struct arguments *);
+static void next(GtkWidget *, struct arguments *);
 static void destroy(GtkWidget *, gpointer);
 static void ShutdownOpenAL(void);
 bool InitOpenAL(void);

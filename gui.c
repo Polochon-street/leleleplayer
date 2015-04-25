@@ -163,7 +163,6 @@ static void toggle(GtkWidget *button, struct arguments *argument) {
 		GtkTreeModel *model;
 		GtkTreePath *path;
 		GtkTreeIter iter;
-
 			
 		alGetSourcei(argument->source, AL_SOURCE_STATE, &(argument->status));
 		
@@ -182,7 +181,12 @@ static void toggle(GtkWidget *button, struct arguments *argument) {
 			play_song(argument);
 		}
 }
-		
+
+static void next(GtkWidget *button, struct arguments *argument) {
+	alSourceStop(argument->source);
+	continue_track(argument);
+	alSourcePlay(argument->source);
+}
 
 static timer_progressbar(gpointer argument) {
 	int time;
@@ -385,6 +389,7 @@ int main(int argc, char **argv) {
 
 	/* Signal management */
 	g_signal_connect(G_OBJECT(pargument->toggle_button), "clicked", G_CALLBACK(toggle), pargument);
+	g_signal_connect(G_OBJECT(next_button), "clicked", G_CALLBACK(next), pargument);
 	g_signal_connect(G_OBJECT(treeview), "row-activated", G_CALLBACK(row_activated), pargument);
 	g_signal_connect(G_OBJECT(progressbar), "value-changed", G_CALLBACK(slider_changed), pargument);
 	g_signal_connect(G_OBJECT(window), "destroy", G_CALLBACK(destroy), NULL);	

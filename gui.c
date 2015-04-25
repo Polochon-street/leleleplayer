@@ -43,6 +43,7 @@ static void row_activated(GtkTreeView *treeview, GtkTreePath *path, GtkTreeViewC
 	alDeleteSources(1, &argument->source);
 	alGenSources(1, &argument->source);
 
+	gtk_list_store_set(((struct arguments*)argument)->store, &(((struct arguments*)argument)->playing_iter), PLAYING, "", -1);
 	model = gtk_tree_view_get_model(treeview);
 	if(gtk_tree_model_get_iter(model, &iter, path)) {
 		gtk_tree_model_get(model, &iter, AFILE, &tempfile, -1);
@@ -59,7 +60,7 @@ static void row_activated(GtkTreeView *treeview, GtkTreePath *path, GtkTreeViewC
 	bufferize(next_sample_array, argument);
 	argument->buffer_old = argument->buffer;
 
-	play(NULL, argument);
+	play_song(argument);
 	free(current_sample_array);
 	if(gtk_tree_model_iter_next(model, &iter)) {
 		gtk_tree_model_get(model, &iter, AFILE, &tempfile, -1);
@@ -100,7 +101,7 @@ static gboolean continue_track(gpointer argument) {
 			gtk_tree_model_get(model, &(((struct arguments *)argument)->iter), AFILE, &tempfile, -1);
 			next_sample_array = audio_decode(&next_song, tempfile);
 			bufferize(next_sample_array, argument);
-	}	
+	}
 }
 
 int bufferize(int8_t *sample_array, struct arguments *argument) {
@@ -137,14 +138,51 @@ int bufferize(int8_t *sample_array, struct arguments *argument) {
 	alSourceQueueBuffers(argument->source, 1, &(argument->buffer));
 }
 
-int play(GtkWidget *button, struct arguments *argument) {
+void play_song(struct arguments *argument) {
+	float timef;
+	int bytes;
+
+	timef = bytes / (float)(sample_rate * channels * nb_bytes_per_sample);
+	alGetSourcei(((struct arguments*)argument)->source, AL_BYTE_OFFSET, &bytes);
 	alSourcePlay(argument->source);
+	gtk_button_set_image((GtkButton*)(argument->toggle_button), gtk_image_new_from_file("./pause.svg"));
 
 	g_source_remove(argument->tag);
 	argument->bartag = g_timeout_add_seconds(1, timer_progressbar, argument);
-	argument->tag = g_timeout_add_seconds(current_song.duration, continue_track, argument);
-	return 0;
+	argument->tag = g_timeout_add_seconds(current_song.duration - timef, continue_track, argument);
 }
+
+void pause_song(struct arguments *argument) {
+	alSourcePause(argument->source);
+	argument->bartag = g_timeout_add_seconds(1, timer_progressbar, argument);
+	gtk_button_set_image((GtkButton*)(argument->toggle_button), gtk_image_new_from_file("./play.svg"));
+}
+
+static void toggle(GtkWidget *button, struct arguments *argument) { 
+		GtkTreeSelection *selection;
+		GtkTreeModel *model;
+		GtkTreePath *path;
+		GtkTreeIter iter;
+
+			
+		alGetSourcei(argument->source, AL_SOURCE_STATE, &(argument->status));
+		
+		if(argument->status == AL_STOPPED || argument->status == 0) {
+			selection = gtk_tree_view_get_selection((GtkTreeView*)(argument->treeview));
+			gtk_tree_view_get_model((GtkTreeView*)(argument->treeview));
+			gtk_tree_selection_get_selected(selection, &model, &iter);
+			path = gtk_tree_model_get_path(model, &iter);
+
+			row_activated((GtkTreeView*)(argument->treeview), path, NULL,argument); 
+		}
+		if(argument->status == AL_PLAYING) {
+			pause_song(argument);
+		}	
+		if(argument->status == AL_PAUSED) {
+			play_song(argument);
+		}
+}
+		
 
 static timer_progressbar(gpointer argument) {
 	int time;
@@ -179,14 +217,10 @@ static void slider_changed(GtkRange *progressbar, struct arguments *argument) {
 	timef = bytes / (float)(sample_rate * channels * nb_bytes_per_sample);
 
 	if(fabs(gtk_adjustment_get_value(argument->adjust) - timef) > 0.005f) {
-		printf("%f, %f\n", gtk_adjustment_get_value(argument->adjust), timef);
 		alSourcei(argument->source, AL_BYTE_OFFSET, channels * (int) ((gdouble) gtk_adjustment_get_value(argument->adjust) * ((gdouble) (sample_rate * nb_bytes_per_sample))));
 		g_source_remove(argument->tag);
 		argument->tag = g_timeout_add_seconds((int) (((gdouble)current_song.duration) - ((gdouble)gtk_adjustment_get_value(argument->adjust))), continue_track, argument);
-		printf("Timeout dans %d secondes sur %d sec.\n", (int) (((gdouble)current_song.duration) - ((gdouble)gtk_adjustment_get_value(argument->adjust))), (int)current_song.duration);
 		argument->offset = gtk_adjustment_get_value(argument->adjust);
-
-	//	printf("%f\n", argument->offset);
 	} 
 } 
 
@@ -285,11 +319,24 @@ static void display_library(GtkTreeView *treeview, GtkTreeIter iter, GtkListStor
 	//g_object_unref(store);
 }
 
+gint sort_iter_compare_func(GtkTreeModel *model, GtkTreeIter *a, GtkTreeIter *b, gpointer userdata) {
+	gchar *track1, *track2;
+	gtk_tree_model_get(model, a, TRACKNUMBER, &track1, -1);
+	gtk_tree_model_get(model, b, TRACKNUMBER, &track2, -1);
+
+	if (atof(track1) > atof(track2))
+		return 1;
+	else if(atof(track1) < atof(track2))
+		return -1;
+	else
+		return 0;
+}
+
 int main(int argc, char **argv) {
 	struct arguments argument;
 	struct arguments *pargument = &argument;
 
-	GtkWidget *window, *treeview, *scrolled_win, *vboxv, *p_button, *progressbar;
+	GtkWidget *window, *treeview, *scrolled_win, *vboxv, *vboxh, *progressbar, *buttons_table, *next_button, *previous_button;
 	GtkTreeSortable *sortable;
 	GtkTreeIter iter;
 
@@ -311,6 +358,7 @@ int main(int argc, char **argv) {
 	sortable = GTK_TREE_SORTABLE(pargument->store);
 	gtk_tree_sortable_set_sort_column_id(sortable, TRACKNUMBER, GTK_SORT_ASCENDING);
 	treeview = gtk_tree_view_new_with_model(GTK_TREE_MODEL(pargument->store));
+	gtk_tree_sortable_set_sort_func(sortable, TRACKNUMBER, sort_iter_compare_func, NULL, NULL); 
 	setup_tree_view(treeview);
 	pargument->treeview = treeview;
 
@@ -320,14 +368,23 @@ int main(int argc, char **argv) {
 	//sorted_model.set_sort_column_id(1, Gtk.SortType.ASCENDING);
 	gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(scrolled_win), GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
 	pargument->elapsed = g_timer_new();
-	p_button = gtk_button_new_with_mnemonic("_Play/Pause");
+
+	pargument->toggle_button = gtk_button_new_with_label("▶▮▮");
+	next_button = gtk_button_new();
+	gtk_button_set_image((GtkButton*)next_button, gtk_image_new_from_file("./next.svg"));
+	previous_button = gtk_button_new();
+	gtk_button_set_image((GtkButton*)previous_button, gtk_image_new_from_file("./previous.svg"));
+	pargument->toggle_button = gtk_button_new();
+	gtk_button_set_image((GtkButton*)pargument->toggle_button, gtk_image_new_from_file("./play.svg"));
+	buttons_table = gtk_table_new(2, 1, FALSE);
 	pargument->adjust = (GtkAdjustment*)gtk_adjustment_new(0, 0, 100, 1, 1, 1);
 	progressbar = gtk_hscale_new(pargument->adjust);
 	gtk_scale_set_draw_value((GtkScale*)progressbar, FALSE);
 	vboxv = gtk_vbox_new(TRUE, 5);
+	vboxh = gtk_hbox_new(TRUE, 5);
 
 	/* Signal management */
-	g_signal_connect(G_OBJECT(p_button), "clicked", G_CALLBACK(play), pargument);
+	g_signal_connect(G_OBJECT(pargument->toggle_button), "clicked", G_CALLBACK(toggle), pargument);
 	g_signal_connect(G_OBJECT(treeview), "row-activated", G_CALLBACK(row_activated), pargument);
 	g_signal_connect(G_OBJECT(progressbar), "value-changed", G_CALLBACK(slider_changed), pargument);
 	g_signal_connect(G_OBJECT(window), "destroy", G_CALLBACK(destroy), NULL);	
@@ -335,9 +392,15 @@ int main(int argc, char **argv) {
 	gtk_container_add(GTK_CONTAINER(scrolled_win), treeview);
 
 	gtk_box_set_homogeneous(GTK_BOX(vboxv), FALSE);
+	gtk_box_set_homogeneous(GTK_BOX(vboxh), FALSE);
 	
 	/* Add objects to the box */
-//	gtk_box_pack_start_defaults(GTK_BOX(vboxv), p_button);
+	gtk_table_attach(GTK_TABLE(buttons_table), vboxh, 0, 2, 0, 2, TRUE, TRUE, 0, 0);
+		gtk_box_pack_start(GTK_BOX(vboxh), previous_button, TRUE, TRUE, 1);
+		gtk_box_pack_start(GTK_BOX(vboxh), pargument->toggle_button, TRUE, FALSE, 1);
+		gtk_box_pack_start(GTK_BOX(vboxh), next_button, TRUE, TRUE, 1);
+	gtk_box_pack_start(GTK_BOX(vboxv), buttons_table, FALSE, TRUE, 1);
+	//gtk_box_pack_start(GTK_BOX(vboxv), vboxh, FALSE, FALSE, 1);
 	gtk_box_pack_start(GTK_BOX(vboxv), progressbar, FALSE, FALSE, 1);
 	gtk_box_pack_start_defaults(GTK_BOX(vboxv), scrolled_win);
 

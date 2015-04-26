@@ -31,6 +31,8 @@ struct arguments {
 	gdouble offset;
 	int first;
 	int bartag;
+	int playlist_count;
+	char **playlist;
 	GTimer *elapsed;
 	GtkWidget *treeview;
 	GtkWidget *toggle_button;
@@ -53,6 +55,7 @@ static timer_progressbar(gpointer);
 static void row_activated(GtkTreeView *, GtkTreePath *, GtkTreeViewColumn *, struct arguments *);
 static void toggle(GtkWidget *, struct arguments *);
 static void next(GtkWidget *, struct arguments *);
+static void previous(GtkWidget *, struct arguments *);
 static void destroy(GtkWidget *, gpointer);
 static void ShutdownOpenAL(void);
 bool InitOpenAL(void);

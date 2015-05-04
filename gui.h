@@ -27,6 +27,8 @@ struct arguments {
 	ALuint next_buffer;
 	ALuint buffer_old;
 	//ALint source;
+	struct song current_song;
+	struct song next_song;
 	int tag;
 	gdouble offset;
 	int first;
@@ -59,6 +61,7 @@ static void previous(GtkWidget *, struct arguments *);
 static void destroy(GtkWidget *, gpointer);
 static void ShutdownOpenAL(void);
 bool InitOpenAL(void);
-int bufferize(int8_t *, struct arguments *);
+int bufferize(struct song, struct arguments *);
 void pause_song(struct arguments *);
-void play_song(struct arguments *);
+void play_song(struct song, struct arguments *);
+void free_song(struct song *);

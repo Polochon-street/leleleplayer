@@ -35,6 +35,14 @@ static void ShutdownOpenAL(void) {
 	alcCloseDevice(Device);
 }
 
+void free_song(struct song *song) {
+	free(song->sample_array);
+	free(song->artist);
+	free(song->title);
+	free(song->album);
+	free(song->tracknumber);
+}
+
 static void row_activated(GtkTreeView *treeview, GtkTreePath *path, GtkTreeViewColumn *column, struct arguments *argument) {
 	GtkTreeModel *model;
 	GtkTreeIter iter;
@@ -51,56 +59,58 @@ static void row_activated(GtkTreeView *treeview, GtkTreePath *path, GtkTreeViewC
 	argument->playing_iter = iter;
 	gtk_list_store_set(argument->store, &(argument->playing_iter), PLAYING, "▶", -1);
 
-	next_sample_array = audio_decode(&next_song, tempfile);
-	current_sample_array = next_sample_array;
-	current_song = next_song;
+	if(audio_decode(tempfile, &argument->current_song) == 0) {
+		gtk_adjustment_configure(argument->adjust, 0, 0, argument->current_song.duration, 1, 1, 1);
+		gtk_adjustment_changed(argument->adjust);
+		bufferize(argument->current_song, argument);
+		argument->buffer_old = argument->buffer;
 
-	gtk_adjustment_configure(argument->adjust, 0, 0, current_song.duration, 1, 1, 1);
-	gtk_adjustment_changed(argument->adjust);
-	bufferize(next_sample_array, argument);
-	argument->buffer_old = argument->buffer;
-
-	play_song(argument);
-	free(current_sample_array);
-	if(gtk_tree_model_iter_next(model, &iter)) {
-		gtk_tree_model_get(model, &iter, AFILE, &tempfile, -1);
-		next_sample_array = audio_decode(&next_song, tempfile);
-		bufferize(next_sample_array, argument);
+		play_song(argument->current_song, argument);
+		
+		// <insert set title func here>
+		free_song(&argument->current_song);
+		if(gtk_tree_model_iter_next(model, &iter)) {
+			gtk_tree_model_get(model, &iter, AFILE, &tempfile, -1);
+			audio_decode(tempfile, &argument->next_song);
+			bufferize(argument->next_song, argument);
+		}
+		argument->iter = iter;
 	}
-	argument->iter = iter;
 }
 
-
-static gboolean continue_track(gpointer argument) {
+static gboolean continue_track(gpointer pargument) {
+	struct arguments *argument = (struct arguments*)pargument;
 	GtkTreeModel *model;
 	char *tempfile;
 	int buffers;
 
-	((struct arguments*)argument)->offset = 0;
+	argument->offset = 0;
 
-	alDeleteBuffers(1, &(((struct arguments*)argument)->buffer_old)); // ?
-	current_sample_array = next_sample_array;
-	current_song = next_song;
-	gtk_list_store_set(((struct arguments*)argument)->store, &(((struct arguments*)argument)->playing_iter), PLAYING, "", -1);
-	((struct arguments*)argument)->playing_iter = ((struct arguments*)argument)->iter;
-	gtk_list_store_set(((struct arguments*)argument)->store, &(((struct arguments*)argument)->playing_iter), PLAYING, "▶", -1);
+	alDeleteBuffers(1, &argument->buffer_old); // ?
+	argument->current_song = argument->next_song;
+	gtk_list_store_set(argument->store, &(argument->playing_iter), PLAYING, "", -1);
+	argument->playing_iter = argument->iter;
+	gtk_list_store_set(argument->store, &(argument->playing_iter), PLAYING, "▶", -1);
 
-	free(current_sample_array);
-	((struct arguments*)argument)->buffer_old = ((struct arguments*)argument)->buffer;
-	model = gtk_tree_view_get_model((GtkTreeView *)(((struct arguments*)argument)->treeview));
+	// <insert set title func here>
+
+	free_song(&argument->current_song);
+	argument->buffer_old = argument->buffer;
+	model = gtk_tree_view_get_model((GtkTreeView *)(argument->treeview));
 	do {
-		alGetSourcei(((struct arguments*)argument)->source, AL_BUFFERS_PROCESSED, &buffers);
+		alGetSourcei(argument->source, AL_BUFFERS_PROCESSED, &buffers);
 	}
 	while(buffers == 0);
 
-	alSourceUnqueueBuffers(((struct arguments*)argument)->source, 1, &(((struct arguments*)argument)->buffer_old));
-	gtk_adjustment_configure(((struct arguments*)argument)->adjust, 0, 0, current_song.duration, 1, 1, 1);
-	gtk_adjustment_changed(((struct arguments*)argument)->adjust);
+	alSourceUnqueueBuffers(argument->source, 1, &(argument->buffer_old));
+	gtk_adjustment_configure(argument->adjust, 0, 0, argument->current_song.duration, 1, 1, 1);
+	gtk_adjustment_changed(argument->adjust);
 
-	if(gtk_tree_model_iter_next(model, &(((struct arguments*)argument)->iter))) {
-			gtk_tree_model_get(model, &(((struct arguments *)argument)->iter), AFILE, &tempfile, -1);
-			next_sample_array = audio_decode(&next_song, tempfile);
-			bufferize(next_sample_array, argument);
+	// <replace by « prepare_argument->next_song() »>
+	if(gtk_tree_model_iter_next(model, &(argument->iter))) {
+			gtk_tree_model_get(model, &(argument->iter), AFILE, &tempfile, -1);
+			audio_decode(tempfile, &argument->next_song);
+			bufferize(argument->next_song, argument);
 	}
 }
 
@@ -109,46 +119,45 @@ static void previous_track(struct arguments *argument) {
 	char *tempfile;
 	int buffers;
 
-	((struct arguments*)argument)->offset = 0;
+	argument->offset = 0;
 
-	alDeleteBuffers(1, &(((struct arguments*)argument)->buffer_old)); // ?
-	gtk_list_store_set(argument->store, &(((struct arguments*)argument)->playing_iter), PLAYING, "", -1);
-	((struct arguments*)argument)->playing_iter = ((struct arguments*)argument)->iter;
+	alDeleteBuffers(1, &(argument->buffer_old)); // ?
+	gtk_list_store_set(argument->store, &(argument->playing_iter), PLAYING, "", -1);
+	argument->playing_iter = argument->iter;
 
-	model = gtk_tree_view_get_model((GtkTreeView *)(((struct arguments*)argument)->treeview));
+	model = gtk_tree_view_get_model((GtkTreeView *)(argument->treeview));
 	do {
-		alGetSourcei(((struct arguments*)argument)->source, AL_BUFFERS_PROCESSED, &buffers);
+		alGetSourcei(argument->source, AL_BUFFERS_PROCESSED, &buffers);
 	}
 	while(buffers == 0);
 
-	alSourceUnqueueBuffers(((struct arguments*)argument)->source, 1, &(((struct arguments*)argument)->buffer_old));
-	alSourceUnqueueBuffers(((struct arguments*)argument)->source, 1, &(((struct arguments*)argument)->buffer));
-	if(gtk_tree_model_iter_previous(model, &(((struct arguments*)argument)->iter))) {
-		if(gtk_tree_model_iter_previous(model, &(((struct arguments*)argument)->iter))) {
-			gtk_list_store_set(((struct arguments*)argument)->store, &(((struct arguments*)argument)->iter), PLAYING, "▶", -1);
-			gtk_tree_model_get(model, &(((struct arguments *)argument)->iter), AFILE, &tempfile, -1);
-			current_sample_array = audio_decode(&current_song, tempfile);
-			bufferize(current_sample_array, argument);
-			gtk_adjustment_configure(((struct arguments*)argument)->adjust, 0, 0, current_song.duration, 1, 1, 1);
-			gtk_adjustment_changed(((struct arguments*)argument)->adjust);
+	alSourceUnqueueBuffers(argument->source, 1, &(argument->buffer_old));
+	alSourceUnqueueBuffers(argument->source, 1, &(argument->buffer));
+	if(gtk_tree_model_iter_previous(model, &(argument->iter))) {
+		if(gtk_tree_model_iter_previous(model, &(argument->iter))) {
+			gtk_list_store_set(argument->store, &(argument->iter), PLAYING, "▶", -1);
+			gtk_tree_model_get(model, &(argument->iter), AFILE, &tempfile, -1);
+			audio_decode(tempfile, &argument->current_song);
+			bufferize(argument->current_song, argument);
+			gtk_adjustment_configure(argument->adjust, 0, 0, argument->current_song.duration, 1, 1, 1);
+			gtk_adjustment_changed(argument->adjust);
 			argument->playing_iter = argument->iter;
 		}
 	}
-	if(gtk_tree_model_iter_next(model, &(((struct arguments*)argument)->iter))) {
-		gtk_tree_model_get(model, &(((struct arguments *)argument)->iter), AFILE, &tempfile, -1);
-		next_sample_array = audio_decode(&next_song, tempfile);
-		bufferize(next_sample_array, argument);
+	if(gtk_tree_model_iter_next(model, &(argument->iter))) {
+		gtk_tree_model_get(model, &(argument->iter), AFILE, &tempfile, -1);
+		audio_decode(tempfile, &argument->next_song);
+		bufferize(argument->next_song, argument);
 	}
 	argument->buffer_old = argument->buffer;
-//	next_sample_array = audio_decode(&next_song, tempfile);
+//	next_sample_array = audio_decode(&argument->next_song, tempfile);
 
 }
 
-int bufferize(int8_t *sample_array, struct arguments *argument) {
+int bufferize(struct song song, struct arguments *argument) {
 	ALenum format;
 	int i;
 	float *float_samples;
-
 
 	if(argument->first == 1) {
 		InitOpenAL();
@@ -159,58 +168,58 @@ int bufferize(int8_t *sample_array, struct arguments *argument) {
 	argument->first = 0;
 	alGenBuffers(1, &(argument->buffer));
 
-	if(nb_bytes_per_sample == 1 && channels == 1)
+	if(song.nb_bytes_per_sample == 1 && song.channels == 1)
 		format = AL_FORMAT_MONO8;
-	else if(nb_bytes_per_sample == 1 && channels == 2)
+	else if(song.nb_bytes_per_sample == 1 && song.channels == 2)
 		format = AL_FORMAT_STEREO8;
-	else if(nb_bytes_per_sample == 2 && channels == 1)
+	else if(song.nb_bytes_per_sample == 2 && song.channels == 1)
 		format = AL_FORMAT_MONO16;
-	else if(nb_bytes_per_sample == 2 && channels == 2)
+	else if(song.nb_bytes_per_sample == 2 && song.channels == 2)
 		format = AL_FORMAT_STEREO16;
-	else if(nb_bytes_per_sample == 4 && channels == 1)
+	else if(song.nb_bytes_per_sample == 4 && song.channels == 1)
 		format = AL_FORMAT_MONO_FLOAT32;
-	else if(nb_bytes_per_sample == 4 && channels == 2) {
-		float_samples = malloc(nSamples*nb_bytes_per_sample);
-		for(i = 0; i <= nSamples; ++i)
-			float_samples[i] = ((int32_t*)sample_array)[i] / (float)0x7fffffff;
+	else if(song.nb_bytes_per_sample == 4 && song.channels == 2) {
+		float_samples = malloc(song.nSamples*song.nb_bytes_per_sample);
+		for(i = 0; i <= song.nSamples; ++i)
+			float_samples[i] = ((int32_t*)song.sample_array)[i] / (float)0x7fffffff;
 		format = AL_FORMAT_STEREO_FLOAT32;  
-		if(nSamples % 2)
-			nSamples--;
-		alBufferData(argument->buffer, format, float_samples, nSamples * nb_bytes_per_sample, sample_rate);
+		if(song.nSamples % 2)
+			song.nSamples--;
+		alBufferData(argument->buffer, format, float_samples, song.nSamples * song.nb_bytes_per_sample, song.sample_rate);
 		alSourceQueueBuffers(argument->source, 1, &(argument->buffer));
 		return 0;
 	}
 
-	for(; ((int16_t*)sample_array)[nSamples] == 0; --nSamples)
+	for(; ((int16_t*)song.sample_array)[song.nSamples] == 0; --song.nSamples)
 		;
-	if(nSamples % 2)
-		nSamples--;
+	if(song.nSamples % 2)
+		song.nSamples--;
 
-	alBufferData(argument->buffer, format, sample_array, nSamples * nb_bytes_per_sample, sample_rate);
+	alBufferData(argument->buffer, format, song.sample_array, song.nSamples * song.nb_bytes_per_sample, song.sample_rate);
 	alSourceQueueBuffers(argument->source, 1, &(argument->buffer));
 	return 0;
 }
 
-void play_song(struct arguments *argument) {
+void play_song(struct song song, struct arguments *argument) {
 	float timef;
 	int bytes;
 
-	timef = bytes / (float)(sample_rate * channels * nb_bytes_per_sample);
-	alGetSourcei(((struct arguments*)argument)->source, AL_BYTE_OFFSET, &bytes);
+	timef = bytes / (float)(song.sample_rate * song.channels * song.nb_bytes_per_sample);
+	alGetSourcei(argument->source, AL_BYTE_OFFSET, &bytes);
 	alSourcePlay(argument->source);
 	gtk_button_set_image((GtkButton*)(argument->toggle_button), gtk_image_new_from_file("./pause.svg"));
-	gtk_list_store_set(((struct arguments*)argument)->store, &(((struct arguments*)argument)->playing_iter), PLAYING, "▶", -1);
+	gtk_list_store_set(argument->store, &(argument->playing_iter), PLAYING, "▶", -1);
 
 	g_source_remove(argument->tag);
 	argument->bartag = g_timeout_add_seconds(1, timer_progressbar, argument);
-	argument->tag = g_timeout_add_seconds(current_song.duration - timef, continue_track, argument);
+	argument->tag = g_timeout_add_seconds(song.duration - timef, continue_track, argument);
 }
 
 void pause_song(struct arguments *argument) {
 	alSourcePause(argument->source);
 	argument->bartag = g_timeout_add_seconds(1, timer_progressbar, argument);
 	gtk_button_set_image((GtkButton*)(argument->toggle_button), gtk_image_new_from_file("./play.svg"));
-	gtk_list_store_set(((struct arguments*)argument)->store, &(((struct arguments*)argument)->playing_iter), PLAYING, "❚", -1);
+	gtk_list_store_set(argument->store, &(argument->playing_iter), PLAYING, "❚", -1);
 }
 
 static void toggle(GtkWidget *button, struct arguments *argument) { 
@@ -233,7 +242,7 @@ static void toggle(GtkWidget *button, struct arguments *argument) {
 			pause_song(argument);
 		}	
 		if(argument->status == AL_PAUSED) {
-			play_song(argument);
+			play_song(argument->current_song, argument);
 		}
 }
 
@@ -246,9 +255,9 @@ static void next(GtkWidget *button, struct arguments *argument) {
 static void previous(GtkWidget *button, struct arguments *argument) {
 	float timef;
     int bytes;
-    alGetSourcei(((struct arguments*)argument)->source, AL_BYTE_OFFSET, &bytes);
+    alGetSourcei(argument->source, AL_BYTE_OFFSET, &bytes);
 
-    timef = bytes / (float)(sample_rate * channels * nb_bytes_per_sample);
+    timef = bytes / (float)(argument->current_song.sample_rate * argument->current_song.channels * argument->current_song.nb_bytes_per_sample);
 	alSourceStop(argument->source);
 
 	if(timef >= 1.0f) {
@@ -260,26 +269,27 @@ static void previous(GtkWidget *button, struct arguments *argument) {
 	}
 }
 
-static timer_progressbar(gpointer argument) {
+static timer_progressbar(gpointer pargument) {
+	struct arguments *argument = (struct arguments*)pargument;
 	int time;
 	float timef;
 	int bytes;
 	int buffers;
 
-	alGetSourcei(((struct arguments*)argument)->source, AL_BYTE_OFFSET, &bytes);
+	alGetSourcei(argument->source, AL_BYTE_OFFSET, &bytes);
 	
-	timef = bytes / (float)(sample_rate * channels * nb_bytes_per_sample);
+	timef = bytes / (float)(argument->current_song.sample_rate * argument->current_song.channels * argument->current_song.nb_bytes_per_sample);
 
-	alGetSourcei(((struct arguments*)argument)->source, AL_BUFFERS_PROCESSED, &buffers);
+	alGetSourcei(argument->source, AL_BUFFERS_PROCESSED, &buffers);
 
-	alGetSourcei(((struct arguments*)argument)->source, AL_SOURCE_STATE, &((struct arguments*)argument)->status);
-	alGetSourcei(((struct arguments*)argument)->source, AL_SEC_OFFSET, &time);
-	if(((struct arguments*)argument)->status == AL_PLAYING) {
-		gtk_adjustment_set_value (((struct arguments*)argument)->adjust, timef);
-		gtk_adjustment_changed(((struct arguments*)argument)->adjust);
-		g_source_remove(((struct arguments*)argument)->bartag);
+	alGetSourcei(argument->source, AL_SOURCE_STATE, &argument->status);
+	alGetSourcei(argument->source, AL_SEC_OFFSET, &time);
+	if(argument->status == AL_PLAYING) {
+		gtk_adjustment_set_value (argument->adjust, timef);
+		gtk_adjustment_changed(argument->adjust);
+		g_source_remove(argument->bartag);
 
-		((struct arguments*)argument)->bartag = g_timeout_add_seconds(1, timer_progressbar, argument);
+		argument->bartag = g_timeout_add_seconds(1, timer_progressbar, argument);
 	}
 }
 
@@ -287,15 +297,17 @@ static void slider_changed(GtkRange *progressbar, struct arguments *argument) {
 	int time;
 	float timef;
 	int bytes;
-	alGetSourcei(((struct arguments*)argument)->source, AL_SEC_OFFSET, &time);
-	alGetSourcei(((struct arguments*)argument)->source, AL_BYTE_OFFSET, &bytes);
+	alGetSourcei(argument->source, AL_SEC_OFFSET, &time);
+	alGetSourcei(argument->source, AL_BYTE_OFFSET, &bytes);
 	
-	timef = bytes / (float)(sample_rate * channels * nb_bytes_per_sample);
+	timef = bytes / (float)(argument->current_song.sample_rate * argument->current_song.channels * argument->current_song.nb_bytes_per_sample);
 
 	if(fabs(gtk_adjustment_get_value(argument->adjust) - timef) > 0.005f) {
-		alSourcei(argument->source, AL_BYTE_OFFSET, channels * (int) ((gdouble) gtk_adjustment_get_value(argument->adjust) * ((gdouble) (sample_rate * nb_bytes_per_sample))));
+		alSourcei(argument->source, AL_BYTE_OFFSET, argument->current_song.channels * (int) ((gdouble) gtk_adjustment_get_value(argument->adjust)
+ 			* ((gdouble) (argument->current_song.sample_rate * argument->current_song.nb_bytes_per_sample))));
 		g_source_remove(argument->tag);
-		argument->tag = g_timeout_add_seconds((int) (((gdouble)current_song.duration) - ((gdouble)gtk_adjustment_get_value(argument->adjust))), continue_track, argument);
+		argument->tag = g_timeout_add_seconds((int) (((gdouble)argument->current_song.duration) - ((gdouble)gtk_adjustment_get_value(argument->adjust)))
+				, continue_track, argument);
 		argument->offset = gtk_adjustment_get_value(argument->adjust);
 	} 
 } 
@@ -382,9 +394,9 @@ static void display_library(GtkTreeView *treeview, GtkTreeIter iter, GtkListStor
 		tempartist[strcspn(tempartist, "\n")] = '\0';
 		fgets(tempforce, 1000, library);
 		tempforce[strcspn(tempforce, "\n")] = '\0';
-		if(atoi(tempforce) == 0)
+		if(atoi(tempforce) >= 0)
 			strcpy(tempforce, "Loud");
-		else if(atoi(tempforce) == 1)
+		else if(atoi(tempforce) <= 1)
 			strcpy(tempforce, "Calm");
 		else
 			strcpy(tempforce, "Can't conclude");
@@ -480,7 +492,6 @@ int main(int argc, char **argv) {
 	gtk_box_pack_start(GTK_BOX(vboxv), buttons_table, FALSE, TRUE, 1);
 	//gtk_box_pack_start(GTK_BOX(vboxv), vboxh, FALSE, FALSE, 1);
 	gtk_box_pack_start(GTK_BOX(vboxv), progressbar, FALSE, FALSE, 1);
-	/* IN CASE OF GTK3 BREAK GLASS */
 	gtk_box_pack_start(GTK_BOX(vboxv), scrolled_win, TRUE, TRUE, 1);
 
 

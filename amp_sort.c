@@ -4,7 +4,7 @@
 #define INT_SUP 2000
 #define max( a, b ) ( ((a) > (b)) ? (a) : (b) )
 
-float amp_sort(int16_t* sample_array) {
+float amp_sort(struct song song) {
 	int i, d, e, g;
 	int histogram_count;
 	float histogram[SIZE];
@@ -30,32 +30,32 @@ float amp_sort(int16_t* sample_array) {
 	if (debug)
 		file_amp = fopen("file_amp.txt", "w");
 
-	for(d = 0; sample_array[d] == 0 ;++d)
+	for(d = 0; ((int16_t*)song.sample_array)[d] == 0 ;++d)
 		;
-	for(e=nSamples-1; sample_array[e] == 0; --e)
+	for(e=song.nSamples-1; ((int16_t*)song.sample_array)[e] == 0; --e)
 		;
-	p16 = sample_array+d;
+	p16 = (int16_t*)song.sample_array + d;
 
 	for(i = d; i <= e; ++i) 
 		++histogram[abs(*(p16++))];
 	
-	for(i=0;i<SIZE;++i)
+	for(i=0;i < SIZE;++i)
 		histogram_temp[i]=histogram[i];
-	histogram_count+=e-d;
+	histogram_count += e - d;
 
-	for(i=0;i<SIZE;++i) {
-		histogram[i]/=histogram_count;
-		histogram[i]*=100.;
+	for(i=0;i < SIZE;++i) {
+		histogram[i] /= histogram_count;
+		histogram[i] *= 100.;
 	}
 
-	for(g=0;g<=passe;++g) {
-		histogram_smooth[0]=histogram_temp[0];
-		histogram_smooth[1]=(float)1/4*(histogram_temp[0]+2*histogram_temp[1]+histogram_temp[2]);
-		histogram_smooth[2]=(float)1/9*(histogram_temp[0]+2*histogram_temp[1]+3*histogram_temp[2]+2*histogram_temp[3]+histogram_temp[4]);
+	for(g=0;g <= passe;++g) {
+		histogram_smooth[0] = histogram_temp[0];
+		histogram_smooth[1] = (float)1/4*(histogram_temp[0]+2*histogram_temp[1]+histogram_temp[2]);
+		histogram_smooth[2] = (float)1/9*(histogram_temp[0]+2*histogram_temp[1]+3*histogram_temp[2]+2*histogram_temp[3]+histogram_temp[4]);
 		for(i=3;i<=SIZE-5;++i)
-			histogram_smooth[i]=(float)1/27*(histogram_temp[i-3]+histogram_temp[i-2]*3+6*histogram_temp[i-1]+7*histogram_temp[i]+6*histogram_temp[i+1]+histogram_temp[i+2]*3+histogram_temp[i+3]);
+			histogram_smooth[i] = (float)1/27*(histogram_temp[i-3]+histogram_temp[i-2]*3+6*histogram_temp[i-1]+7*histogram_temp[i]+6*histogram_temp[i+1]+histogram_temp[i+2]*3+histogram_temp[i+3]);
 		for(i=3;i<=SIZE-5;++i)
-			histogram_temp[i]=histogram_smooth[i];
+			histogram_temp[i] = histogram_smooth[i];
 	}
 
 	for(i=0;i<=SIZE;++i) {
@@ -70,7 +70,7 @@ float amp_sort(int16_t* sample_array) {
 
 	if(debug)
 		for(i=0;i<SIZE;++i)
-		fprintf(file_amp, "%d\n", sample_array[i]);
+		fprintf(file_amp, "%d\n", ((int16_t*)song.sample_array)[i]);
 
 	if (histogram_integ < 25)
 		resnum_amp = 2;

@@ -10,7 +10,7 @@
 #define AIGU_INF 17
 #define AIGU_SUP 104
 
-float freq_sort(int16_t *sample_array) {
+float freq_sort(struct song song) {
 	float hann_window[WIN_SIZE];
 	int Samples;
 	FFTSample *spectre_moy;
@@ -48,8 +48,8 @@ float freq_sort(int16_t *sample_array) {
 	for(i=0;i<11;++i)
 		tab_bandes[i] = 0.0f;
 	
-	Samples = nSamples;
-	Samples /= channels; // Only one channel
+	Samples = song.nSamples;
+	Samples /= song.channels; // Only one channel
 
 
 	if(Samples%WIN_SIZE > 0)
@@ -61,15 +61,15 @@ float freq_sort(int16_t *sample_array) {
 	
 	fft = av_rdft_init(WIN_BITS, DFT_R2C);
 
-	for(i=0, iFrame = 0; iFrame < nFrames; i+=channels*WIN_SIZE, iFrame++) {
-		if (nb_bytes_per_sample == 2) {
+	for(i=0, iFrame = 0; iFrame < nFrames; i+=song.channels*WIN_SIZE, iFrame++) {
+		if (song.nb_bytes_per_sample == 2) {
 			for(d = 0; d < WIN_SIZE; d++)
-				x[d] = (float)((sample_array[i+2*d]+sample_array[i+2*d+1])/2)*hann_window[d]; 
+				x[d] = (float)((((int16_t*)song.sample_array)[i+2*d] + ((int16_t*)song.sample_array)[i+2*d+1])/2)*hann_window[d]; 
 		}
 
-		else if (nb_bytes_per_sample == 4) {
+		else if (song.nb_bytes_per_sample == 4) {
 			for(d = 0; d < WIN_SIZE; d++) 
-				x[d] = (float)(( ((int32_t*)sample_array)[i+2*d] + ((int32_t*)sample_array)[i+2*d+1] ) / 2)*hann_window[d];
+				x[d] = (float)(( ((int32_t*)song.sample_array)[i+2*d] + ((int32_t*)song.sample_array)[i+2*d+1] ) / 2)*hann_window[d];
 		}
 
 		av_rdft_calc(fft, x);
@@ -94,7 +94,7 @@ float freq_sort(int16_t *sample_array) {
 		spectre_moy[d] = 20*log10(x)-3;
 	}
 
-	pas_freq = sample_rate/WIN_SIZE;
+	pas_freq = song.sample_rate/WIN_SIZE;
 
 	if (debug)
 		for(d=1;d<WIN_SIZE/2;++d) {

@@ -4,32 +4,31 @@
 
 //int16_t *current_sample_array;
 size_t size;
-int nSamples;
-int sample_rate;
-int nb_bytes_per_sample;
-int8_t *current_sample_array;
-int8_t *next_sample_array;
+//int8_t *current_sample_array;
+//int8_t *next_sample_array;
 int debug;
-int channels;
 int cli;
-int planar;
 
 struct song {
+	int8_t* sample_array;
+	int channels;
+	int nSamples;
+	int sample_rate;
+	int nb_bytes_per_sample;
+	int planar;
 	float duration;
-	int seconds;
-	int minutes;
 	char *artist;
 	char *title;
 	char *album;
 	char *tracknumber;
 };
 
-struct song current_song;
+//struct song current_song;
 struct song next_song;
 
-float amp_sort(int16_t* array);
-float envelope_sort(int16_t* array);
-int8_t* audio_decode(struct song *, const char *file);
-int analyze(char *filename, int8_t *);
-float freq_sort(int16_t *array);
+float amp_sort(struct song);
+float envelope_sort(struct song);
+int audio_decode(const char *file, struct song *);
+int analyze(char *filename); 
+float freq_sort(struct song);
 int gui(int argc, char **argv);

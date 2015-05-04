@@ -5,14 +5,14 @@
 #define WIN_SIZE (1 << WIN_BITS)
 #define max( a, b ) ( ((a) > (b)) ? (a) : (b) )
 
-float envelope_sort(int16_t* sample_array) {
+float envelope_sort(struct song song) {
 	FFTSample *d_freq;
 	FFTSample *x;
 	RDFTContext *fft;
 	int nFrames;
 	int precision = 350;
-	uint64_t sample_max = pow(2, 8*nb_bytes_per_sample-1);
-	float decr_speed = (float)((int)sample_max) / ((1.0f/1.34f)*(float)sample_rate);
+	uint64_t sample_max = pow(2, 8*song.nb_bytes_per_sample-1);
+	float decr_speed = (float)((int)sample_max) / ((1.0f/1.34f)*(float)song.sample_rate);
 	FILE *file_env;
 	size_t rbuf_head = 0;
 	int16_t ringbuf[precision*2];
@@ -29,19 +29,19 @@ float envelope_sort(int16_t* sample_array) {
 	for(i = 0; i <= WIN_SIZE; ++i)
 		d_freq[i] = 0.0f;
 
-	if(nSamples%WIN_SIZE > 0)
-		nSamples -= nSamples%WIN_SIZE; 
+	if(song.nSamples%WIN_SIZE > 0)
+		song.nSamples -= song.nSamples%WIN_SIZE; 
 
-	nFrames = nSamples/WIN_SIZE;
+	nFrames = song.nSamples/WIN_SIZE;
 	x = (FFTSample*)av_malloc(WIN_SIZE*sizeof(FFTSample));
 	fft = av_rdft_init(WIN_BITS, DFT_R2C);
 	
-	for(i = 0; i < nSamples; ++i) {		
-		env = max(env_prev - ((float)decr_speed) * (0.1f + (env_prev/((float)sample_max))), abs(sample_array[i]));
+	for(i = 0; i < song.nSamples; ++i) {		
+		env = max(env_prev - ((float)decr_speed) * (0.1f + (env_prev/((float)sample_max))), abs(song.sample_array[i]));
 		env_prev = env;
 		ringbuf[rbuf_head] = (int16_t)env;
 
-		if( i > 1 && i % precision == 0) {
+		if(i > 1 && i % precision == 0) {
 			d_envelope = max(0, ringbuf[rbuf_head] - ringbuf[(rbuf_head+1) % (precision*2)]);
 			atk = max(d_envelope, atk);
 		

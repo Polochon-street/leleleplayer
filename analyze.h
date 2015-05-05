@@ -29,6 +29,6 @@ struct song next_song;
 float amp_sort(struct song);
 float envelope_sort(struct song);
 int audio_decode(const char *file, struct song *);
-int analyze(char *filename); 
+float analyze(char *filename, struct song *); 
 float freq_sort(struct song);
 int gui(int argc, char **argv);

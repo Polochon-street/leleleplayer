@@ -51,17 +51,27 @@ struct arguments {
 	GtkAdjustment *adjust;
 };
 
+struct pref_arguments {
+        GtkWidget *window;
+        GtkWidget *treeview;
+        GtkListStore *store;
+};
+
 static void setup_tree_view(GtkWidget *);
 static gboolean continue_track(gpointer);
-static timer_progressbar(gpointer);
+static int timer_progressbar(gpointer);
 static void row_activated(GtkTreeView *, GtkTreePath *, GtkTreeViewColumn *, struct arguments *);
+static void config_folder_changed(GtkWidget *chooser);
 static void toggle(GtkWidget *, struct arguments *);
 static void next(GtkWidget *, struct arguments *);
 static void previous(GtkWidget *, struct arguments *);
 static void destroy(GtkWidget *, gpointer);
 static void ShutdownOpenAL(void);
+static void preferences_callback(GtkMenuItem *preferences, struct pref_arguments *);
 bool InitOpenAL(void);
 int bufferize(struct song, struct arguments *);
 void pause_song(struct arguments *);
 void play_song(struct song, struct arguments *);
 void free_song(struct song *);
+void explore(GDir *dir, char *folder, FILE *list);
+void display_library(GtkTreeView *, GtkListStore *);

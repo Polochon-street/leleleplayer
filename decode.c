@@ -148,7 +148,6 @@ int audio_decode(const char *filename, struct song *song) { // decode the track
 	/* cleaning memory */
 
 	avformat_close_input(&pFormatCtx);
-	avcodec_close(c);
 
 	song->sample_array = beginning;
 //	av_frame_free(&decoded_frame);

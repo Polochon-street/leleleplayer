@@ -3,6 +3,7 @@
 
 int main(int argc, char **argv) {
 	char *filename = argv[1];
+	float result;
 
 	if(argc <= 1) {
 		printf("Usage: ./analyse [--debug] AUDIO_FILE\nReturns 1 if the song is calm enough to sleep, 0 otherwise\n");
@@ -18,7 +19,20 @@ int main(int argc, char **argv) {
 			return 2;
 		}	
 	}
+	struct song song;
 
-	return analyze(filename);
+	result = analyze(filename, &song);
+	if(result > 0) {
+		if(debug)
+			printf("Loud\n");
+		return 0;
+	}
+	if(result < 0) {
+		if(debug)
+			printf("Calm\n");
+		return 1;
+	}
+	else
+		printf("Couldn't conclude\n");
 }
 

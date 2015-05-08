@@ -26,11 +26,13 @@ int audio_decode(const char *filename, struct song *song) { // decode the track
 
 	if(avformat_open_input(&pFormatCtx, filename, NULL, NULL) < 0) {
 		printf("Couldn't open file: %s, %d\n", filename, errno);
+		song->nSamples = 0;
 		return 1;
 	}
 
 	if(avformat_find_stream_info(pFormatCtx, NULL) < 0) {
 		printf("Couldn't find stream information\n");
+		song->nSamples = 0;
 		return 1;
 	} 
 
@@ -39,11 +41,13 @@ int audio_decode(const char *filename, struct song *song) { // decode the track
 	
 	if (!codec) {
 		printf("Codec not found!\n");
+		song->nSamples = 0;
 		return 1;
 	}
 
 	if(avcodec_open2(c, codec, NULL) < 0) {
 		printf("Could not open codec\n");
+		song->nSamples = 0;
 		return 1;
 	}
 	
@@ -52,6 +56,9 @@ int audio_decode(const char *filename, struct song *song) { // decode the track
 	size = (((uint64_t)(pFormatCtx->duration)*(uint64_t)song->sample_rate)/(uint64_t)AV_TIME_BASE)*c->channels*av_get_bytes_per_sample(c->sample_fmt);
 	song->nSamples = (((uint64_t)(pFormatCtx->duration)*(uint64_t)song->sample_rate)/(uint64_t)AV_TIME_BASE)*c->channels;
 	song->sample_array = malloc(size);
+
+	for(i = 0; i < song->nSamples; ++i)
+		*(song->sample_array + i) = 0;
 
 	beginning = song->sample_array;
 	index = 0;

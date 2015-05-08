@@ -6,6 +6,8 @@
 #include <AL/alext.h>
 #include <gtk/gtk.h>
 #include <glib/gprintf.h>
+#include <glib/gerror.h>
+#include <gdk-pixbuf/gdk-pixbuf.h>
 #include <glib/gstdio.h>
 #include <glib.h>
 
@@ -30,7 +32,6 @@ struct arguments {
 	struct song current_song;
 	struct song next_song;
 	int tag;
-	gdouble offset;
 	int first;
 	int bartag;
 	int playlist_count;
@@ -54,14 +55,16 @@ struct arguments {
 struct pref_arguments {
         GtkWidget *window;
         GtkWidget *treeview;
+		gchar *folder;
         GtkListStore *store;
+		GtkWidget *library_entry;
 };
 
 static void setup_tree_view(GtkWidget *);
 static gboolean continue_track(gpointer);
 static int timer_progressbar(gpointer);
 static void row_activated(GtkTreeView *, GtkTreePath *, GtkTreeViewColumn *, struct arguments *);
-static void config_folder_changed(GtkWidget *chooser);
+static void config_folder_changed(gchar *, GtkWidget *);
 static void toggle(GtkWidget *, struct arguments *);
 static void next(GtkWidget *, struct arguments *);
 static void previous(GtkWidget *, struct arguments *);
@@ -74,4 +77,7 @@ void pause_song(struct arguments *);
 void play_song(struct song, struct arguments *);
 void free_song(struct song *);
 void explore(GDir *dir, char *folder, FILE *list);
+void folder_chooser(GtkWidget *, struct pref_arguments *);
 void display_library(GtkTreeView *, GtkListStore *);
+void set_next_song(struct arguments *);
+void unqueue_buffer(int , ALuint *);

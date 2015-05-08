@@ -44,18 +44,44 @@ void free_song(struct song *song) {
 }
 
 void explore(GDir *dir, char *folder, FILE *list) {
-	gchar file[1000];
-	const gchar *dirname;	
+	const gchar *file;
 
-	while((dir != NULL) && (dirname = g_dir_read_name(dir)) && (g_stpcpy(file, dirname))) {
-		if( g_file_test(g_build_path("/", folder, file, NULL), G_FILE_TEST_IS_REGULAR) && ( g_str_has_suffix(file, "flac") || g_str_has_suffix(file, "mp3") ) ) 
+	while((dir != NULL) && (file = g_dir_read_name(dir))) {
+		if( g_file_test(g_build_path("/", folder, file, NULL), G_FILE_TEST_IS_REGULAR) && ( g_str_has_suffix(file, "flac") || g_str_has_suffix(file, "mp3") || g_str_has_suffix(file, "ogg") ) ) 
 			g_fprintf(list, "%s\n", g_build_path("/", folder, file, NULL));	
 		else if(g_file_test(g_build_path("/", folder, file, NULL), G_FILE_TEST_IS_DIR))
 			explore(g_dir_open(g_build_path("/", folder, file, NULL), 0, NULL), g_build_path("/", folder, file, NULL), list);
 	}
-	if (dirname == NULL) {
+	if (file == NULL) {
 		g_dir_close(dir);
 	}
+}
+
+void set_next_song(struct arguments *argument) {
+	GtkTreeModel *model;
+	gchar *tempfile;
+
+	model = gtk_tree_view_get_model(GTK_TREE_VIEW(argument->treeview));
+	if(gtk_tree_model_iter_next(model, &(argument->iter))) {
+			gtk_tree_model_get(model, &(argument->iter), AFILE, &tempfile, -1);
+			audio_decode(tempfile, &argument->next_song); 
+			bufferize(argument->next_song, argument);
+			g_free(tempfile);
+	}
+	else
+		argument->next_song.nSamples = 0;
+}
+
+void unqueue_buffer(int buffer, ALuint *source) {
+	int buffers;
+
+	do {
+		alGetSourcei(*source, AL_BUFFERS_PROCESSED, &buffers);
+	}
+	while(buffers == 0);
+
+	alSourceUnqueueBuffers(*source, 1, &buffer);
+	alDeleteBuffers(1, &buffer);
 }
 
 static void row_activated(GtkTreeView *treeview, GtkTreePath *path, GtkTreeViewColumn *column, struct arguments *argument) {
@@ -66,42 +92,36 @@ static void row_activated(GtkTreeView *treeview, GtkTreePath *path, GtkTreeViewC
 	alDeleteSources(1, &argument->source);
 	alGenSources(1, &argument->source);
 	
-//	gtk_list_store_set(((struct arguments*)argument)->store, &(((struct arguments*)argument)->playing_iter), PLAYING, "", -1);
+	if(argument->playing_iter.stamp != 0)
+		gtk_list_store_set(((struct arguments*)argument)->store, &(((struct arguments*)argument)->playing_iter), PLAYING, "", -1);
+
 	model = gtk_tree_view_get_model(treeview);
 	if(gtk_tree_model_get_iter(model, &iter, path)) {
 		gtk_tree_model_get(model, &iter, AFILE, &tempfile, -1);
-	}
-	argument->playing_iter = iter;
-	gtk_list_store_set(argument->store, &(argument->playing_iter), PLAYING, "▶", -1);
+		argument->playing_iter = iter;
 
-	if(audio_decode(tempfile, &argument->current_song) == 0) {
-		gtk_adjustment_configure(argument->adjust, 0, 0, argument->current_song.duration, 1, 1, 1);
-		gtk_adjustment_changed(argument->adjust);
-		bufferize(argument->current_song, argument);
-		argument->buffer_old = argument->buffer;
+		if(audio_decode(tempfile, &argument->current_song) == 0) {
+			gtk_list_store_set(argument->store, &(argument->playing_iter), PLAYING, "▶", -1);
+			gtk_adjustment_configure(argument->adjust, 0, 0, argument->current_song.duration, 1, 1, 1);
+			gtk_adjustment_changed(argument->adjust);
 
-		play_song(argument->current_song, argument);
-		
-		// <insert set title func here>
-		free_song(&argument->current_song);
-		if(gtk_tree_model_iter_next(model, &iter)) {
-			gtk_tree_model_get(model, &iter, AFILE, &tempfile, -1);
-			audio_decode(tempfile, &argument->next_song);
-			bufferize(argument->next_song, argument);
+			bufferize(argument->current_song, argument);
+			argument->buffer_old = argument->buffer;
+
+			play_song(argument->current_song, argument);
+			// <insert set title func here>
+			free_song(&argument->current_song);
+			argument->iter = iter;
+			set_next_song(argument);
 		}
-		argument->iter = iter;
 	}
 }
 
 static gboolean continue_track(gpointer pargument) {
 	struct arguments *argument = (struct arguments*)pargument;
 	GtkTreeModel *model;
-	char *tempfile;
 	int buffers;
 
-	argument->offset = 0;
-
-	alDeleteBuffers(1, &argument->buffer_old); // ?
 	argument->current_song = argument->next_song;
 	gtk_list_store_set(argument->store, &(argument->playing_iter), PLAYING, "", -1);
 	argument->playing_iter = argument->iter;
@@ -112,21 +132,12 @@ static gboolean continue_track(gpointer pargument) {
 	free_song(&argument->current_song);
 	argument->buffer_old = argument->buffer;
 	model = gtk_tree_view_get_model((GtkTreeView *)(argument->treeview));
-	do {
-		alGetSourcei(argument->source, AL_BUFFERS_PROCESSED, &buffers);
-	}
-	while(buffers == 0);
+	unqueue_buffer(argument->buffer_old, &argument->source);
 
-	alSourceUnqueueBuffers(argument->source, 1, &(argument->buffer_old));
 	gtk_adjustment_configure(argument->adjust, 0, 0, argument->current_song.duration, 1, 1, 1);
 	gtk_adjustment_changed(argument->adjust);
 
-	// <replace by « prepare_argument->next_song() »>
-	if(gtk_tree_model_iter_next(model, &(argument->iter))) {
-			gtk_tree_model_get(model, &(argument->iter), AFILE, &tempfile, -1);
-			audio_decode(tempfile, &argument->next_song);
-			bufferize(argument->next_song, argument);
-	}
+	set_next_song(argument);
 }
 
 static void previous_track(struct arguments *argument) { 
@@ -134,20 +145,14 @@ static void previous_track(struct arguments *argument) {
 	char *tempfile;
 	int buffers;
 
-	argument->offset = 0;
-
-	alDeleteBuffers(1, &(argument->buffer_old)); // ?
 	gtk_list_store_set(argument->store, &(argument->playing_iter), PLAYING, "", -1);
 	argument->playing_iter = argument->iter;
 
 	model = gtk_tree_view_get_model((GtkTreeView *)(argument->treeview));
-	do {
-		alGetSourcei(argument->source, AL_BUFFERS_PROCESSED, &buffers);
-	}
-	while(buffers == 0);
 
-	alSourceUnqueueBuffers(argument->source, 1, &(argument->buffer_old));
-	alSourceUnqueueBuffers(argument->source, 1, &(argument->buffer));
+	unqueue_buffer(argument->buffer_old, &argument->source);
+	unqueue_buffer(argument->buffer, &argument->source);
+
 	if(gtk_tree_model_iter_previous(model, &(argument->iter))) {
 		if(gtk_tree_model_iter_previous(model, &(argument->iter))) {
 			gtk_list_store_set(argument->store, &(argument->iter), PLAYING, "▶", -1);
@@ -159,14 +164,9 @@ static void previous_track(struct arguments *argument) {
 			argument->playing_iter = argument->iter;
 		}
 	}
-	if(gtk_tree_model_iter_next(model, &(argument->iter))) {
-		gtk_tree_model_get(model, &(argument->iter), AFILE, &tempfile, -1);
-		audio_decode(tempfile, &argument->next_song);
-		bufferize(argument->next_song, argument);
-	}
+	set_next_song(argument);
 	argument->buffer_old = argument->buffer;
 //	next_sample_array = audio_decode(&argument->next_song, tempfile);
-
 }
 
 int bufferize(struct song song, struct arguments *argument) {
@@ -207,6 +207,7 @@ int bufferize(struct song song, struct arguments *argument) {
 
 	for(; ((int16_t*)song.sample_array)[song.nSamples-1] == 0; --song.nSamples)
 		;
+
 	if(song.nSamples % 2)
 		song.nSamples--;
 
@@ -221,13 +222,14 @@ void play_song(struct song song, struct arguments *argument) {
 
 	alGetSourcei(argument->source, AL_BYTE_OFFSET, &bytes);
 	timef = bytes / (float)(song.sample_rate * song.channels * song.nb_bytes_per_sample);
-	alGetSourcei(argument->source, AL_BYTE_OFFSET, &bytes);
+
 	alSourcePlay(argument->source);
 	gtk_button_set_image((GtkButton*)(argument->toggle_button), gtk_image_new_from_file("./pause.svg"));
 	gtk_list_store_set(argument->store, &(argument->playing_iter), PLAYING, "▶", -1);
 	
 	if(argument->tag != 0)
 		g_source_remove(argument->tag);
+
 	argument->bartag = g_timeout_add_seconds(1, timer_progressbar, argument);
 	argument->tag = g_timeout_add_seconds(song.duration - timef, continue_track, argument);
 }
@@ -236,37 +238,41 @@ void pause_song(struct arguments *argument) {
 	alSourcePause(argument->source);
 	argument->bartag = g_timeout_add_seconds(1, timer_progressbar, argument);
 	gtk_button_set_image((GtkButton*)(argument->toggle_button), gtk_image_new_from_file("./play.svg"));
-	gtk_list_store_set(argument->store, &(argument->playing_iter), PLAYING, "❚", -1);
+	gtk_list_store_set(argument->store, &(argument->playing_iter), PLAYING, "▎▎" -1);
 }
 
 static void toggle(GtkWidget *button, struct arguments *argument) { 
-		GtkTreeSelection *selection;
-		GtkTreeModel *model;
-		GtkTreePath *path;
-		GtkTreeIter iter;
+	GtkTreeSelection *selection;
+	GtkTreeModel *model;
+	GtkTreePath *path;
+	GtkTreeIter iter;
 			
-		alGetSourcei(argument->source, AL_SOURCE_STATE, &(argument->status));
-		
-		if(argument->status == AL_STOPPED || argument->status == 0) {
-			selection = gtk_tree_view_get_selection((GtkTreeView*)(argument->treeview));
-			gtk_tree_view_get_model((GtkTreeView*)(argument->treeview));
-			gtk_tree_selection_get_selected(selection, &model, &iter);
-			path = gtk_tree_model_get_path(model, &iter);
+	alGetSourcei(argument->source, AL_SOURCE_STATE, &(argument->status));
+	
+	if(argument->status == AL_STOPPED || argument->status == 0) {
+		selection = gtk_tree_view_get_selection((GtkTreeView*)(argument->treeview));
+		gtk_tree_view_get_model((GtkTreeView*)(argument->treeview));
+		gtk_tree_selection_get_selected(selection, &model, &iter);
+		path = gtk_tree_model_get_path(model, &iter);
 
-			row_activated((GtkTreeView*)(argument->treeview), path, NULL,argument); 
-		}
-		if(argument->status == AL_PLAYING) {
-			pause_song(argument);
-		}	
-		if(argument->status == AL_PAUSED) {
-			play_song(argument->current_song, argument);
-		}
+		row_activated((GtkTreeView*)(argument->treeview), path, NULL,argument); 
+	}
+	if(argument->status == AL_PLAYING) {
+		pause_song(argument);
+	}	
+	if(argument->status == AL_PAUSED) {
+		play_song(argument->current_song, argument);
+	}
 }
 
 static void next(GtkWidget *button, struct arguments *argument) {
-	alSourceStop(argument->source);
-	continue_track(argument);
-	alSourcePlay(argument->source);
+	if(argument->next_song.nSamples > 0) {
+		alSourceStop(argument->source);
+		continue_track(argument);
+		alSourcePlay(argument->source);
+	}
+	else
+		gtk_list_store_set(argument->store, &(argument->playing_iter), PLAYING, "", -1);
 }
 
 static void previous(GtkWidget *button, struct arguments *argument) {
@@ -274,21 +280,26 @@ static void previous(GtkWidget *button, struct arguments *argument) {
     int bytes;
     alGetSourcei(argument->source, AL_BYTE_OFFSET, &bytes);
 
-    timef = bytes / (float)(argument->current_song.sample_rate * argument->current_song.channels * argument->current_song.nb_bytes_per_sample);
-	alSourceStop(argument->source);
+    if(argument->current_song.nSamples > 0) {
+		timef = bytes / (float)(argument->current_song.sample_rate * argument->current_song.channels * argument->current_song.nb_bytes_per_sample);
+		alSourceStop(argument->source);
 
-	if(timef >= 1.0f) {
-		alSourcePlay(argument->source);
-	}
-	else {
-		previous_track(argument);
-		alSourcePlay(argument->source);
+		if(timef >= 1.0f) {
+			alSourcePlay(argument->source);
+		}
+		else {
+			previous_track(argument);
+			alSourcePlay(argument->source);
+		}
 	}
 }
 
-static void config_folder_changed (GtkWidget *chooser) {
+static void config_folder_changed (gchar *folder, GtkWidget *parent) {
+	GtkWidget *progressbar, *progressdialog, *area;
+	progressbar = gtk_progress_bar_new();
+	progressdialog = gtk_dialog_new_with_buttons("Loading...", GTK_WINDOW(parent), 0, NULL);
+	area = gtk_dialog_get_content_area(GTK_DIALOG(progressdialog));
 	struct song song;
-	gchar *folder = gtk_file_chooser_get_filename (GTK_FILE_CHOOSER (chooser));
 	GDir *dir = g_dir_open (folder, 0, NULL);
 	FILE *list;
 	FILE *library;
@@ -296,6 +307,7 @@ static void config_folder_changed (GtkWidget *chooser) {
 	library = fopen("library.txt", "w");
 	float resnum_temp; //int
 	explore(dir, folder, list);
+	int nblines = 0;
 	float resnum = 0;
 	ssize_t len = 0;
 	char line[1000];
@@ -303,32 +315,71 @@ static void config_folder_changed (GtkWidget *chooser) {
 
 	fseek(list, 0, SEEK_SET);
 
+	while(fgets(line, 1000, list) != NULL)
+		nblines++;
+
+	fseek(list, 0, SEEK_SET);
+
+	gtk_progress_bar_set_ellipsize(GTK_PROGRESS_BAR(progressbar), PANGO_ELLIPSIZE_END);
+	gtk_box_set_homogeneous(GTK_BOX(area), TRUE);
+	gtk_widget_set_size_request(progressbar, 300, 20);
+	gtk_box_pack_start(GTK_BOX(area), progressbar, TRUE, TRUE, 0);
+	gtk_progress_bar_set_show_text(GTK_PROGRESS_BAR(progressbar), 1);
+	//gtk_container_add(GTK_CONTAINER(area), progressbar);
+	gtk_widget_show_all(progressdialog);
+
 	song.sample_array = song.title = song.artist = song.album = song.tracknumber = NULL;
 	while (fgets(line, 1000, list) != NULL) {
-		if (song.sample_array != NULL || song.title != NULL) {
-			free(song.sample_array);
-			free(song.title);
-			free(song.artist);
-			free(song.album);
-			free(song.tracknumber);
-		}
-
+		printf("%s\n", line);
 		line[strcspn(line, "\n")] = '\0';
-		resnum = analyze(line, &song);
-		fprintf(library, "%s\n%f\n%s\n%s\n%s\n%f\n", line, resnum, song.title, song.album, song.artist, resnum);
+		if((resnum = analyze(line, &song)) != 0) {
+
+			fprintf(library, "%s\n%f\n%s\n%s\n%s\n%f\n", line, resnum, song.title, song.album, song.artist, resnum);
+			gtk_progress_bar_set_text(GTK_PROGRESS_BAR(progressbar), song.title);
+			free_song(&song);
+		}
+		count++;
+		gtk_progress_bar_set_fraction(GTK_PROGRESS_BAR(progressbar), (float)count/(float)nblines);
+
+		while(gtk_events_pending())
+			gtk_main_iteration();
 	}
 	
+	gtk_widget_destroy(progressdialog);
+
 	fclose(list);
+	g_remove("list.txt");
 	fclose(library);
 }
 
+void folder_chooser(GtkWidget *button, struct pref_arguments *argument) {
+	GtkWidget *dialog;
+	gint res;
+	GtkFileChooserAction action = GTK_FILE_CHOOSER_ACTION_SELECT_FOLDER;
+
+	dialog = gtk_file_chooser_dialog_new("Choose library folder", GTK_WINDOW(argument->window),
+		action, "Cancel", GTK_RESPONSE_CANCEL, "Open", GTK_RESPONSE_ACCEPT, NULL);
+
+	res = gtk_dialog_run(GTK_DIALOG(dialog));
+
+	if(res == GTK_RESPONSE_ACCEPT) {
+		GtkFileChooser *chooser;
+		chooser = GTK_FILE_CHOOSER(dialog);
+		argument->folder = gtk_file_chooser_get_filename(chooser);
+	}
+	else
+		argument->folder = NULL;
+	gtk_widget_destroy(dialog);
+	gtk_entry_set_text((GtkEntry*)argument->library_entry, argument->folder); 
+}
+	
+
 static void preferences_callback(GtkMenuItem *preferences, struct pref_arguments *argument) {
-	GtkWidget *dialog, *label, *area, *vbox, *hbox, *library_entry, *chooser, 
-		*browse_button, *alignement;
+	GtkWidget *dialog, *label, *area, *vbox, *hbox, *library_entry, *browse_button, *alignement, *window_temp;
 	GtkDialogFlags flags = GTK_DIALOG_MODAL | GTK_DIALOG_DESTROY_WITH_PARENT;	
 //	GtkFileChooserAction action = GTK_FILE_CHOOSER_ACTION_SELECT_FOLDER;
-	char *folder;
 	gint res;
+	char *folder;
 
 	label = gtk_label_new("");
 	gtk_label_set_markup(GTK_LABEL(label), "<span weight=\"bold\">Select library location:</span>");
@@ -336,13 +387,17 @@ static void preferences_callback(GtkMenuItem *preferences, struct pref_arguments
 	gtk_container_add(GTK_CONTAINER(alignement), label);
 	browse_button = gtk_button_new_with_label("Browse...");
 	library_entry = gtk_entry_new();
-	gtk_entry_set_text((GtkEntry*)library_entry, "/home/polochon/Musique/");
 	//chooser = gtk_file_chooser_dialog_new("Browse...", GTK_WINDOW(dialog), GTK_FILE_CHOOSER_ACTION_SELECT_FOLDER, "Save", GTK_RESPONSE_ACCEPT, NULL);
 	vbox = gtk_vbox_new(TRUE, 5);
 	hbox = gtk_hbox_new(TRUE, 5);
 //	dialog = gtk_file_chooser_dialog_new("Browse library", GTK_WINDOW(argument->window), action, "Cancel", GTK_RESPONSE_CANCEL, "_Save", GTK_RESPONSE_ACCEPT, NULL);
-	dialog = gtk_dialog_new_with_buttons("Preferences", GTK_WINDOW(argument->window), flags, "Save", GTK_RESPONSE_ACCEPT, "Cancel", GTK_RESPONSE_REJECT, NULL);
+	dialog = gtk_dialog_new_with_buttons("Preferences", GTK_WINDOW(argument->window), flags, "Cancel", GTK_RESPONSE_REJECT, "Save", GTK_RESPONSE_ACCEPT, NULL);
 	area = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
+
+	g_signal_connect(G_OBJECT(browse_button), "clicked", G_CALLBACK(folder_chooser), argument);
+	argument->library_entry = library_entry;
+	window_temp = argument->window;
+	argument->window = dialog;
 
 	gtk_box_set_homogeneous(GTK_BOX(vbox), TRUE);
 	gtk_box_set_homogeneous(GTK_BOX(hbox), FALSE);
@@ -358,13 +413,18 @@ static void preferences_callback(GtkMenuItem *preferences, struct pref_arguments
 	gtk_widget_show_all(dialog);
 	res = gtk_dialog_run(GTK_DIALOG(dialog));
 
-	if(res == GTK_RESPONSE_ACCEPT) {
-		GtkFileChooser *chooser = GTK_FILE_CHOOSER(dialog);
+	if(argument->folder!= NULL && res == GTK_RESPONSE_ACCEPT) {
+	//	GtkFileChooser *chooser = GTK_FILE_CHOOSER(argument->chooser);
 		//folder = gtk_file_chooser_get_current_folder(dialog);
-		config_folder_changed(dialog);
+		//gtk_entry_set_text((GtkEntry*)library_entry, gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(argument->chooser)));
+		printf("%s\n", argument->folder);
+
+		config_folder_changed(argument->folder, dialog);
 		display_library(GTK_TREE_VIEW(argument->treeview), argument->store);
-	}
-	gtk_widget_destroy(dialog);
+	} 
+	gtk_widget_destroy(dialog); 
+
+	argument->window = window_temp;
 }
 
 static int timer_progressbar(gpointer pargument) {
@@ -407,7 +467,6 @@ static void slider_changed(GtkRange *progressbar, struct arguments *argument) {
 		g_source_remove(argument->tag);
 		argument->tag = g_timeout_add_seconds((int) (((gdouble)argument->current_song.duration) - ((gdouble)gtk_adjustment_get_value(argument->adjust)))
 				, continue_track, argument);
-		argument->offset = gtk_adjustment_get_value(argument->adjust);
 	} 
 } 
 
@@ -535,8 +594,10 @@ int main(int argc, char **argv) {
 
 	pargument->first = 1;	
 	pargument->status = 0;
-	pargument->offset = 0;
+	pargument->playing_iter.stamp = 0;
 	pargument->tag = 0;
+	pargument->current_song.nSamples = 0;
+	pargument->next_song.nSamples = 0;
 	pargument->elapsed = g_timer_new();
 
 	gtk_init(&argc, &argv);
@@ -565,11 +626,12 @@ int main(int argc, char **argv) {
 
 	pargument->toggle_button = gtk_button_new_with_label("▶▮▮");
 	next_button = gtk_button_new();
-	gtk_button_set_image((GtkButton*)next_button, gtk_image_new_from_file("./next.svg"));
+	gtk_button_set_image((GtkButton*)next_button, gtk_image_new_from_file("next.svg"));
 	previous_button = gtk_button_new();
-	gtk_button_set_image((GtkButton*)previous_button, gtk_image_new_from_file("./previous.svg"));
+	gtk_button_set_image((GtkButton*)previous_button, gtk_image_new_from_file("previous.svg"));
 	pargument->toggle_button = gtk_button_new();
-	gtk_button_set_image((GtkButton*)pargument->toggle_button, gtk_image_new_from_file("./play.svg"));
+	gtk_button_set_image((GtkButton*)pargument->toggle_button, gtk_image_new_from_file("play.svg"));
+	gtk_window_set_icon_from_file(GTK_WINDOW(window), "lelele.svg", NULL);
 	buttons_table = gtk_table_new(2, 1, FALSE);
 	pargument->adjust = (GtkAdjustment*)gtk_adjustment_new(0, 0, 100, 1, 1, 1);
 	progressbar = gtk_hscale_new(pargument->adjust);

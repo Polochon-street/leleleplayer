@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <libavformat/avformat.h>
+#include <gst/gst.h>
 //#include <libavcodec/avcodec.h>
 
 //int16_t *current_sample_array;
@@ -16,7 +17,9 @@ struct song {
 	int sample_rate;
 	int nb_bytes_per_sample;
 	int planar;
-	float duration;
+	GstElement *playbin;
+	GstState state;
+	gint64 duration;
 	char *artist;
 	char *title;
 	char *album;

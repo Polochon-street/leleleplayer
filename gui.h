@@ -27,15 +27,17 @@ struct arguments {
 	int first;
 	int bartag;
 	int playlist_count;
-	char **playlist;
+	gulong progressbar_update_signal_id;
 	GTimer *elapsed;
 	GtkWidget *treeview_library;
+	GtkWidget *progressbar;
 	GtkWidget *treeview_playlist;
 	GtkWidget *toggle_button;
 	//GtkWidget *next_button;
 	//GtkWidget *previous_button;
 	GtkTreePath *path;
-	GtkTreeIter iter;
+	GtkTreeIter iter_playlist;
+	GtkTreeIter iter_library;
 	GtkListStore *store_library;
 	GtkListStore *store_playlist;
 	GtkTreeViewColumn *column;
@@ -53,7 +55,7 @@ struct pref_arguments {
 
 static void setup_tree_view(GtkWidget *);
 static void continue_track(GstElement *, struct arguments *);
-static int timer_progressbar(gpointer);
+static gboolean refresh_progressbar(gpointer);
 static void row_activated(GtkTreeView *, GtkTreePath *, GtkTreeViewColumn *, struct arguments *);
 static void config_folder_changed(gchar *, GtkWidget *);
 static void toggle(GtkWidget *, struct arguments *);
@@ -64,9 +66,10 @@ static void preferences_callback(GtkMenuItem *preferences, struct pref_arguments
 static void state_changed(GstBus *, GstMessage *, struct arguments *);
 int bufferize(struct song, struct arguments *);
 void pause_song(struct arguments *);
-void play_song(struct song, struct arguments *);
+void play_song(struct arguments *);
 void free_song(struct song *);
 void explore(GDir *dir, char *folder, FILE *list);
 void folder_chooser(GtkWidget *, struct pref_arguments *);
 void display_library(GtkTreeView *, GtkListStore *);
-void set_next_song(struct arguments *);
+void playlist_queue(GtkTreeIter *, GtkTreeModel *, GtkTreeView *, struct arguments *);
+void get_current_playlist_song(GtkTreeIter, GtkTreeView *, struct song *);

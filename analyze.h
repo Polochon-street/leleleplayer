@@ -20,6 +20,8 @@ struct song {
 	GstElement *playbin;
 	GstState state;
 	gint64 duration;
+	gint64 current;
+	char *filename;
 	char *artist;
 	char *title;
 	char *album;

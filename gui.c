@@ -44,20 +44,55 @@ void playlist_queue(GtkTreeIter *iter_to_queue, GtkTreeModel *model_library, Gtk
 	}
 }
 
-void get_current_playlist_song(GtkTreeIter iter_playlist, GtkTreeView *treeview_playlist, struct song *song) {
+void get_current_playlist_song(GtkTreeView *treeview_playlist, struct song *song, struct arguments *argument) {
 	GtkTreeModel *model_playlist;
-	gchar *tempfile;
-	
+	GstFormat fmt = GST_FORMAT_TIME;
+	gint64 current = -1;
+
 	model_playlist = gtk_tree_view_get_model(treeview_playlist);
-	gtk_tree_model_get(model_playlist, &iter_playlist, AFILE, &song->filename, TRACKNUMBER, &song->tracknumber, TRACK, &song->title, ALBUM, &song->album,
+	gtk_tree_model_get(model_playlist, &(argument->iter_playlist), AFILE, &song->filename, TRACKNUMBER, &song->tracknumber, TRACK, &song->title, ALBUM, &song->album,
 		ARTIST, &song->artist, -1);
+	if(!gst_element_query_duration(argument->current_song.playbin, fmt,
+			&song->duration)) 
+		g_printerr("Couldn't query current duration.\n");
+
 	/*gtk_tree_model_get(model, &iter_playlist, TRACKNUMBER, &song->tracknumber, -1);
 	gtk_tree_model_get(model, &iter_playlist, , &song->filename, -1);
 	gtk_tree_model_get(model, &iter_playlist, AFILE, &song->filename, -1);*/
 }
 
+gboolean get_next_playlist_song(GtkTreeView *treeview_playlist, struct song *song, struct arguments *argument) {
+	GtkTreeModel *model_playlist;
+	//GstFormat fmt = GST_FORMAT_TIME;
+	//gint64 current = -1;
+
+	model_playlist = gtk_tree_view_get_model(treeview_playlist);
+
+	if(gtk_tree_model_iter_next(model_playlist, &(argument->iter_playlist))) {
+		gtk_tree_model_get(model_playlist, &(argument->iter_playlist), AFILE, &song->filename, TRACKNUMBER, &song->tracknumber, TRACK, &song->title, ALBUM, &song->album,
+			ARTIST, &song->artist, -1);
+		return TRUE;
+	}
+	else
+		return FALSE;
+}
+
+gboolean get_previous_playlist_song(GtkTreeView *treeview_playlist, struct song *song, struct arguments *argument) {
+	GtkTreeModel *model_playlist;
+
+	model_playlist = gtk_tree_view_get_model(treeview_playlist);
+
+	if(gtk_tree_model_iter_previous(model_playlist, &(argument->iter_playlist))) {
+		gtk_tree_model_get(model_playlist, &(argument->iter_playlist), AFILE, &song->filename, TRACKNUMBER, &song->tracknumber, TRACK, &song->title, ALBUM, &song->album,
+			ARTIST, &song->artist, -1);
+		return TRUE;
+	}
+	else
+		return FALSE;
+}
+
 static void row_activated(GtkTreeView *treeview, GtkTreePath *path, GtkTreeViewColumn *column, struct arguments *argument) {
-	GtkTreeModel *model_library;
+	GtkTreeModel *model_library, *model_playlist;
 	GtkTreeIter iter_library;
 	gchar *songfile;
 	
@@ -71,7 +106,10 @@ static void row_activated(GtkTreeView *treeview, GtkTreePath *path, GtkTreeViewC
 		} while(gtk_tree_model_iter_next(model_library, &iter_library));
 
 		gtk_tree_model_get_iter_first(gtk_tree_view_get_model(GTK_TREE_VIEW(argument->treeview_playlist)), &(argument->iter_playlist));
-		get_current_playlist_song(argument->iter_playlist, GTK_TREE_VIEW(argument->treeview_playlist), &(argument->current_song));
+		get_current_playlist_song(GTK_TREE_VIEW(argument->treeview_playlist), &argument->current_song, argument);
+		//gtk_tree_model_get(model_playlist, &argument->iter_playlist, AFILE, &(argument->current_song.filename), TRACKNUMBER, &(argument->current_song.tracknumber), TRACK, &(argument->current_song.title),
+		//	ALBUM, &(argument->current_song.album), ARTIST, &(argument->current_song.artist), -1);
+
 		// TODO 
 		play_song(argument);
 		argument->bartag = g_timeout_add_seconds(1, refresh_progressbar, argument);
@@ -81,61 +119,57 @@ static void row_activated(GtkTreeView *treeview, GtkTreePath *path, GtkTreeViewC
 }
 
 static void continue_track(GstElement *playbin, struct arguments *argument) {
-	char *tempfile;
-	GtkTreeModel *model;
-
-	gtk_list_store_set(argument->store_library, &(argument->iter_library), PLAYING, "", -1);
+	//char *tempfile;
+	GtkTreeModel *model_playlist;
 
 	// <insert set title func here>
 
-	model = gtk_tree_view_get_model(GTK_TREE_VIEW(argument->treeview_library));
-	if(gtk_tree_model_iter_next(model, &(argument->iter_library))) {
-		gtk_tree_model_get(model, &(argument->iter_library), AFILE, &tempfile, -1);
-		g_object_set(argument->current_song.playbin, "uri", g_filename_to_uri(tempfile, NULL, NULL));
-		//gst_element_set_state(argument->current_song.playbin, GST_STATE_PLAYING);
-		g_free(tempfile);
-	}
-	//gtk_adjustment_configure(argument->adjust, 0, 0, argument->current_song.duration, 1, 1, 1);
-	//gtk_adjustment_changed(argument->adjust);
+	model_playlist = gtk_tree_view_get_model(GTK_TREE_VIEW(argument->treeview_playlist));
+	if(get_next_playlist_song(GTK_TREE_VIEW(argument->treeview_playlist), &argument->current_song, argument))
+		play_song(argument);
 
+	argument->bartag = g_timeout_add_seconds(1, refresh_progressbar, argument);
 }
 
 static void previous_track(struct arguments *argument) { 
-	GtkTreeModel *model;
-	char *tempfile;
-	int buffers;
+	GtkTreeModel *model_playlist;
+	//char *tempfile;
+	//int buffers;
 
-	gtk_list_store_set(argument->store_library, &(argument->iter_library), PLAYING, "", -1);
+	model_playlist = gtk_tree_view_get_model(GTK_TREE_VIEW(argument->treeview_playlist));
+	if(get_previous_playlist_song(GTK_TREE_VIEW(argument->treeview_playlist), &argument->current_song, argument))
+		play_song(argument);
 
-	model = gtk_tree_view_get_model((GtkTreeView *)(argument->treeview_library));
-
-	if(gtk_tree_model_iter_previous(model, &(argument->iter_library))) {
-		if(gtk_tree_model_iter_previous(model, &(argument->iter_library))) {
-			gtk_list_store_set(argument->store_library, &(argument->iter_library), PLAYING, "▶", -1);
-			gtk_tree_model_get(model, &(argument->iter_library), AFILE, &tempfile, -1);
-			gtk_adjustment_configure(argument->adjust, 0, 0, argument->current_song.duration, 1, 1, 1);
-			gtk_adjustment_changed(argument->adjust);
-		}
-	}
+	argument->bartag = g_timeout_add_seconds(1, refresh_progressbar, argument);
 }
 
 void play_song(struct arguments *argument) {
 	GtkTreeSelection *selection;
+	GtkTreePath *path;
+	GtkTreeViewColumn *column;
+	GtkTreeModel *model_playlist;
+	GtkTreeIter temp_iter;
+	gchar *tempfile;
 
+	model_playlist = gtk_tree_view_get_model(GTK_TREE_VIEW(argument->treeview_playlist));
 	selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(argument->treeview_playlist));
+	path = gtk_tree_model_get_path(model_playlist, &argument->iter_playlist);
+	gtk_tree_view_get_column(GTK_TREE_VIEW(argument->treeview_playlist), PLAYING);
+ 	//gtk_tree_model_get(model_playlist, &(argument->iter_playlist), AFILE, &tempfile, -1);
 
+	gtk_tree_model_get_iter_first(gtk_tree_view_get_model(GTK_TREE_VIEW(argument->treeview_playlist)), &(temp_iter));
+
+	do {
+		gtk_list_store_set(argument->store_playlist, &(temp_iter), PLAYING, "", -1);
+	}
+	while(gtk_tree_model_iter_next(model_playlist, &(temp_iter)));
 	gtk_button_set_image(GTK_BUTTON(argument->toggle_button), gtk_image_new_from_file("./pause.svg"));
 	gtk_list_store_set(argument->store_playlist, &(argument->iter_playlist), PLAYING, "▶", -1);
 	gtk_tree_selection_select_iter(selection, &(argument->iter_playlist));
+	gtk_tree_view_scroll_to_cell(GTK_TREE_VIEW(argument->treeview_playlist), path, column, 1, 0.2, 1);
 	
 	g_object_set(argument->current_song.playbin, "uri", g_filename_to_uri(argument->current_song.filename, NULL, NULL)); 
 	gst_element_set_state(argument->current_song.playbin, GST_STATE_PLAYING);
-
-	if(argument->tag != 0)
-		g_source_remove(argument->tag);
-
-	//argument->bartag = g_timeout_add_seconds(1, timer_progressbar, argument);
-//	argument->tag = g_timeout_add_seconds(song.duration - timef, continue_track, argument);
 }
 
 void pause_song(struct arguments *argument) {
@@ -156,18 +190,16 @@ static void toggle(GtkWidget *button, struct arguments *argument) {
 	if(argument->current_song.state == GST_STATE_NULL) {
 		selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(argument->treeview_library));
 		gtk_tree_view_get_model((GtkTreeView*)(argument->treeview_library));
-		gtk_tree_selection_get_selected(selection, &model, &iter);
-		path = gtk_tree_model_get_path(model, &iter);
+		if(gtk_tree_selection_get_selected(selection, &model, &iter)) {
+				path = gtk_tree_model_get_path(model, &iter);
 
-		row_activated(GTK_TREE_VIEW(argument->treeview_library), path, NULL,argument); 
+				row_activated(GTK_TREE_VIEW(argument->treeview_library), path, NULL,argument);
+		}		
 	}
-	else if(argument->current_song.state == GST_STATE_PLAYING) {
+	else if(argument->current_song.state == GST_STATE_PLAYING)
 		pause_song(argument);
-	}
-	else if(argument->current_song.state == GST_STATE_PAUSED) {
+	else if(argument->current_song.state == GST_STATE_PAUSED) 
 		play_song(argument);
-		gst_element_set_state (argument->current_song.playbin, GST_STATE_PLAYING);
-	}
 }
 
 static void next(GtkWidget *button, struct arguments *argument) {
@@ -177,7 +209,9 @@ static void next(GtkWidget *button, struct arguments *argument) {
 		//alSourcePlay(argument->source);
 //	}
 //	else
-		gtk_list_store_set(argument->store_library, &(argument->iter_library), PLAYING, "", -1);
+	gst_element_set_state(argument->current_song.playbin, GST_STATE_NULL);
+	continue_track(argument->current_song.playbin, argument);
+//	gtk_list_store_set(argument->store_library, &(argument->iter_library), PLAYING, "", -1);
 }
 
 static void previous(GtkWidget *button, struct arguments *argument) {
@@ -345,21 +379,17 @@ static gboolean refresh_progressbar(gpointer pargument) {
 	
 	if(argument->current_song.state < GST_STATE_PAUSED)
 		return TRUE;
-	
-	if(!GST_CLOCK_TIME_IS_VALID(argument->current_song.duration)) {
-		if(!gst_element_query_duration(argument->current_song.playbin, fmt,
+
+	if(!gst_element_query_duration(argument->current_song.playbin, fmt,
 			&(argument->current_song.duration)))
-			g_printerr("Couldn't query current duration.\n");
-	}
-	else {
-		gtk_adjustment_configure(argument->adjust, 0, 0, argument->current_song.duration/GST_SECOND, 1, 1, 1);
-		gtk_adjustment_changed(argument->adjust);
-	}
+		return FALSE;
 
 	if(gst_element_query_position(argument->current_song.playbin, 
 		fmt, &(argument->current_song.current))) {
 		g_signal_handler_block(argument->progressbar, argument->progressbar_update_signal_id);
-		gtk_adjustment_set_value(argument->adjust, argument->current_song.current/GST_SECOND);
+		gtk_adjustment_configure(argument->adjust, argument->current_song.current/GST_SECOND, 0, argument->current_song.duration/GST_SECOND, 
+			1, 1, 1);
+	//	gtk_adjustment_set_value(argument->adjust, argument->current_song.current/GST_SECOND);
 		gtk_adjustment_changed(argument->adjust);
 		g_signal_handler_unblock(argument->progressbar, argument->progressbar_update_signal_id);
 	}
@@ -367,21 +397,10 @@ static gboolean refresh_progressbar(gpointer pargument) {
 }
 
 static void slider_changed(GtkRange *progressbar, struct arguments *argument) {
-	/*int time;
-	float timef;
-	int bytes;
-	alGetSourcei(argument->source, AL_SEC_OFFSET, &time);
-	alGetSourcei(argument->source, AL_BYTE_OFFSET, &bytes);
-	
-	timef = bytes / (float)(argument->current_song.sample_rate * argument->current_song.channels * argument->current_song.nb_bytes_per_sample);
-
-	if(fabs(gtk_adjustment_get_value(argument->adjust) - timef) > 0.005f) {
-		alSourcei(argument->source, AL_BYTE_OFFSET, argument->current_song.channels * (int) ((gdouble) gtk_adjustment_get_value(argument->adjust)
- 			* ((gdouble) (argument->current_song.sample_rate * argument->current_song.nb_bytes_per_sample))));
-		g_source_remove(argument->tag);
-		argument->tag = g_timeout_add_seconds((int) (((gdouble)argument->current_song.duration) - ((gdouble)gtk_adjustment_get_value(argument->adjust)))
-				, continue_track, argument);
-	} */
+	if(!gst_element_seek(argument->current_song.playbin, 1.0, GST_FORMAT_TIME, GST_SEEK_FLAG_FLUSH, 
+		GST_SEEK_TYPE_SET, gtk_adjustment_get_value(argument->adjust)*GST_SECOND, GST_SEEK_TYPE_NONE,
+		GST_CLOCK_TIME_NONE)) 
+		printf("Seek failed!\n");
 } 
 
 static void setup_tree_view(GtkWidget *treeview) {
@@ -428,9 +447,9 @@ static void setup_tree_view(GtkWidget *treeview) {
 	gtk_tree_view_append_column(GTK_TREE_VIEW(treeview), column);
 
 	renderer = gtk_cell_renderer_text_new();
-	column = gtk_tree_view_column_new_with_attributes("Force", renderer, "text", FORCE, NULL);
+	column = gtk_tree_view_column_new_with_attributes("Force", renderer, "text", TEXTFORCE, NULL);
 	gtk_tree_view_column_set_resizable (column, TRUE);
-	gtk_tree_view_column_set_sort_column_id(column, FORCE);
+	gtk_tree_view_column_set_sort_column_id(column, TEXTFORCE);
 	gtk_tree_view_column_set_sizing(column, GTK_TREE_VIEW_COLUMN_FIXED);
 	gtk_tree_view_column_set_fixed_width(column, 70);
 	gtk_tree_view_append_column(GTK_TREE_VIEW(treeview), column);
@@ -451,6 +470,7 @@ void display_library(GtkTreeView *treeview, GtkListStore *store) {
 	char tempartist[1000];
 	char temptracknumber[1000];
 	char tempforce[1000];
+	float tempforcef;
 
 	gtk_list_store_clear(store);
 
@@ -467,15 +487,18 @@ void display_library(GtkTreeView *treeview, GtkListStore *store) {
 			tempartist[strcspn(tempartist, "\n")] = '\0';
 			fgets(tempforce, 1000, library);
 			tempforce[strcspn(tempforce, "\n")] = '\0';
-			if(atoi(tempforce) > 0)
+
+			tempforcef = atof(tempforce);
+			
+			if(atof(tempforce) > 0)
 				strcpy(tempforce, "Loud");
-			else if(atoi(tempforce) < 0)
+			else if(atof(tempforce) < 0)
 				strcpy(tempforce, "Calm");
 			else
 				strcpy(tempforce, "Can't conclude");
 
 			gtk_list_store_append(store, &iter);
-			gtk_list_store_set(store, &iter, PLAYING, "", TRACKNUMBER, temptracknumber, TRACK, temptrack, ALBUM, tempalbum, ARTIST, tempartist, FORCE, tempforce, AFILE, tempfile, -1);
+			gtk_list_store_set(store, &iter, PLAYING, "", TRACKNUMBER, temptracknumber, TRACK, temptrack, ALBUM, tempalbum, ARTIST, tempartist, FORCE, tempforcef, TEXTFORCE, tempforce, AFILE, tempfile, -1);
 		}
 	}
 	//g_object_unref(store);
@@ -489,6 +512,21 @@ gint sort_iter_compare_func(GtkTreeModel *model, GtkTreeIter *a, GtkTreeIter *b,
 	if (atof(track1) > atof(track2))
 		return 1;
 	else if(atof(track1) < atof(track2))
+		return -1;
+	else
+		return 0;
+}
+
+gint sort_force(GtkTreeModel *model, GtkTreeIter *a, GtkTreeIter *b, gpointer userdata) {
+	gfloat force1, force2;
+	gtk_tree_model_get(model, a, FORCE, &force1, -1);
+	gtk_tree_model_get(model, b, FORCE, &force2, -1);
+
+//	printf("%f\n", force1);
+
+	if(force1 > force2)
+		return 1;
+	else if(force1 < force2)
 		return -1;
 	else
 		return 0;
@@ -509,7 +547,6 @@ int main(int argc, char **argv) {
 
 	pargument->first = 1;	
 	pargument->iter_library.stamp = 0;
-	pargument->tag = 0;
 	pargument->current_song.duration = GST_CLOCK_TIME_NONE;
 	pargument->elapsed = g_timer_new();
 	pargument->current_song.state = GST_STATE_NULL;
@@ -533,15 +570,16 @@ int main(int argc, char **argv) {
 	library_panel = gtk_scrolled_window_new(NULL, NULL);
 	playlist_panel = gtk_scrolled_window_new(NULL, NULL);
 
-	pargument->store_library = gtk_list_store_new(COLUMNS, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING);
+	pargument->store_library = gtk_list_store_new(COLUMNS, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_FLOAT, G_TYPE_STRING, G_TYPE_STRING);
 	sortable = GTK_TREE_SORTABLE(pargument->store_library);
 	gtk_tree_sortable_set_sort_column_id(sortable, TRACKNUMBER, GTK_SORT_ASCENDING);
 	treeview_library = gtk_tree_view_new_with_model(GTK_TREE_MODEL(pargument->store_library));
 	gtk_tree_sortable_set_sort_func(sortable, TRACKNUMBER, sort_iter_compare_func, NULL, NULL); 
+	gtk_tree_sortable_set_sort_func(sortable, TEXTFORCE, sort_force, NULL, NULL);
 	setup_tree_view(treeview_library);	
 	pargument->treeview_library = treeview_library;
 	
-	pargument->store_playlist = gtk_list_store_new(COLUMNS, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING);
+	pargument->store_playlist = gtk_list_store_new(COLUMNS, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_FLOAT, G_TYPE_STRING, G_TYPE_STRING);
 	treeview_playlist = gtk_tree_view_new();
 	treeview_playlist = gtk_tree_view_new_with_model(GTK_TREE_MODEL(pargument->store_playlist));
 	setup_tree_view(treeview_playlist);
@@ -569,7 +607,7 @@ int main(int argc, char **argv) {
 	editmenu = gtk_menu_new();
 	gtk_scale_set_draw_value((GtkScale*)pargument->progressbar, FALSE);
 	vboxv = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
-	libplaypane = gtk_paned_new(GTK_ORIENTATION_HORIZONTAL);
+	libplaypane = gtk_paned_new(GTK_ORIENTATION_VERTICAL);
 
 	gtk_menu_item_set_submenu(GTK_MENU_ITEM(edit), editmenu);
 	gtk_menu_shell_append(GTK_MENU_SHELL(menubar), edit);

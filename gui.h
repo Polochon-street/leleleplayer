@@ -16,6 +16,7 @@ enum {
 	ALBUM,
 	ARTIST,
 	FORCE,
+	TEXTFORCE,
 	AFILE,
 	COLUMNS
 };
@@ -23,7 +24,6 @@ enum {
 struct arguments {
 	//ALint source;
 	struct song current_song;
-	int tag;
 	int first;
 	int bartag;
 	int playlist_count;
@@ -72,4 +72,6 @@ void explore(GDir *dir, char *folder, FILE *list);
 void folder_chooser(GtkWidget *, struct pref_arguments *);
 void display_library(GtkTreeView *, GtkListStore *);
 void playlist_queue(GtkTreeIter *, GtkTreeModel *, GtkTreeView *, struct arguments *);
-void get_current_playlist_song(GtkTreeIter, GtkTreeView *, struct song *);
+void get_current_playlist_song(GtkTreeView *, struct song *, struct arguments *);
+gboolean get_next_playlist_song(GtkTreeView *, struct song *, struct arguments *);
+gboolean get_previous_playlist_song(GtkTreeView *, struct song *, struct arguments *);

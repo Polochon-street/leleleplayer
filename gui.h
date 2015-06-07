@@ -1,6 +1,5 @@
 #include "analyze.h"
 
-
 #include <stdbool.h>
 #include <gtk/gtk.h>
 #include <glib/gprintf.h>
@@ -23,6 +22,8 @@ enum {
 
 struct arguments {
 	//ALint source;
+	gboolean lelelerandom;
+	gboolean random;
 	struct song current_song;
 	int first;
 	int bartag;
@@ -41,7 +42,7 @@ struct arguments {
 	GtkListStore *store_library;
 	GtkListStore *store_playlist;
 	GtkTreeViewColumn *column;
-//	GtkWidget *label, *album_label, *title_label, *artist_label;
+	GtkWidget *album_label, *title_label, *artist_label;
 	GtkAdjustment *adjust;
 };
 
@@ -64,9 +65,13 @@ static void previous(GtkWidget *, struct arguments *);
 static void destroy(GtkWidget *, gpointer);
 static void preferences_callback(GtkMenuItem *preferences, struct pref_arguments *);
 static void state_changed(GstBus *, GstMessage *, struct arguments *);
+static void refresh_ui(GstBus *, GstMessage *, struct arguments *);
+static void toggle_lelele(GtkWidget *button, struct arguments *);
+static void toggle_random(GtkWidget *button, struct arguments *);
 int bufferize(struct song, struct arguments *);
 void pause_song(struct arguments *);
 void play_song(struct arguments *);
+void queue_song(struct arguments *);
 void free_song(struct song *);
 void explore(GDir *dir, char *folder, FILE *list);
 void folder_chooser(GtkWidget *, struct pref_arguments *);
@@ -74,4 +79,5 @@ void display_library(GtkTreeView *, GtkListStore *);
 void playlist_queue(GtkTreeIter *, GtkTreeModel *, GtkTreeView *, struct arguments *);
 void get_current_playlist_song(GtkTreeView *, struct song *, struct arguments *);
 gboolean get_next_playlist_song(GtkTreeView *, struct song *, struct arguments *);
+gboolean get_random_playlist_song(GtkTreeView *, struct song *, struct arguments *);
 gboolean get_previous_playlist_song(GtkTreeView *, struct song *, struct arguments *);

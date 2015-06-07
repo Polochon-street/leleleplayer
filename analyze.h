@@ -11,6 +11,7 @@ int debug;
 int cli;
 
 struct song {
+	float force;
 	int8_t* sample_array;
 	int channels;
 	int nSamples;

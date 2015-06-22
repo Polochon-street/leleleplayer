@@ -67,12 +67,13 @@ int audio_decode(const char *filename, struct song *song) { // decode the track
 	song->nb_bytes_per_sample = av_get_bytes_per_sample(c->sample_fmt);
 
 	song->channels = c->channels;
-
+	
+	song->artist = song->tracknumber = song->title = song->album = NULL;
 
 	/* Get tags */
 	if(av_dict_get(pFormatCtx->metadata, "track", NULL, AV_DICT_IGNORE_SUFFIX) != NULL) {
-		song->tracknumber = malloc(strlen(av_dict_get(pFormatCtx->metadata, "track", NULL, AV_DICT_IGNORE_SUFFIX)->value) + 1);
-		strcpy(song->tracknumber, av_dict_get(pFormatCtx->metadata, "track", NULL, AV_DICT_IGNORE_SUFFIX)->value);
+		song->tracknumber = malloc(strlen(av_dict_get(pFormatCtx->metadata, "TRACK", NULL, AV_DICT_IGNORE_SUFFIX)->value) + 1);
+		strcpy(song->tracknumber, av_dict_get(pFormatCtx->metadata, "TRACK", NULL, AV_DICT_IGNORE_SUFFIX)->value);
 		song->tracknumber[strcspn(song->tracknumber, "/")] = '\0';
 	}
 	else {
@@ -80,24 +81,24 @@ int audio_decode(const char *filename, struct song *song) { // decode the track
 		strcpy(song->tracknumber, "");
 	}
 	if(av_dict_get(pFormatCtx->metadata, "title", NULL, AV_DICT_IGNORE_SUFFIX) != NULL) {
-		song->title = malloc(strlen(av_dict_get(pFormatCtx->metadata, "title", NULL, AV_DICT_IGNORE_SUFFIX)->value) + 1);
-		strcpy(song->title, av_dict_get(pFormatCtx->metadata, "title", NULL, AV_DICT_IGNORE_SUFFIX)->value);
+		song->title = malloc(strlen(av_dict_get(pFormatCtx->metadata, "TITLE", NULL, AV_DICT_IGNORE_SUFFIX)->value) + 1);
+		strcpy(song->title, av_dict_get(pFormatCtx->metadata, "TITLE", NULL, AV_DICT_IGNORE_SUFFIX)->value);
 	}
 	else {
 		song->title = malloc(11*sizeof(char));
 		strcpy(song->title, "<no title>");
 	}
-	if(av_dict_get(pFormatCtx->metadata, "artist", NULL, AV_DICT_IGNORE_SUFFIX) != NULL) {
-		song->artist= malloc(strlen(av_dict_get(pFormatCtx->metadata, "artist", NULL, AV_DICT_IGNORE_SUFFIX)->value) + 1);
-		strcpy(song->artist, av_dict_get(pFormatCtx->metadata, "artist", NULL, AV_DICT_IGNORE_SUFFIX)->value);
+	if(av_dict_get(pFormatCtx->metadata, "ARTIST", NULL, AV_DICT_IGNORE_SUFFIX) != NULL) {
+		song->artist= malloc(strlen(av_dict_get(pFormatCtx->metadata, "ARTIST", NULL, AV_DICT_IGNORE_SUFFIX)->value) + 1);
+		strcpy(song->artist, av_dict_get(pFormatCtx->metadata, "ARTIST", NULL, AV_DICT_IGNORE_SUFFIX)->value);
 	}
 	else {
 		song->artist= malloc(11*sizeof(char));
 		strcpy(song->artist, "<no artist>");
 	}
-	if(av_dict_get(pFormatCtx->metadata, "album", NULL, AV_DICT_IGNORE_SUFFIX) != NULL) {
-		song->album= malloc(strlen(av_dict_get(pFormatCtx->metadata, "album", NULL, AV_DICT_IGNORE_SUFFIX)->value) + 1);
-		strcpy(song->album, av_dict_get(pFormatCtx->metadata, "album", NULL, AV_DICT_IGNORE_SUFFIX)->value);
+	if(av_dict_get(pFormatCtx->metadata, "ALBUM", NULL, AV_DICT_IGNORE_SUFFIX) != NULL) {
+		song->album= malloc(strlen(av_dict_get(pFormatCtx->metadata, "ALBUM", NULL, AV_DICT_IGNORE_SUFFIX)->value) + 1);
+		strcpy(song->album, av_dict_get(pFormatCtx->metadata, "ALBUM", NULL, AV_DICT_IGNORE_SUFFIX)->value);
 	}
 	else {
 		song->album= malloc(11*sizeof(char));
@@ -136,7 +137,6 @@ int audio_decode(const char *filename, struct song *song) { // decode the track
 					song->nSamples+=data_size/song->nb_bytes_per_sample;
 				}
 				int8_t *p = beginning+index*song->nb_bytes_per_sample;
-				
 				if(song->planar == 1) {
 					for(i = 0; i < decoded_frame->nb_samples*song->nb_bytes_per_sample; i+=song->nb_bytes_per_sample) { 
 						for(e = 0; e < c->channels; ++e)

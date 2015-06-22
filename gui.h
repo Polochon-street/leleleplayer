@@ -15,6 +15,9 @@ enum {
 	ALBUM,
 	ARTIST,
 	FORCE,
+	FORCE_ENV,
+	FORCE_AMP,
+	FORCE_FREQ,
 	TEXTFORCE,
 	AFILE,
 	COLUMNS
@@ -31,6 +34,7 @@ struct arguments {
 	int playlist_count;
 	gulong progressbar_update_signal_id;
 	GTimer *elapsed;
+	GList *history;
 	GtkWidget *treeview_library;
 	GtkWidget *progressbar;
 	GtkWidget *treeview_playlist;
@@ -55,7 +59,13 @@ struct pref_arguments {
 		GtkWidget *library_entry;
 };
 
-static void setup_tree_view(GtkWidget *);
+/**
+* Description: Sets up the treeview renderer with columns "playing", "tracknumber", "track",
+* "album", "artist", "force", and sizes it properly
+* Arguments: GtkWidget *treeview: The TreeView to set up
+*/
+static void setup_tree_view_renderer_play_lib(GtkWidget *);
+static GtkWidget *setup_tree_view_renderer_artist(struct arguments *);
 static void continue_track(GstElement *, struct arguments *);
 static gboolean refresh_progressbar(gpointer);
 static void row_activated(GtkTreeView *, GtkTreePath *, GtkTreeViewColumn *, struct arguments *);
@@ -83,4 +93,5 @@ void playlist_queue(GtkTreeIter *, GtkTreeModel *, GtkTreeView *, struct argumen
 void get_current_playlist_song(GtkTreeView *, struct song *, struct arguments *);
 gboolean get_next_playlist_song(GtkTreeView *, struct song *, struct arguments *);
 gboolean get_random_playlist_song(GtkTreeView *, struct song *, struct arguments *);
+gboolean get_lelelerandom_playlist_song(GtkTreeView *, struct song *, struct arguments *);
 gboolean get_previous_playlist_song(GtkTreeView *, struct song *, struct arguments *);

@@ -10,8 +10,15 @@ size_t size;
 int debug;
 int cli;
 
+struct vector {
+	float x;
+	float y;
+	float z;
+};
+
 struct song {
 	float force;
+	struct vector force_vector;
 	int8_t* sample_array;
 	int channels;
 	int nSamples;

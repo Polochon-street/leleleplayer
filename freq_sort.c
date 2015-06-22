@@ -141,5 +141,5 @@ float freq_sort(struct song song) {
 		printf("Freq result: %f\n", resnum_freq);
 	}
 	//resnum_freq = -2*(tab_sum + 68.0f)/(tab_sum - 68.0f); 
-	return (1); 
+	return (resnum_freq); 
 }

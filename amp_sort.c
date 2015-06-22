@@ -72,17 +72,17 @@ float amp_sort(struct song song) {
 		for(i=0;i<SIZE;++i)
 		fprintf(file_amp, "%d\n", ((int16_t*)song.sample_array)[i]);
 
-	if (histogram_integ < 25)
+	/*if (histogram_integ < 25)
 		resnum_amp = 2;
 	else if (histogram_integ < 30)
 		resnum_amp = 1;
 	else if (histogram_integ < 35)
 		resnum_amp = -1;
 	else
-		resnum_amp = -2;
+		resnum_amp = -2;*/
 
 //	resnum_amp = -(histogram_integ - 30.0f)/(histogram_integ + 30.0f);
-	resnum_amp = -0.2f * histogram_integ + 6.0f;
+	resnum_amp = -0.2f * (float)histogram_integ + 6.0f;
 	if (debug) {
 	printf("-> Debug amplitudes\n");
 	printf("Criterion: loud < 25 < 30 < 35 < calm\n");

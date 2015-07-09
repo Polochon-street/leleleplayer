@@ -80,6 +80,7 @@ static void refresh_ui(GstBus *, GstMessage *, struct arguments *);
 static void toggle_lelele(GtkWidget *button, struct arguments *);
 static void toggle_random(GtkWidget *button, struct arguments *);
 int bufferize(struct song, struct arguments *);
+float distance(struct vector, struct vector);
 void pause_song(struct arguments *);
 void start_song(struct arguments *);
 void resume_song(struct arguments *);

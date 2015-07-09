@@ -21,7 +21,7 @@ float freq_sort(struct song song) {
 	size_t i;
 	FFTSample* x;
 	RDFTContext* fft;
-	float freq;
+	float freq = 0;
 	float pas_freq;
 	FILE *file1;
 	FILE *file2;
@@ -98,10 +98,9 @@ float freq_sort(struct song song) {
 
 	if (debug)
 		for(d=1;d<WIN_SIZE/2;++d) {
-			freq+=pas_freq;
+			freq += pas_freq;
 			fprintf(file1, "%d\n", freq);
 			fprintf(file2, "%f\n", spectre_moy[d]);
-			if(freq > 20000) // 10000 pour tracer
 			break;
 		}
 
@@ -130,6 +129,7 @@ float freq_sort(struct song song) {
 	resnum_freq = ((float)1/3)*tab_sum + ((float)68/3);
 	
 	if (debug) {
+		printf("\n");
 		printf("-> Freq debug\n");
 		printf("Low frequencies: %f\n", tab_bandes[0]);
 		printf("Mid-low frequencices: %f\n", tab_bandes[1]);

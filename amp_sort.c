@@ -10,7 +10,7 @@ float amp_sort(struct song song) {
 	float histogram[SIZE];
 	float histogram_smooth[SIZE];
 	float histogram_temp[SIZE];
-	float histogram_integ;
+	float histogram_integ = 0;
 	float moy, sd;
 	int passe;
 	int16_t* p16;
@@ -64,8 +64,8 @@ float amp_sort(struct song song) {
 		histogram_smooth[i]=fabs(histogram_smooth[i]);
 	}
 
-	for(i=0;i<=INT_SUP;++i)
-		histogram_integ+=histogram_smooth[i];
+	for(i = 0; i <= INT_SUP ;++i)
+		histogram_integ += histogram_smooth[i];
 
 
 	if(debug)
@@ -84,10 +84,10 @@ float amp_sort(struct song song) {
 //	resnum_amp = -(histogram_integ - 30.0f)/(histogram_integ + 30.0f);
 	resnum_amp = -0.2f * (float)histogram_integ + 6.0f;
 	if (debug) {
+	printf("\n");
 	printf("-> Debug amplitudes\n");
 	printf("Criterion: loud < 25 < 30 < 35 < calm\n");
 	printf("Histogram integration: %f\n", histogram_integ);
-	printf("Test: %f\n", -(histogram_integ - 30.0f)/(histogram_integ + 30.0f));
 	printf("Amplitude result: %f\n", resnum_amp);	
 	}
 

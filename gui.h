@@ -65,6 +65,10 @@ struct pref_arguments {
 * Arguments: GtkWidget *treeview: The TreeView to set up
 */
 static void setup_tree_view_renderer_play_lib(GtkWidget *);
+/**
+* Description: Sets up the treeview renderer like this: artist->album->songs
+* Arguments: struct arguments *argument: the global argument struct to pass to create_and_fill_model()
+*/
 static GtkWidget *setup_tree_view_renderer_artist(struct arguments *);
 static void continue_track(GstElement *, struct arguments *);
 static gboolean refresh_progressbar(gpointer);

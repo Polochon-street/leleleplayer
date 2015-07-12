@@ -11,7 +11,7 @@ float analyze (char *filename, struct song *current_song) {
 		current_song->force_vector.x = envelope_sort(*current_song); // Attack sort // TODO better implementation of final sort
 		current_song->force_vector.y = amp_sort(*current_song); // Amplitude sort
 		current_song->force_vector.z = freq_sort(*current_song); // Freq sort 
-		resnum = current_song->force_vector.x + current_song->force_vector.y + current_song->force_vector.z; 
+		resnum = MAX(current_song->force_vector.x, 0) + current_song->force_vector.y + current_song->force_vector.z; 
 
 		return resnum;
 		if(debug)

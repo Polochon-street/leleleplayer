@@ -249,13 +249,13 @@ void start_song(struct arguments *argument) {
 }
 
 void pause_song(struct arguments *argument) {
-	gtk_button_set_image((GtkButton*)(argument->playpause_button), gtk_image_new_from_file("./play.svg"));
+	gtk_button_set_image(GTK_BUTTON(argument->playpause_button), gtk_image_new_from_icon_name("media-playback-start-symbolic", GTK_ICON_SIZE_BUTTON));
 	gtk_list_store_set(argument->store_playlist, &(argument->iter_playlist), PLAYING, "▍▍", -1);
 	gst_element_set_state(argument->current_song.playbin, GST_STATE_PAUSED);
 }
 
 void resume_song(struct arguments *argument) {
-	gtk_button_set_image((GtkButton*)(argument->playpause_button), gtk_image_new_from_file("./pause.svg"));
+	gtk_button_set_image(GTK_BUTTON(argument->playpause_button), gtk_image_new_from_icon_name("media-playback-pause-symbolic", GTK_ICON_SIZE_BUTTON));
 	gtk_list_store_set(argument->store_playlist, &(argument->iter_playlist), PLAYING, "▶",-1);
 	gst_element_set_state(argument->current_song.playbin, GST_STATE_PLAYING);
 }
@@ -481,7 +481,7 @@ static void refresh_ui(GstBus *bus, GstMessage *msg, struct arguments *argument)
 			gtk_list_store_set(argument->store_playlist, &(temp_iter), PLAYING, "", -1);
 		}
 		while(gtk_tree_model_iter_next(model_playlist, &(temp_iter)));
-		gtk_button_set_image(GTK_BUTTON(argument->playpause_button), gtk_image_new_from_file("./pause.svg"));
+		gtk_button_set_image(GTK_BUTTON(argument->playpause_button), gtk_image_new_from_icon_name("media-playback-pause-symbolic", GTK_ICON_SIZE_BUTTON));
 		gtk_list_store_set(argument->store_playlist, &(argument->iter_playlist), PLAYING, "▶", -1);
 		gtk_tree_selection_select_iter(selection, &(argument->iter_playlist));
 		gtk_tree_view_scroll_to_cell(GTK_TREE_VIEW(argument->treeview_playlist), path, column, 1, 0.2, 1);

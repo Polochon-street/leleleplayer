@@ -49,6 +49,7 @@ struct arguments {
 	GtkTreeViewColumn *column;
 	GtkWidget *album_label, *title_label, *artist_label;
 	GtkAdjustment *adjust;
+	GtkWidget *volume_scale;
 };
 
 struct pref_arguments {
@@ -80,6 +81,8 @@ static void previous(GtkWidget *, struct arguments *);
 static void destroy(GtkWidget *, gpointer);
 static void preferences_callback(GtkMenuItem *preferences, struct pref_arguments *);
 static void state_changed(GstBus *, GstMessage *, struct arguments *);
+static void slider_changed(GtkRange *, struct arguments *);
+static void volume_scale_changed(GtkScaleButton*, struct arguments *);
 static void refresh_ui(GstBus *, GstMessage *, struct arguments *);
 static void toggle_lelele(GtkWidget *button, struct arguments *);
 static void toggle_random(GtkWidget *button, struct arguments *);
@@ -96,6 +99,7 @@ void folder_chooser(GtkWidget *, struct pref_arguments *);
 void display_library(GtkTreeView *, GtkListStore *);
 void playlist_queue(GtkTreeIter *, GtkTreeModel *, GtkTreeView *, struct arguments *);
 void get_current_playlist_song(GtkTreeView *, struct song *, struct arguments *);
+void clean_playlist(GtkTreeView *, struct arguments *);
 gboolean get_next_playlist_song(GtkTreeView *, struct song *, struct arguments *);
 gboolean get_random_playlist_song(GtkTreeView *, struct song *, struct arguments *);
 gboolean get_lelelerandom_playlist_song(GtkTreeView *, struct song *, struct arguments *);

@@ -95,11 +95,11 @@ gboolean get_next_playlist_song(GtkTreeView *treeview_playlist, struct song *son
 	GtkTreeIter tempiter;
 	model_playlist = gtk_tree_view_get_model(treeview_playlist);
 
-	if(argument->random) {
-		return get_random_playlist_song(GTK_TREE_VIEW(argument->treeview_playlist), &(argument->current_song), argument);
-	}
 	if(argument->lelelerandom) {
 		return get_lelelerandom_playlist_song(GTK_TREE_VIEW(argument->treeview_playlist), &(argument->current_song), argument);
+	}
+	else if(argument->random) {
+		return get_random_playlist_song(GTK_TREE_VIEW(argument->treeview_playlist), &(argument->current_song), argument);
 	}
 	else {
 		tempiter = argument->iter_playlist;
@@ -108,11 +108,11 @@ gboolean get_next_playlist_song(GtkTreeView *treeview_playlist, struct song *son
 			gtk_tree_model_get(model_playlist, &(argument->iter_playlist), AFILE, &song->filename, TRACKNUMBER, &song->tracknumber, TRACK, &song->title, ALBUM, &song->album,
 				ARTIST, &song->artist, FORCE, &song->force, FORCE_ENV, &song->force_vector.x, FORCE_AMP,
 				&song->force_vector.y, FORCE_FREQ, &song->force_vector.z, -1);
-
-				return TRUE;
+			return TRUE;
 		}
-		else 
+		else {
 			return FALSE;
+		}
 	}
 }
 
@@ -142,12 +142,13 @@ gboolean get_random_playlist_song(GtkTreeView *treeview_playlist, struct song *s
 			}
 		}
 	} while(found == true);
-	
+
 	//if(gtk_tree_model_iter_next(model_playlist, &(argument->iter_playlist))) {
 	gtk_tree_model_get(model_playlist, &(argument->iter_playlist), AFILE, &song->filename, TRACKNUMBER, &song->tracknumber, TRACK, &song->title, ALBUM, &song->album,
 				ARTIST, &song->artist, FORCE, &song->force, FORCE_ENV, &song->force_vector.x, FORCE_AMP,
 				&song->force_vector.y, FORCE_FREQ, &song->force_vector.z, -1);
-		/*return TRUE;
+	return TRUE;
+/*
 	}
 	else {
 		return FALSE;
@@ -161,6 +162,7 @@ gboolean get_lelelerandom_playlist_song(GtkTreeView *treeview_playlist, struct s
 		treshold += 0.05;
 		get_random_playlist_song(treeview_playlist, song, argument);
 	} while(distance(current_force, argument->current_song.force_vector) >= treshold);
+	return TRUE;
 }
 
 gboolean get_previous_playlist_song(GtkTreeView *treeview_playlist, struct song *song, struct arguments *argument) {
@@ -172,7 +174,7 @@ gboolean get_previous_playlist_song(GtkTreeView *treeview_playlist, struct song 
 	tempiter = argument->iter_playlist;*/
 	model_playlist = gtk_tree_view_get_model(treeview_playlist);
 
-	if(argument->history->next) {
+	if(argument->history && argument->history->next) {
 		gtk_tree_model_get_iter_from_string(model_playlist, &argument->iter_playlist, (gchar*)argument->history->data);
 		argument->history = g_list_remove(argument->history, argument->history->data);
 //		argument->history = g_list_remove(argument->history, argument->history->data);
@@ -180,8 +182,14 @@ gboolean get_previous_playlist_song(GtkTreeView *treeview_playlist, struct song 
 			TRACK, &song->title, ALBUM, &song->album, ARTIST, &song->artist, -1);
 		return TRUE;
 	}
-	else
+	else {
 		return FALSE;
+	}
+}
+
+void clean_playlist(GtkTreeView *treeview_playlist, struct arguments *argument) {
+	gtk_list_store_clear(argument->store_playlist);
+	argument->playlist_count = 0;	
 }
 
 static void row_activated(GtkTreeView *treeview, GtkTreePath *path, GtkTreeViewColumn *column, struct arguments *argument) {
@@ -190,7 +198,7 @@ static void row_activated(GtkTreeView *treeview, GtkTreePath *path, GtkTreeViewC
 	
 	model_library = gtk_tree_view_get_model(treeview);
 
-	gtk_list_store_clear(argument->store_playlist);
+	clean_playlist(GTK_TREE_VIEW(argument->treeview_playlist), argument);
 	if(gtk_tree_model_get_iter(model_library, &iter_library, path)) {
 		do {
 			playlist_queue(&iter_library, model_library, GTK_TREE_VIEW(argument->treeview_playlist), argument);
@@ -271,6 +279,7 @@ static void toggle_repeat(GtkWidget *button, struct arguments *argument) {
 	argument->repeat = (argument->repeat== 1 ? 0 : 1);
 }
 
+
 static void toggle_playpause_button(GtkWidget *button, struct arguments *argument) { 
 	GtkTreeSelection *selection;
 	GtkTreeModel *model;
@@ -291,12 +300,16 @@ static void toggle_playpause_button(GtkWidget *button, struct arguments *argumen
 }
 
 static void next(GtkWidget *button, struct arguments *argument) {
-	GtkTreeModel *model_playlist;	
+	GtkTreeModel *model_playlist;
 	model_playlist = gtk_tree_view_get_model(GTK_TREE_VIEW(argument->treeview_playlist));
-
-	argument->history = g_list_prepend(argument->history, gtk_tree_model_get_string_from_iter(model_playlist, &argument->iter_playlist));
-	if(get_next_playlist_song(GTK_TREE_VIEW(argument->treeview_playlist), &argument->current_song, argument))
-		start_song(argument);
+	gchar *iter_string;
+	
+	if(iter_string = gtk_tree_model_get_string_from_iter(model_playlist, &argument->iter_playlist)) {
+		argument->history = g_list_prepend(argument->history, iter_string);
+		if(get_next_playlist_song(GTK_TREE_VIEW(argument->treeview_playlist), &argument->current_song, argument)) {
+			start_song(argument);
+		}
+	}
 }
 
 static void previous(GtkWidget *button, struct arguments *argument) {
@@ -451,6 +464,7 @@ static void refresh_ui(GstBus *bus, GstMessage *msg, struct arguments *argument)
 	GtkTreeModel *model_playlist;
 	GtkTreeIter temp_iter;
 	gchar *tempfile;
+	gdouble volume;
 
 	gint64 test;
 	GstFormat fmt = GST_FORMAT_TIME;
@@ -488,6 +502,8 @@ static void refresh_ui(GstBus *bus, GstMessage *msg, struct arguments *argument)
 	gtk_adjustment_changed(argument->adjust);
 	g_signal_handler_unblock(argument->progressbar, argument->progressbar_update_signal_id);
 	refresh_progressbar(argument);
+	
+	gtk_scale_button_set_value(GTK_SCALE_BUTTON(argument->volume_scale), 0.4);
 }
 
 static gboolean refresh_progressbar(gpointer pargument) {
@@ -517,6 +533,11 @@ static void slider_changed(GtkRange *progressbar, struct arguments *argument) {
 		GST_CLOCK_TIME_NONE)) 
 		printf("Seek failed!\n");
 } 
+
+static void volume_scale_changed(GtkScaleButton* volume_scale, struct arguments *argument) {
+	float vol = pow(gtk_scale_button_get_value(volume_scale), 3);
+	g_object_set(argument->current_song.playbin, "volume", vol,NULL);
+}
 
 static GtkTreeModel *
 create_and_fill_model (struct arguments *argument)
@@ -799,10 +820,17 @@ int main(int argc, char **argv) {
 	struct pref_arguments pref_arguments;
 
 	GtkWidget *window, *treeview_library, *treeview_playlist, *treeview_artist, *library_panel, *artist_panel, *playlist_panel, *vboxv, *progressbar,
-		*playbox, *randombox, *repeat_button, *random_button, *lelele_button, *labelbox, *next_button, *previous_button, *menubar, *edit, *editmenu, 
+		*playbox, *volumebox, *randombox, *repeat_button, *random_button, *lelele_button, *labelbox, *next_button, *previous_button, *menubar, *edit, *editmenu, 
 		*preferences, *libplaypane, *libnotebook;
 	GtkTreeSortable *sortable;
 	GtkTreeIter iter;
+	const gchar *volume[5] = {
+		"audio-volume-muted-symbolic",
+		"audio-volume-high-symbolic",
+		"audio-volume-low-symbolic",
+		"audio-volume-medium-symbolic",
+		NULL
+	};
 
 	GstBus *bus;
 
@@ -862,23 +890,25 @@ int main(int argc, char **argv) {
 	gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(artist_panel), GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
 	pargument->elapsed = g_timer_new();
 	playbox = gtk_button_box_new(GTK_ORIENTATION_HORIZONTAL);
-	randombox= gtk_button_box_new(GTK_ORIENTATION_HORIZONTAL);
-	pargument->playpause_button= gtk_button_new_with_label("▶▮▮");
+	randombox = gtk_button_box_new(GTK_ORIENTATION_HORIZONTAL);
+	volumebox= gtk_button_box_new(GTK_ORIENTATION_HORIZONTAL);
+	pargument->playpause_button= gtk_button_new();
 	random_button = gtk_toggle_button_new();
-	gtk_button_set_image((GtkButton*)random_button, gtk_image_new_from_file("random.svg"));
+	gtk_button_set_image(GTK_BUTTON(random_button), gtk_image_new_from_icon_name("media-playlist-shuffle-symbolic", GTK_ICON_SIZE_BUTTON));
 	repeat_button = gtk_toggle_button_new();
-	gtk_button_set_image((GtkButton*)repeat_button , gtk_image_new_from_file("repeat.svg"));
+	gtk_button_set_image(GTK_BUTTON(repeat_button), gtk_image_new_from_icon_name("media-playlist-repeat-symbolic", GTK_ICON_SIZE_BUTTON));
 	lelele_button = gtk_toggle_button_new();
-	gtk_button_set_image((GtkButton*)lelele_button, gtk_image_new_from_file("lelelerandom.svg"));
+	gtk_button_set_image(GTK_BUTTON(lelele_button), gtk_image_new_from_file("lelelerandom.svg"));
 	next_button = gtk_button_new();
-	gtk_button_set_image((GtkButton*)next_button, gtk_image_new_from_file("next.svg"));
+	gtk_button_set_image(GTK_BUTTON(next_button), gtk_image_new_from_icon_name("media-skip-forward-symbolic", GTK_ICON_SIZE_BUTTON));
 	previous_button = gtk_button_new();
-	gtk_button_set_image((GtkButton*)previous_button, gtk_image_new_from_file("previous.svg"));
+	gtk_button_set_image(GTK_BUTTON(previous_button), gtk_image_new_from_icon_name("media-skip-backward-symbolic", GTK_ICON_SIZE_BUTTON));
 	pargument->playpause_button = gtk_button_new();
-	gtk_button_set_image((GtkButton*)pargument->playpause_button, gtk_image_new_from_file("play.svg"));
+	gtk_button_set_image(GTK_BUTTON(pargument->playpause_button), gtk_image_new_from_icon_name("media-playback-start-symbolic", GTK_ICON_SIZE_BUTTON));
 	gtk_window_set_icon_from_file(GTK_WINDOW(window), "lelele.svg", NULL);
 	pargument->adjust = (GtkAdjustment*)gtk_adjustment_new(0, 0, 100, 1, 1, 1);
 	pargument->progressbar = gtk_scale_new(GTK_ORIENTATION_HORIZONTAL, pargument->adjust);
+	pargument->volume_scale = gtk_scale_button_new(GTK_ICON_SIZE_BUTTON, 0, 1, 0.1, volume);
 	menubar = gtk_menu_bar_new();
 	edit = gtk_menu_item_new_with_label("Edit");
 	editmenu = gtk_menu_new();
@@ -907,6 +937,7 @@ int main(int argc, char **argv) {
 	g_signal_connect(G_OBJECT(pargument->current_song.playbin), "about-to-finish", G_CALLBACK(continue_track), pargument);
 	g_signal_connect(G_OBJECT(bus), "message::stream-start", G_CALLBACK(refresh_ui), pargument);
 	g_signal_connect(G_OBJECT(pargument->playpause_button), "clicked", G_CALLBACK(toggle_playpause_button), pargument);
+	g_signal_connect(G_OBJECT(pargument->volume_scale), "value-changed", G_CALLBACK(volume_scale_changed), pargument);
 	g_signal_connect(G_OBJECT(random_button), "clicked", G_CALLBACK(toggle_random), pargument);
 	g_signal_connect(G_OBJECT(repeat_button), "clicked", G_CALLBACK(toggle_repeat), pargument);
 	g_signal_connect(G_OBJECT(lelele_button), "clicked", G_CALLBACK(toggle_lelele), pargument);
@@ -948,6 +979,10 @@ int main(int argc, char **argv) {
 		gtk_button_box_set_child_non_homogeneous(GTK_BUTTON_BOX(randombox), lelele_button, TRUE);
 		gtk_button_box_set_child_non_homogeneous(GTK_BUTTON_BOX(randombox), random_button, TRUE);
 		gtk_box_set_spacing(GTK_BOX(randombox), 5);
+	gtk_box_pack_start(GTK_BOX(vboxv), volumebox, FALSE, FALSE, 1);
+		gtk_button_box_set_layout(GTK_BUTTON_BOX(volumebox), GTK_BUTTONBOX_CENTER);
+		gtk_box_pack_start(GTK_BOX(volumebox), pargument->volume_scale, FALSE, FALSE, 1);
+		gtk_button_box_set_child_non_homogeneous(GTK_BUTTON_BOX(volumebox), pargument->volume_scale, TRUE);
 	gtk_box_pack_start(GTK_BOX(vboxv), pargument->progressbar, FALSE, FALSE, 1);
 /*	gtk_box_pack_start(GTK_BOX(vboxv), libplaypane, TRUE, TRUE, 1);
 		gtk_paned_add1(GTK_PANED(libplaypane), library_panel);

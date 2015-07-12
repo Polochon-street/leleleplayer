@@ -39,11 +39,11 @@ float amp_sort(struct song song) {
 	for(i = d; i <= e; ++i) 
 		++histogram[abs(*(p16++))];
 	
-	for(i=0;i < SIZE;++i)
+	for(i = 0;i < SIZE;++i)
 		histogram_temp[i]=histogram[i];
 	histogram_count += e - d;
 
-	for(i=0;i < SIZE;++i) {
+	for(i = 0;i < SIZE;++i) {
 		histogram[i] /= histogram_count;
 		histogram[i] *= 100.;
 	}
@@ -58,7 +58,7 @@ float amp_sort(struct song song) {
 			histogram_temp[i] = histogram_smooth[i];
 	}
 
-	for(i=0;i<=SIZE;++i) {
+	for(i = 0; i < SIZE;++i) {
 		histogram_smooth[i]/=histogram_count; 
 		histogram_smooth[i]*=100.;
 		histogram_smooth[i]=fabs(histogram_smooth[i]);

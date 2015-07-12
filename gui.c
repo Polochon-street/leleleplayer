@@ -506,6 +506,10 @@ static void refresh_ui(GstBus *bus, GstMessage *msg, struct arguments *argument)
 	gtk_scale_button_set_value(GTK_SCALE_BUTTON(argument->volume_scale), 0.4);
 }
 
+static void ui_playlist_changed(GtkTreeModel *playlist_model, GtkTreePath *path, GtkTreeIter *iter, GtkNotebook *libnotebook) {
+	gtk_notebook_set_current_page(libnotebook, 2);
+}
+
 static gboolean refresh_progressbar(gpointer pargument) {
 	struct arguments *argument = (struct arguments*)pargument;
 	GstFormat fmt = GST_FORMAT_TIME;
@@ -822,6 +826,7 @@ int main(int argc, char **argv) {
 	GtkWidget *window, *treeview_library, *treeview_playlist, *treeview_artist, *library_panel, *artist_panel, *playlist_panel, *vboxv, *progressbar,
 		*playbox, *volumebox, *randombox, *repeat_button, *random_button, *lelele_button, *labelbox, *next_button, *previous_button, *menubar, *edit, *editmenu, 
 		*preferences, *libplaypane, *libnotebook;
+	GtkTreeModel *model_playlist;
 	GtkTreeSortable *sortable;
 	GtkTreeIter iter;
 	const gchar *volume[5] = {
@@ -881,6 +886,7 @@ int main(int argc, char **argv) {
 	setup_tree_view_renderer_play_lib(treeview_playlist);
 	gtk_tree_view_set_reorderable(GTK_TREE_VIEW(treeview_playlist), TRUE);
 	pargument->treeview_playlist = treeview_playlist;
+	model_playlist = gtk_tree_view_get_model(GTK_TREE_VIEW(treeview_playlist));
 
 	//treeview_artist = gtk_tree_view_new();
 	treeview_artist = setup_tree_view_renderer_artist(pargument);
@@ -945,6 +951,7 @@ int main(int argc, char **argv) {
 	g_signal_connect(G_OBJECT(previous_button), "clicked", G_CALLBACK(previous), pargument);
 	g_signal_connect(G_OBJECT(preferences), "activate", G_CALLBACK(preferences_callback), &pref_arguments);
 	g_signal_connect(G_OBJECT(treeview_library), "row-activated", G_CALLBACK(row_activated), pargument);
+	g_signal_connect(G_OBJECT(model_playlist), "row-inserted", G_CALLBACK(ui_playlist_changed), libnotebook);
 	pargument->progressbar_update_signal_id = g_signal_connect(G_OBJECT(pargument->progressbar), 
 		"value-changed", G_CALLBACK(slider_changed), pargument);
 	g_signal_connect(G_OBJECT(window), "destroy", G_CALLBACK(destroy), NULL);	

@@ -84,6 +84,7 @@ static void state_changed(GstBus *, GstMessage *, struct arguments *);
 static void slider_changed(GtkRange *, struct arguments *);
 static void volume_scale_changed(GtkScaleButton*, struct arguments *);
 static void refresh_ui(GstBus *, GstMessage *, struct arguments *);
+static void ui_playlist_changed(GtkTreeModel *, GtkTreePath *, GtkTreeIter *, GtkNotebook *);
 static void toggle_lelele(GtkWidget *button, struct arguments *);
 static void toggle_random(GtkWidget *button, struct arguments *);
 int bufferize(struct song, struct arguments *);

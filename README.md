@@ -1,6 +1,11 @@
 # leleleplayer
 Simple audio player with the main purpose of analyzing music folders in order to play relaxing songs, handy for sleeping.
 
+## Dependencies
+ffmpeg
+gstreamer-1.0 (and gst-plugins-good/bad/ugly)
+gtk3
+
 ## Installation
 
 * clone repository on github

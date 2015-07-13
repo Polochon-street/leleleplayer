@@ -32,7 +32,7 @@ float amp_sort(struct song song) {
 
 	for(d = 0; ((int16_t*)song.sample_array)[d] == 0 ;++d)
 		;
-	for(e=song.nSamples-1; ((int16_t*)song.sample_array)[e] == 0; --e)
+	for(e = song.nSamples - 1; ((int16_t*)song.sample_array)[e] == 0; --e)
 		;
 	p16 = (int16_t*)song.sample_array + d;
 

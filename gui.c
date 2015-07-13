@@ -333,14 +333,14 @@ static void analyze_thread(struct pref_folder_arguments *argument) {
 		if((resnum = analyze(line, &song)) != 0) {
 			fprintf(library, "%s\n%s\n%s\n%s\n%s\n%f\n%f\n%f\n%f\n", line, song.tracknumber, song.title, song.album, song.artist, resnum, song.force_vector.x,
 				song.force_vector.y, song.force_vector.z);
-			msg = malloc(strlen(song.title)*sizeof(char));
+			msg = g_malloc(strlen(song.title)*sizeof(char));
 			g_stpcpy(msg, song.title);
 			g_async_queue_push(msg_queue, msg);
-			song.sample_array = NULL;
 			free_song(&song);
+			song.sample_array = NULL;
 		}
 	}
-	msg = malloc(5);
+	msg = g_malloc(5);
 	g_stpcpy(msg, "end");
 	g_async_queue_push(msg_queue, msg);
 }
@@ -390,17 +390,19 @@ static void config_folder_changed(char *folder, GtkWidget *parent) {
 	g_thread_new("analyze", (GThreadFunc)analyze_thread, &argument);
 	//g_signal_connect(G_OBJECT(preferences), "activate", G_CALLBACK(preferences_callback), &pref_arguments);
 	do {
-		if(msg != NULL) {
+		if((msg != NULL) && strcmp(msg, "end")) {
 			gtk_progress_bar_set_text(GTK_PROGRESS_BAR(progressbar), msg);
 			count++;
 			gtk_progress_bar_set_fraction(GTK_PROGRESS_BAR(progressbar), (float)count/(float)nblines);
-			free(msg);
+//			g_free(msg);
 		}
 		gtk_main_iteration();
 	} while(((msg = g_async_queue_try_pop(msg_queue)) == NULL) || strcmp(msg, "end")); 
-		
+
+	g_free(msg);
 	gtk_widget_destroy(progressdialog);
 
+	g_async_queue_unref(msg_queue);
 	fclose(list);
 	g_remove("list.txt");
 	fclose(library);

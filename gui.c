@@ -932,10 +932,12 @@ int main(int argc, char **argv) {
 	pargument->playpause_button= gtk_button_new();
 	random_button = gtk_toggle_button_new();
 	gtk_button_set_image(GTK_BUTTON(random_button), gtk_image_new_from_icon_name("media-playlist-shuffle-symbolic", GTK_ICON_SIZE_BUTTON));
+	gtk_widget_set_tooltip_text(random_button, "Standard random button");
 	repeat_button = gtk_toggle_button_new();
 	gtk_button_set_image(GTK_BUTTON(repeat_button), gtk_image_new_from_icon_name("media-playlist-repeat-symbolic", GTK_ICON_SIZE_BUTTON));
 	lelele_button = gtk_toggle_button_new();
 	gtk_button_set_image(GTK_BUTTON(lelele_button), gtk_image_new_from_file("lelelerandom.svg"));
+	gtk_widget_set_tooltip_text(lelele_button, "Random smoothly over songs");
 	next_button = gtk_button_new();
 	gtk_button_set_image(GTK_BUTTON(next_button), gtk_image_new_from_icon_name("media-skip-forward-symbolic", GTK_ICON_SIZE_BUTTON));
 	previous_button = gtk_button_new();

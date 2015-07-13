@@ -60,6 +60,13 @@ struct pref_arguments {
 		GtkWidget *library_entry;
 };
 
+struct pref_folder_arguments {
+	GAsyncQueue *msg_queue;
+	char *line;
+	FILE *list;
+	FILE *library;
+};
+
 /**
 * Description: Sets up the treeview renderer with columns "playing", "tracknumber", "track",
 * "album", "artist", "force", and sizes it properly
@@ -74,12 +81,13 @@ static GtkWidget *setup_tree_view_renderer_artist(struct arguments *);
 static void continue_track(GstElement *, struct arguments *);
 static gboolean refresh_progressbar(gpointer);
 static void row_activated(GtkTreeView *, GtkTreePath *, GtkTreeViewColumn *, struct arguments *);
-static void config_folder_changed(gchar *, GtkWidget *);
 static void toggle_playpause_button(GtkWidget *, struct arguments *);
 static void next(GtkWidget *, struct arguments *);
 static void previous(GtkWidget *, struct arguments *);
 static void destroy(GtkWidget *, gpointer);
+static void config_folder_changed(char *, GtkWidget *);
 static void preferences_callback(GtkMenuItem *preferences, struct pref_arguments *);
+static void analyze_thread(struct pref_folder_arguments *);
 static void state_changed(GstBus *, GstMessage *, struct arguments *);
 static void slider_changed(GtkRange *, struct arguments *);
 static void volume_scale_changed(GtkScaleButton*, struct arguments *);

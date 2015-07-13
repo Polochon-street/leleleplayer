@@ -195,7 +195,7 @@ void clean_playlist(GtkTreeView *treeview_playlist, struct arguments *argument) 
 static void row_activated(GtkTreeView *treeview, GtkTreePath *path, GtkTreeViewColumn *column, struct arguments *argument) {
 	GtkTreeModel *model_library, *model_playlist;
 	GtkTreeIter iter_library;
-	
+
 	model_library = gtk_tree_view_get_model(treeview);
 
 	clean_playlist(GTK_TREE_VIEW(argument->treeview_playlist), argument);
@@ -318,12 +318,39 @@ static void previous(GtkWidget *button, struct arguments *argument) {
 	}
 }
 
-static void config_folder_changed (gchar *folder, GtkWidget *parent) {
+static void analyze_thread(struct pref_folder_arguments *argument) {
+	struct song song;
+	char *msg;
+	char *line = argument->line;
+	FILE *list = argument->list;
+	FILE *library = argument->library;
+	GAsyncQueue *msg_queue = argument->msg_queue;
+	float resnum;
+
+	song.sample_array = song.title = song.artist = song.album = song.tracknumber = NULL;
+	while (fgets(line, 1000, list) != NULL) {
+		line[strcspn(line, "\n")] = '\0';
+		if((resnum = analyze(line, &song)) != 0) {
+			fprintf(library, "%s\n%s\n%s\n%s\n%s\n%f\n%f\n%f\n%f\n", line, song.tracknumber, song.title, song.album, song.artist, resnum, song.force_vector.x,
+				song.force_vector.y, song.force_vector.z);
+			msg = malloc(strlen(song.title)*sizeof(char));
+			g_stpcpy(msg, song.title);
+			g_async_queue_push(msg_queue, msg);
+			song.sample_array = NULL;
+			free_song(&song);
+		}
+	}
+	msg = malloc(5);
+	g_stpcpy(msg, "end");
+	g_async_queue_push(msg_queue, msg);
+}
+
+static void config_folder_changed(char *folder, GtkWidget *parent) {
 	GtkWidget *progressbar, *progressdialog, *area;
 	progressbar = gtk_progress_bar_new();
 	progressdialog = gtk_dialog_new_with_buttons("Loading...", GTK_WINDOW(parent), 0, NULL);
 	area = gtk_dialog_get_content_area(GTK_DIALOG(progressdialog));
-	struct song song;
+	//struct song song;
 	GDir *dir = g_dir_open (folder, 0, NULL);
 	FILE *list;
 	FILE *library;
@@ -336,6 +363,9 @@ static void config_folder_changed (gchar *folder, GtkWidget *parent) {
 	ssize_t len = 0;
 	char line[1000];
 	int count = 0;
+	GAsyncQueue *msg_queue = g_async_queue_new();
+	char *msg;
+	struct pref_folder_arguments argument;
 
 	fseek(list, 0, SEEK_SET);
 
@@ -351,24 +381,24 @@ static void config_folder_changed (gchar *folder, GtkWidget *parent) {
 	gtk_progress_bar_set_show_text(GTK_PROGRESS_BAR(progressbar), 1);
 	gtk_widget_show_all(progressdialog);
 
-	song.sample_array = song.title = song.artist = song.album = song.tracknumber = NULL;
-	while (fgets(line, 1000, list) != NULL) {
-		line[strcspn(line, "\n")] = '\0';
-		if((resnum = analyze(line, &song)) != 0) {
-
-			fprintf(library, "%s\n%s\n%s\n%s\n%s\n%f\n%f\n%f\n%f\n", line, song.tracknumber, song.title, song.album, song.artist, resnum, song.force_vector.x,
-				song.force_vector.y, song.force_vector.z);
-			gtk_progress_bar_set_text(GTK_PROGRESS_BAR(progressbar), song.title);
-			free_song(&song);
-			song.sample_array = NULL;
-		}
-		count++;
-		gtk_progress_bar_set_fraction(GTK_PROGRESS_BAR(progressbar), (float)count/(float)nblines);
-
-		while(gtk_events_pending())
-			gtk_main_iteration();
-	}
+	argument.msg_queue = msg_queue;
+	argument.line = line;
+	argument.list = list;
+	argument.library = library;
+	msg = NULL;
 	
+	g_thread_new("analyze", (GThreadFunc)analyze_thread, &argument);
+	//g_signal_connect(G_OBJECT(preferences), "activate", G_CALLBACK(preferences_callback), &pref_arguments);
+	do {
+		if(msg != NULL) {
+			gtk_progress_bar_set_text(GTK_PROGRESS_BAR(progressbar), msg);
+			count++;
+			gtk_progress_bar_set_fraction(GTK_PROGRESS_BAR(progressbar), (float)count/(float)nblines);
+			free(msg);
+		}
+		gtk_main_iteration();
+	} while(((msg = g_async_queue_try_pop(msg_queue)) == NULL) || strcmp(msg, "end")); 
+		
 	gtk_widget_destroy(progressdialog);
 
 	fclose(list);
@@ -394,7 +424,7 @@ void folder_chooser(GtkWidget *button, struct pref_arguments *argument) {
 	else
 		argument->folder = NULL;
 	gtk_widget_destroy(dialog);
-	gtk_entry_set_text((GtkEntry*)argument->library_entry, argument->folder); 
+	gtk_entry_set_text((GtkEntry*)argument->library_entry, argument->folder);
 }
 	
 
@@ -436,11 +466,10 @@ static void preferences_callback(GtkMenuItem *preferences, struct pref_arguments
 	gtk_widget_show_all(dialog);
 	res = gtk_dialog_run(GTK_DIALOG(dialog));
 
-	if(argument->folder!= NULL && res == GTK_RESPONSE_ACCEPT) {
+	if(argument->folder != NULL && res == GTK_RESPONSE_ACCEPT) {
 	//	GtkFileChooser *chooser = GTK_FILE_CHOOSER(argument->chooser);
 		//folder = gtk_file_chooser_get_current_folder(dialog);
 		//gtk_entry_set_text((GtkEntry*)library_entry, gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(argument->chooser)));
-
 		config_folder_changed(argument->folder, dialog);
 		display_library(GTK_TREE_VIEW(argument->treeview), argument->store_library);
 	} 
@@ -503,7 +532,7 @@ static void refresh_ui(GstBus *bus, GstMessage *msg, struct arguments *argument)
 	g_signal_handler_unblock(argument->progressbar, argument->progressbar_update_signal_id);
 	refresh_progressbar(argument);
 	
-	gtk_scale_button_set_value(GTK_SCALE_BUTTON(argument->volume_scale), 0.4);
+	//gtk_scale_button_set_value(GTK_SCALE_BUTTON(argument->volume_scale), 0.4);
 }
 
 static void ui_playlist_changed(GtkTreeModel *playlist_model, GtkTreePath *path, GtkTreeIter *iter, GtkNotebook *libnotebook) {

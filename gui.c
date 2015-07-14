@@ -81,7 +81,7 @@ void playlist_queue(GtkTreeIter *iter_to_queue, GtkTreeModel *model_library, Gtk
 	argument->playlist_count++;
 }
 
-void get_current_playlist_song(GtkTreeView *treeview_playlist, struct song *song, struct arguments *argument) {
+void get_playlist_song(GtkTreeView *treeview_playlist, struct song *song, struct arguments *argument) {
 	GtkTreeModel *model_playlist;
 
 	model_playlist = gtk_tree_view_get_model(treeview_playlist);
@@ -159,7 +159,7 @@ gboolean get_lelelerandom_playlist_song(GtkTreeView *treeview_playlist, struct s
 	struct vector current_force = argument->current_song.force_vector;
 	float treshold = 0.45;
 	do {
-		treshold += 0.05;
+		treshold += 0.01;
 		get_random_playlist_song(treeview_playlist, song, argument);
 	} while(distance(current_force, argument->current_song.force_vector) >= treshold);
 	return TRUE;
@@ -192,7 +192,18 @@ void clean_playlist(GtkTreeView *treeview_playlist, struct arguments *argument) 
 	argument->playlist_count = 0;	
 }
 
-static void row_activated(GtkTreeView *treeview, GtkTreePath *path, GtkTreeViewColumn *column, struct arguments *argument) {
+static void playlist_row_activated(GtkTreeView *treeview, GtkTreePath *path, GtkTreeViewColumn *column, struct arguments *argument) {
+	GtkTreeModel *model_playlist = gtk_tree_view_get_model(treeview);
+
+	if(gtk_tree_model_get_iter(model_playlist, &(argument->iter_playlist), path)) {
+		get_playlist_song(GTK_TREE_VIEW(argument->treeview_playlist), &argument->current_song, argument);
+		start_song(argument);
+		argument->bartag = g_timeout_add_seconds(1, refresh_progressbar, argument);
+	}
+}
+
+
+static void lib_row_activated(GtkTreeView *treeview, GtkTreePath *path, GtkTreeViewColumn *column, struct arguments *argument) {
 	GtkTreeModel *model_library, *model_playlist;
 	GtkTreeIter iter_library;
 
@@ -204,7 +215,7 @@ static void row_activated(GtkTreeView *treeview, GtkTreePath *path, GtkTreeViewC
 			playlist_queue(&iter_library, model_library, GTK_TREE_VIEW(argument->treeview_playlist), argument);
 		} while(gtk_tree_model_iter_next(model_library, &iter_library));
 		gtk_tree_model_get_iter_first(gtk_tree_view_get_model(GTK_TREE_VIEW(argument->treeview_playlist)), &(argument->iter_playlist));
-		get_current_playlist_song(GTK_TREE_VIEW(argument->treeview_playlist), &argument->current_song, argument);
+		get_playlist_song(GTK_TREE_VIEW(argument->treeview_playlist), &argument->current_song, argument);
 	
 		start_song(argument);
 		argument->bartag = g_timeout_add_seconds(1, refresh_progressbar, argument);
@@ -217,9 +228,10 @@ static void continue_track(GstElement *playbin, struct arguments *argument) {
 	model_playlist = gtk_tree_view_get_model(GTK_TREE_VIEW(argument->treeview_playlist));
 	
 	argument->history = g_list_prepend(argument->history, gtk_tree_model_get_string_from_iter(model_playlist, &argument->iter_playlist));
-	free_song(&argument->current_song); 
-	if(!argument->repeat)
+	if(!argument->repeat) {
+		free_song(&argument->current_song); 
 		get_next_playlist_song(GTK_TREE_VIEW(argument->treeview_playlist), &argument->current_song, argument);
+	}
 	queue_song(argument);
 }
 
@@ -292,7 +304,7 @@ static void toggle_playpause_button(GtkWidget *button, struct arguments *argumen
 		if(gtk_tree_selection_get_selected(selection, &model, &iter)) {
 			path = gtk_tree_model_get_path(model, &iter);
 
-			row_activated(GTK_TREE_VIEW(argument->treeview_library), path, NULL,argument);
+			lib_row_activated(GTK_TREE_VIEW(argument->treeview_library), path, NULL,argument);
 		}		
 	}
 	else
@@ -983,7 +995,8 @@ int main(int argc, char **argv) {
 	g_signal_connect(G_OBJECT(next_button), "clicked", G_CALLBACK(next), pargument);
 	g_signal_connect(G_OBJECT(previous_button), "clicked", G_CALLBACK(previous), pargument);
 	g_signal_connect(G_OBJECT(preferences), "activate", G_CALLBACK(preferences_callback), &pref_arguments);
-	g_signal_connect(G_OBJECT(treeview_library), "row-activated", G_CALLBACK(row_activated), pargument);
+	g_signal_connect(G_OBJECT(treeview_library), "row-activated", G_CALLBACK(lib_row_activated), pargument);
+	g_signal_connect(G_OBJECT(treeview_playlist), "row-activated", G_CALLBACK(playlist_row_activated), pargument);
 	g_signal_connect(G_OBJECT(model_playlist), "row-inserted", G_CALLBACK(ui_playlist_changed), libnotebook);
 	pargument->progressbar_update_signal_id = g_signal_connect(G_OBJECT(pargument->progressbar), 
 		"value-changed", G_CALLBACK(slider_changed), pargument);

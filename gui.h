@@ -78,9 +78,15 @@ static void setup_tree_view_renderer_play_lib(GtkWidget *);
 * Arguments: struct arguments *argument: the global argument struct to pass to create_and_fill_model()
 */
 static GtkWidget *setup_tree_view_renderer_artist(struct arguments *);
+/**
+* Description: Queue next playlist song, and don't play it immediately: useful for gapless
+* Arguments: struct arguments *argument: the global argument struct containing iters
+* Arguments: GstElement *playbin: the playbin where the song is queued
+*/
 static void continue_track(GstElement *, struct arguments *);
 static gboolean refresh_progressbar(gpointer);
-static void row_activated(GtkTreeView *, GtkTreePath *, GtkTreeViewColumn *, struct arguments *);
+static void lib_row_activated(GtkTreeView *, GtkTreePath *, GtkTreeViewColumn *, struct arguments *);
+static void playlist_row_activated(GtkTreeView *, GtkTreePath *, GtkTreeViewColumn *, struct arguments *);
 static void toggle_playpause_button(GtkWidget *, struct arguments *);
 static void next(GtkWidget *, struct arguments *);
 static void previous(GtkWidget *, struct arguments *);
@@ -107,7 +113,7 @@ void explore(GDir *dir, char *folder, FILE *list);
 void folder_chooser(GtkWidget *, struct pref_arguments *);
 void display_library(GtkTreeView *, GtkListStore *);
 void playlist_queue(GtkTreeIter *, GtkTreeModel *, GtkTreeView *, struct arguments *);
-void get_current_playlist_song(GtkTreeView *, struct song *, struct arguments *);
+void get_playlist_song(GtkTreeView *, struct song *, struct arguments *);
 void clean_playlist(GtkTreeView *, struct arguments *);
 gboolean get_next_playlist_song(GtkTreeView *, struct song *, struct arguments *);
 gboolean get_random_playlist_song(GtkTreeView *, struct song *, struct arguments *);

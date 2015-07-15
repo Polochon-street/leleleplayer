@@ -93,7 +93,7 @@ int audio_decode(const char *filename, struct song *song) { // decode the track
 		strcpy(song->artist, av_dict_get(pFormatCtx->metadata, "ARTIST", NULL, AV_DICT_IGNORE_SUFFIX)->value);
 	}
 	else {
-		song->artist= malloc(11*sizeof(char));
+		song->artist= malloc(12*sizeof(char));
 		strcpy(song->artist, "<no artist>");
 	}
 	if(av_dict_get(pFormatCtx->metadata, "ALBUM", NULL, AV_DICT_IGNORE_SUFFIX) != NULL) {

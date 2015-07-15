@@ -14,7 +14,7 @@ float freq_sort(struct song song) {
 	float hann_window[WIN_SIZE];
 	int Samples;
 	FFTSample *spectre_moy;
-	float tab_bandes[4];
+	float tab_bandes[5];
 	float tab_sum;
 	int nFrames;
 	int d, iFrame;
@@ -25,12 +25,8 @@ float freq_sort(struct song song) {
 	float pas_freq;
 	FILE *file1;
 	FILE *file2;
-	FILE *file3;
 	
 	if (debug) {
-		file1 = fopen("file_freq1.txt", "w");
-		file2 = fopen("file_freq2.txt", "w");
-		file3 = fopen("yolo.raw", "w");
 	}
 
 	float peak;
@@ -42,15 +38,14 @@ float freq_sort(struct song song) {
 
 	spectre_moy = (FFTSample*)av_malloc((WIN_SIZE*sizeof(FFTSample)));
 
-	for(i=0;i<=WIN_SIZE/2;++i)
+	for(i = 0; i <= WIN_SIZE/2; ++i)
 		spectre_moy[i] = 0.0f;
 
-	for(i=0;i<11;++i)
+	for(i = 0; i < 5;++i)
 		tab_bandes[i] = 0.0f;
 	
 	Samples = song.nSamples;
 	Samples /= song.channels; // Only one channel
-
 
 	if(Samples%WIN_SIZE > 0)
 		Samples -= Samples%WIN_SIZE;
@@ -96,25 +91,28 @@ float freq_sort(struct song song) {
 
 	pas_freq = song.sample_rate/WIN_SIZE;
 
-	if (debug)
+	if (debug) {
+		file1 = fopen("file_freq1.txt", "w");
+		file2 = fopen("file_freq2.txt", "w");
 		for(d=1;d<WIN_SIZE/2;++d) {
 			freq += pas_freq;
-			fprintf(file1, "%d\n", freq);
+			fprintf(file1, "%f\n", freq);
 			fprintf(file2, "%f\n", spectre_moy[d]);
 			break;
 		}
+	}
 
 	tab_bandes[0] = (spectre_moy[1]+spectre_moy[2])/2;
 	tab_bandes[1] = (spectre_moy[3]+spectre_moy[4])/2;
-	for(i=5;i<=30;++i)
-		tab_bandes[2]+=spectre_moy[i];
-	tab_bandes[2]/=(29-4);
-	for(i=31;i<=59;++i)
-		tab_bandes[3]+=spectre_moy[i];
-	tab_bandes[3]/=(58-30);
-	for(i=60;i<=117;++i)
-		tab_bandes[4]+=spectre_moy[i];
-	tab_bandes[4]/=(116-59);
+	for(i = 5; i <= 30; ++i)
+		tab_bandes[2] += spectre_moy[i];
+	tab_bandes[2] /= (29 - 4);
+	for(i = 31; i <= 59; ++i)
+		tab_bandes[3] += spectre_moy[i];
+	tab_bandes[3] /= (58-30);
+	for(i = 60; i <= 117; ++i)
+		tab_bandes[4] += spectre_moy[i];
+	tab_bandes[4] /= (116 - 59);
 	tab_sum = tab_bandes[4] + tab_bandes[3] + tab_bandes[2] - tab_bandes[0] - tab_bandes[1];
 
 	if (tab_sum > -66.1)

@@ -1,10 +1,6 @@
 #include "analyze.h"
 
 float analyze (char *filename, struct song *current_song) {
-	float resnum_freq;
-	float resnum_amp;
-	float resnum_env;
-	int i, d;
 	float resnum;
 
 	if(audio_decode(filename, current_song) == 0) { // Decode audio track

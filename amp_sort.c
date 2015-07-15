@@ -5,30 +5,29 @@
 #define max( a, b ) ( ((a) > (b)) ? (a) : (b) )
 
 float amp_sort(struct song song) {
-	int i, d, e, g;
+	int i, d = 0, e, g;
 	int histogram_count;
 	float histogram[SIZE];
 	float histogram_smooth[SIZE];
 	float histogram_temp[SIZE];
 	float histogram_integ = 0;
-	float moy, sd;
 	int passe;
 	int16_t* p16;
 	FILE *file_amp;
 	float resnum_amp = 0;
 	
-	for(i=0;i<SIZE;++i)
+	for(i = 0; i < SIZE;++i)
 		histogram[i] = '\0';
-	for(i=0;i<=SIZE;++i)
+	for(i = 0; i < SIZE;++i)
 		histogram_smooth[i] = '\0';
-	for(i=0;i<=SIZE;++i)
+	for(i = 0; i < SIZE;++i)
 		histogram_temp[i] = '\0';
 
 	passe = 300;
 	histogram_count= 0;
 
 	if (debug)
-		file_amp = fopen("file_amp.txt", "w");
+
 
 	for(d = 0; ((int16_t*)song.sample_array)[d] == 0 ;++d)
 		;
@@ -68,9 +67,11 @@ float amp_sort(struct song song) {
 		histogram_integ += histogram_smooth[i];
 
 
-	if(debug)
+	if(debug) {
+		file_amp = fopen("file_amp.txt", "w");
 		for(i=0;i<SIZE;++i)
-		fprintf(file_amp, "%d\n", ((int16_t*)song.sample_array)[i]);
+			fprintf(file_amp, "%d\n", ((int16_t*)song.sample_array)[i]);
+	}
 
 	/*if (histogram_integ < 25)
 		resnum_amp = 2;

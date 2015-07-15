@@ -12,8 +12,6 @@ float envelope_sort(struct song song) {
 	int precision = 350;
 	int freq_size = WIN_SIZE/2;
 	//uint64_t sample_max = pow(2, 8*song.nb_bytes_per_sample-1);
-	FFTSample sample_max = 0;
-	float period_sample_max = 0;
 //	float decr_speed = (float)((int)sample_max) / ((1.0f/1.34f)*(float)song.sample_rate);
 	float decr_speed = 1/((float)song.sample_rate*0.45); // Make the envelope converge to zero in 0.45s
 	//float decr_speed = (float)((int)sample_max) / ((1.0f/1.0f)*(float)song.sample_rate);
@@ -21,10 +19,10 @@ float envelope_sort(struct song song) {
 	float delta_freq = (float)song.sample_rate/((float)precision*freq_size);
 	FILE *file_env;
 	size_t rbuf_head = 0;
-	int16_t ringbuf[precision*2];
-	int16_t d_envelope;
-	int16_t enveloppe;
-	int64_t atk = 0;
+//	int16_t ringbuf[precision*2];
+//	int16_t d_envelope;
+//	int16_t enveloppe;
+//	int64_t atk = 0;
 	float final = 0;
 	float env, env_prev = 0;
 	size_t i, d;
@@ -52,7 +50,7 @@ float envelope_sort(struct song song) {
 	//	env = MAX(env_prev - 0.00005*env_prev, abs(((int16_t*)song.sample_array)[i]));
 		env = MAX(env_prev - decr_speed*env_prev, (float)(abs(((int16_t*)song.sample_array)[i])));
 		env_prev = env;
-		ringbuf[rbuf_head] = (int16_t)env;
+		//ringbuf[rbuf_head] = (int16_t)env;
 
 		if(i >= precision && i % precision == 0) {
 		//	d_envelope = ringbuf[rbuf_head] - ringbuf[(rbuf_head + 1) % (precision*2)];

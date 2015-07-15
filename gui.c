@@ -749,71 +749,42 @@ void display_library(GtkTreeView *treeview, GtkListStore *store) {
 		while(fgets(tempfile, 1000, library) != NULL) {
 			tempfile[strcspn(tempfile, "\n")] = '\0';
 
-			if(fgets(temptracknumber, 1000, library))
-				temptracknumber[strcspn(temptracknumber, "\n")] = '\0';
-			else {
-				printf("Wrong config file format\n");
-				return;
-			}
+			if(!fgets(temptracknumber, 1000, library))
+				goto error;
+			temptracknumber[strcspn(temptracknumber, "\n")] = '\0';
 
-			if(fgets(temptrack, 1000, library))
-				temptrack[strcspn(temptrack, "\n")] = '\0';
-			else {
-				printf("Wrong config file format\n");
-				return;
-			}
+			if(!fgets(temptrack, 1000, library))
+				goto error;
+			temptrack[strcspn(temptrack, "\n")] = '\0';
 
-			if(fgets(tempalbum, 1000, library))
-				tempalbum[strcspn(tempalbum, "\n")] = '\0';
-			else {
-				printf("Wrong config file format\n");
-				return;
-			}
+			if(!fgets(tempalbum, 1000, library))
+				goto error;
+			tempalbum[strcspn(tempalbum, "\n")] = '\0';
 
-			if(fgets(tempartist, 1000, library))
-				tempartist[strcspn(tempartist, "\n")] = '\0';
-			else {
-				printf("Wrong config file format\n");
-				return;
-			}
+			if(!fgets(tempartist, 1000, library))
+				goto error;
+			tempartist[strcspn(tempartist, "\n")] = '\0';
 
-			if(fgets(tempforce, 1000, library)) {
-				tempforce[strcspn(tempforce, "\n")] = '\0';
-				tempforcef = atof(tempforce);
-			}
-			else {
-				printf("Wrong config file format\n");
-				return;
-			}
+			if(!fgets(tempforce, 1000, library)) 
+				goto error;
+			tempforce[strcspn(tempforce, "\n")] = '\0';
+			tempforcef = atof(tempforce);
 
-			if(fgets(tempforce_env, 1000, library)) {
-				tempforce_env[strcspn(tempforce_env, "\n")] = '\0';
-				tempforce_envf = atof(tempforce_env);
-			}
-			else {
-				printf("Wrong config file format\n");
-				return;
-			}
+			if(!fgets(tempforce_env, 1000, library))
+				goto error;
+			tempforce_env[strcspn(tempforce_env, "\n")] = '\0';
+			tempforce_envf = atof(tempforce_env);
 
 
-			if(fgets(tempforce_amp, 1000, library)) {
-				tempforce_amp[strcspn(tempforce_amp, "\n")] = '\0';
-				tempforce_ampf = atof(tempforce_amp);
-			}
-			else {
-				printf("Wrong config file format\n");
-				return;
-			}
+			if(!fgets(tempforce_amp, 1000, library))
+				goto error;
+			tempforce_amp[strcspn(tempforce_amp, "\n")] = '\0';
+			tempforce_ampf = atof(tempforce_amp);
 
-			if(fgets(tempforce_freq, 1000, library)) {
-				tempforce_freq[strcspn(tempforce_freq, "\n")] = '\0';
-				tempforce_freqf = atof(tempforce_freq);
-			}
-			else {
-				printf("Wrong config file format\n");
-				return;
-			}
-	
+			if(!fgets(tempforce_freq, 1000, library)) 
+				goto error;
+			tempforce_freq[strcspn(tempforce_freq, "\n")] = '\0';
+			tempforce_freqf = atof(tempforce_freq);
 
 			if(atof(tempforce) > 0)
 				strcpy(tempforce, "Loud");
@@ -826,6 +797,11 @@ void display_library(GtkTreeView *treeview, GtkListStore *store) {
 			gtk_list_store_set(store, &iter, PLAYING, "", TRACKNUMBER, temptracknumber, TRACK, temptrack, ALBUM, tempalbum, ARTIST, tempartist, FORCE, tempforcef, FORCE_ENV, tempforce_envf, FORCE_AMP, tempforce_ampf, FORCE_FREQ, tempforce_freqf, TEXTFORCE, tempforce, AFILE, tempfile, -1);
 		}
 	}
+	return;
+	error:
+		printf("Wrong config file format\n");
+		printf("%s\n", temptrack);
+		return;
 }
 
 gint sort_iter_compare_func(GtkTreeModel *model, GtkTreeIter *a, GtkTreeIter *b, gpointer userdata) {

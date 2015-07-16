@@ -244,6 +244,7 @@ void queue_song(struct arguments *argument) {
 void start_song(struct arguments *argument) {
 	char *uri;
 
+	gtk_widget_set_sensitive(argument->progressbar, TRUE);
 	uri = g_filename_to_uri(argument->current_song.filename, NULL, NULL);
 
 	gst_element_set_state(argument->current_song.playbin, GST_STATE_NULL);
@@ -955,6 +956,7 @@ int main(int argc, char **argv) {
 	edit = gtk_menu_item_new_with_label("Edit");
 	editmenu = gtk_menu_new();
 	gtk_scale_set_draw_value((GtkScale*)pargument->progressbar, FALSE);
+	gtk_widget_set_sensitive(pargument->progressbar, FALSE);
 	vboxv = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
 	labelbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
 	pargument->title_label = gtk_label_new("");

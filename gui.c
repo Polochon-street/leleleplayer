@@ -536,7 +536,6 @@ static void refresh_ui(GstBus *bus, GstMessage *msg, struct arguments *argument)
 	g_signal_handler_unblock(argument->progressbar, argument->progressbar_update_signal_id);
 	refresh_progressbar(argument);
 	
-	//gtk_scale_button_set_value(GTK_SCALE_BUTTON(argument->volume_scale), 0.4);
 }
 
 static void ui_playlist_changed(GtkTreeModel *playlist_model, GtkTreePath *path, GtkTreeIter *iter, GtkNotebook *libnotebook) {
@@ -1037,6 +1036,7 @@ int main(int argc, char **argv) {
 		gtk_notebook_append_page(GTK_NOTEBOOK(libnotebook), artist_panel, gtk_label_new("Artists"));
 		gtk_notebook_append_page(GTK_NOTEBOOK(libnotebook), playlist_panel, gtk_label_new("Playlist"));
 
+	gtk_scale_button_set_value(GTK_SCALE_BUTTON(pargument->volume_scale), 0.4);
 	gtk_container_add(GTK_CONTAINER(window), vboxv);
 
 	/* temporary */

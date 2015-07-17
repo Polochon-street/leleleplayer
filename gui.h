@@ -94,6 +94,13 @@ static void setup_tree_view_renderer_artist(GtkWidget *, GtkTreeStore *, GtkTree
 * Arguments: GstElement *playbin: the playbin where the song is queued
 */
 static void continue_track(GstElement *, struct arguments *);
+/**
+* Description: Refresh the GtkScale progress bar (the song progress bar)
+* Arguments: struct arguments *argument: the global argument struct containing:
+* -the song state
+* -the progressbar widget
+* -the playbin, in order to get the time elapsed in the song
+*/
 static gboolean refresh_progressbar(gpointer);
 static void lib_row_activated(GtkTreeView *, GtkTreePath *, GtkTreeViewColumn *, struct arguments *);
 static void playlist_row_activated(GtkTreeView *, GtkTreePath *, GtkTreeViewColumn *, struct arguments *);

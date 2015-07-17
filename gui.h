@@ -9,6 +9,11 @@
 #include <glib.h>
 
 enum {
+	COLUMN_ARTIST = 0,
+	NUM_COLS_ARTIST
+};
+
+enum {
 	PLAYING = 0,
 	TRACKNUMBER,
 	TRACK,
@@ -36,6 +41,7 @@ struct arguments {
 	GTimer *elapsed;
 	GList *history;
 	GtkWidget *treeview_library;
+	GtkWidget *treeview_artist;
 	GtkWidget *progressbar;
 	GtkWidget *treeview_playlist;
 	GtkWidget *playpause_button;
@@ -44,8 +50,10 @@ struct arguments {
 	GtkTreePath *path;
 	GtkTreeIter iter_playlist;
 	GtkTreeIter iter_library;
+	GtkTreeIter iter_artist;
 	GtkListStore *store_library;
 	GtkListStore *store_playlist;
+	GtkTreeStore *store_artist;
 	GtkTreeViewColumn *column;
 	GtkWidget *album_label, *title_label, *artist_label;
 	GtkAdjustment *adjust;
@@ -75,9 +83,11 @@ struct pref_folder_arguments {
 static void setup_tree_view_renderer_play_lib(GtkWidget *);
 /**
 * Description: Sets up the treeview renderer like this: artist->album->songs
-* Arguments: struct arguments *argument: the global argument struct to pass to create_and_fill_model()
+* Arguments: GtkWidget *treeview: the TreeView to set up
+* Arguments: GtkTreeStore *treestore: the treestore associated with the TreeView
+* Arguments: GtkTreeModel *model_library: the model associated with the library treeview (NOT the artist treeview)
 */
-static GtkWidget *setup_tree_view_renderer_artist(struct arguments *);
+static void setup_tree_view_renderer_artist(GtkWidget *, GtkTreeStore *, GtkTreeModel *);
 /**
 * Description: Queue next playlist song, and don't play it immediately: useful for gapless
 * Arguments: struct arguments *argument: the global argument struct containing iters
@@ -87,6 +97,7 @@ static void continue_track(GstElement *, struct arguments *);
 static gboolean refresh_progressbar(gpointer);
 static void lib_row_activated(GtkTreeView *, GtkTreePath *, GtkTreeViewColumn *, struct arguments *);
 static void playlist_row_activated(GtkTreeView *, GtkTreePath *, GtkTreeViewColumn *, struct arguments *);
+static void artist_row_activated(GtkTreeView *, GtkTreePath *, GtkTreeViewColumn *, struct arguments *);
 static void toggle_playpause_button(GtkWidget *, struct arguments *);
 static void next(GtkWidget *, struct arguments *);
 static void previous(GtkWidget *, struct arguments *);

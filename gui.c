@@ -1,12 +1,6 @@
 #include <stdio.h>
 #include "gui.h"
 
-enum
-{
-  COLUMN = 0,
-  NUM_COLS
-} ;
-
 float distance(struct vector v1, struct vector v2) {
 	float distance;
 	distance = sqrt((v1.x - v2.x)*(v1.x - v2.x) + (v1.y - v2.y)*(v1.y - v2.y) +
@@ -184,6 +178,74 @@ void clean_playlist(GtkTreeView *treeview_playlist, struct arguments *argument) 
 	argument->playlist_count = 0;	
 }
 
+static void artist_row_activated(GtkTreeView *treeview, GtkTreePath *path, GtkTreeViewColumn *column, struct arguments *argument) {
+	GtkTreeModel *model_artist = gtk_tree_view_get_model(treeview);
+	GtkTreeModel *model_library = gtk_tree_view_get_model(GTK_TREE_VIEW(argument->treeview_library));
+	GtkTreeModel *model_playlist = gtk_tree_view_get_model(GTK_TREE_VIEW(argument->treeview_playlist));
+	gchar *songtitle;
+	gchar *songalbum;
+	gchar *temptitle;
+	gchar *tempalbum;
+	GtkTreeIter lib_iter;
+	gboolean valid;
+
+	if(gtk_tree_model_get_iter(model_artist, &(argument->iter_artist), path)) {
+		//get_playlist_song(GTK_TREE_VIEW(argument->treeview_artist), &argument->current_song, argument);
+		gtk_tree_model_get(model_artist, &(argument->iter_artist), 0, &songtitle, -1);
+		gtk_tree_path_up(path);
+		gtk_tree_model_get_iter(model_artist, &(argument->iter_artist), path);
+		gtk_tree_model_get(model_artist, &(argument->iter_artist), 0, &songalbum, -1);
+		songtitle = strstr(songtitle, "  ") + 2;
+
+		valid = gtk_tree_model_get_iter_first(model_library, &lib_iter);
+		while(valid) {
+			gtk_tree_model_get(model_library, &lib_iter, TRACK, &temptitle, ALBUM, &tempalbum, -1);
+		
+   			if((!strcmp(temptitle, songtitle)) && (!strcmp(tempalbum, songalbum)))
+				break;
+			valid = gtk_tree_model_iter_next (model_library,
+                                    &lib_iter);
+		}
+		struct song csong;
+		struct song *song = &csong;
+		gtk_tree_model_get(model_library, &(lib_iter), AFILE, &song->filename, TRACKNUMBER, &song->tracknumber, TRACK, &song->title, ALBUM, &song->album,
+		ARTIST, &song->artist, FORCE, &song->force, FORCE_ENV, &song->force_vector.x, FORCE_AMP,
+		&song->force_vector.y, FORCE_FREQ, &song->force_vector.z, -1);
+		
+		valid = gtk_tree_model_get_iter_first(model_library, &lib_iter);
+		while(valid) {
+			gtk_tree_model_get(model_library, &lib_iter, TRACK, &temptitle, ALBUM, &tempalbum, -1);
+		
+   			if((!strcmp(tempalbum, songalbum))) {
+				playlist_queue(&lib_iter, model_library, GTK_TREE_VIEW(argument->treeview_playlist), argument);
+			}
+			valid = gtk_tree_model_iter_next (model_library,
+                                    &lib_iter);
+		}
+
+		valid = gtk_tree_model_get_iter_first(model_playlist, &argument->iter_playlist);
+		while(valid) {
+			gtk_tree_model_get(model_playlist, &(argument->iter_playlist), TRACK, &temptitle, ALBUM, &tempalbum, -1);
+
+   			if((!strcmp(temptitle, songtitle))) {
+				get_playlist_song(GTK_TREE_VIEW(argument->treeview_playlist), &argument->current_song, argument);
+				break;
+			}
+			valid = gtk_tree_model_iter_next (model_playlist,
+                                    &argument->iter_playlist);
+		}
+
+		start_song(argument);
+	if(argument->bartag)
+			g_source_remove(argument->bartag);
+		argument->bartag = g_timeout_add_seconds(1, refresh_progressbar, argument);
+
+	//		start_song(argument);
+//		if(argument->bartag)
+//			g_source_remove(argument->bartag);
+//		argument->bartag = g_timeout_add_seconds(1, refresh_progressbar, argument);
+	}
+}
 static void playlist_row_activated(GtkTreeView *treeview, GtkTreePath *path, GtkTreeViewColumn *column, struct arguments *argument) {
 	GtkTreeModel *model_playlist = gtk_tree_view_get_model(treeview);
 
@@ -399,7 +461,6 @@ static void config_folder_changed(char *folder, GtkWidget *parent) {
 			gtk_progress_bar_set_text(GTK_PROGRESS_BAR(progressbar), msg);
 			count++;
 			gtk_progress_bar_set_fraction(GTK_PROGRESS_BAR(progressbar), (float)count/(float)nblines);
-			printf("%s\n", msg);
 //			g_free(msg);
 		}
 		gtk_main_iteration();
@@ -575,31 +636,30 @@ static void volume_scale_changed(GtkScaleButton* volume_scale, struct arguments 
 	g_object_set(argument->current_song.playbin, "volume", vol,NULL);
 }
 
-static GtkTreeModel *
-create_and_fill_model (struct arguments *argument)
-{
-  GtkTreeStore *treestore;
-  GtkTreeIter toplevel, child, lowlevel, tempiter_artist;
-	GtkTreeModel *model_library;
+static void setup_tree_view_renderer_artist(GtkWidget *treeview, GtkTreeStore *treestore, GtkTreeModel *model_library) {
+	GtkCellRenderer *renderer;
+	GtkTreeViewColumn *column;
+
+	renderer = gtk_cell_renderer_text_new();
+	column = gtk_tree_view_column_new_with_attributes("Artist", renderer, "text", COLUMN_ARTIST, NULL);
+	gtk_tree_view_append_column(GTK_TREE_VIEW(treeview), column);
+	g_object_set(renderer, "size", 13*PANGO_SCALE, NULL);
+	
+	GtkTreeIter toplevel, child, lowlevel, tempiter_artist;
 	gchar *tempartist1, *tempartist2;
 	gchar *tempalbum1, *tempalbum2;
-	gchar *temptrack1, *temptrack2;
+	gchar *temptrack;
+	gchar *temptracknumber;
 
- treestore = gtk_tree_store_new(NUM_COLS,
-                  G_TYPE_STRING);
-	GtkTreeSortable *sortable;
-	sortable = GTK_TREE_SORTABLE(argument->store_library);
-			gtk_tree_sortable_set_sort_column_id(sortable, ARTIST, GTK_SORT_ASCENDING);
+	tempartist1 = tempartist2 = tempalbum1 = tempalbum2 = temptrack = temptracknumber = NULL;
 
-	tempartist1 = tempartist2 = tempalbum1 = tempalbum2 = temptrack1 = temptrack2 = NULL;
-	model_library = gtk_tree_view_get_model(GTK_TREE_VIEW(argument->treeview_library));
 	if(gtk_tree_model_get_iter_first(model_library, &tempiter_artist)) {
 		do {
 			gtk_tree_model_get(model_library, &tempiter_artist, ARTIST, &tempartist1, -1);
 			if(g_strcmp0(tempartist1, tempartist2)) {
 			 	gtk_tree_store_append(treestore, &toplevel, NULL);
   				gtk_tree_store_set(treestore, &toplevel,
-                     COLUMN, tempartist1,
+                     COLUMN_ARTIST, tempartist1,
                      -1);
 			
 				gtk_tree_model_get(model_library, &tempiter_artist, ARTIST, &tempartist2, -1);
@@ -608,69 +668,21 @@ create_and_fill_model (struct arguments *argument)
 			if(g_strcmp0(tempalbum1, tempalbum2)) {
 				gtk_tree_store_append(treestore, &child, &toplevel);
   				gtk_tree_store_set(treestore, &child,
-                  	COLUMN, tempalbum1,
+                  	COLUMN_ARTIST, tempalbum1,
                     -1);
 					gtk_tree_model_get(model_library, &tempiter_artist, ALBUM, &tempalbum2, -1);
-				}
-			gtk_tree_model_get(model_library, &tempiter_artist, TRACK, &temptrack1, -1);
+			}
+			gtk_tree_model_get(model_library, &tempiter_artist, TRACK, &temptrack, -1);
+			gtk_tree_model_get(model_library, &tempiter_artist, TRACKNUMBER, &temptracknumber, -1);
+				gchar *song = g_strconcat(temptracknumber, "  ", temptrack, NULL);
 				gtk_tree_store_append(treestore, &lowlevel, &child);
   					gtk_tree_store_set(treestore, &lowlevel,
-                    	COLUMN, temptrack1,
+                    	COLUMN_ARTIST, song,
                     -1);
+			g_free(song);
 			
 		} while(gtk_tree_model_iter_next(model_library, &tempiter_artist));
 	}
-
-  /*
-  gtk_tree_store_append(treestore, &child, &toplevel);
-  gtk_tree_store_set(treestore, &child,
-                     COLUMN, "PHP",
-                     -1);
-
-  gtk_tree_store_append(treestore, &toplevel, NULL);
-  gtk_tree_store_set(treestore, &toplevel,
-                     COLUMN, "Compiled languages",
-                     -1);
-
-  gtk_tree_store_append(treestore, &child, &toplevel);
-  gtk_tree_store_set(treestore, &child,
-                     COLUMN, "C",
-                     -1);
-
-  gtk_tree_store_append(treestore, &child, &toplevel);
-  gtk_tree_store_set(treestore, &child,
-                     COLUMN, "C++",
-                     -1);
-
-  gtk_tree_store_append(treestore, &child, &toplevel);
-  gtk_tree_store_set(treestore, &child,
-                     COLUMN, "Java",
-                     -1); */
-
-  return GTK_TREE_MODEL(treestore);
-}
-
-static GtkWidget *setup_tree_view_renderer_artist(struct arguments *argument) {
-  GtkTreeViewColumn *col;
-  GtkCellRenderer *renderer;
-  GtkWidget *view;
-  GtkTreeModel *model;
-
-  view = gtk_tree_view_new();
-
-  col = gtk_tree_view_column_new();
-  //gtk_tree_view_column_set_title(col, "Programming languages");
-  gtk_tree_view_append_column(GTK_TREE_VIEW(view), col);
-
-  renderer = gtk_cell_renderer_text_new();
-  gtk_tree_view_column_pack_start(col, renderer, TRUE);
-  gtk_tree_view_column_add_attribute(col, renderer, 
-      "text", COLUMN);
-
-  model = create_and_fill_model(argument);
-  gtk_tree_view_set_model(GTK_TREE_VIEW(view), model);
-  g_object_unref(model);
-	return view;
 }
 
 static void setup_tree_view_renderer_play_lib(GtkWidget *treeview) {
@@ -862,6 +874,7 @@ int main(int argc, char **argv) {
 		*playbox, *volumebox, *randombox, *repeat_button, *random_button, *lelele_button, *labelbox, *next_button, *previous_button, *menubar, *edit, *editmenu, 
 		*preferences, *libnotebook;
 	GtkTreeModel *model_playlist;
+	GtkTreeModel *model_library;
 	GtkTreeSortable *sortable;
 	const gchar *volume[5] = {
 		"audio-volume-muted-symbolic",
@@ -913,10 +926,10 @@ int main(int argc, char **argv) {
 	setup_tree_view_renderer_play_lib(treeview_library);	
 	pargument->treeview_library = treeview_library;
 	display_library(GTK_TREE_VIEW(treeview_library), pargument->store_library);
-	
+	model_library = gtk_tree_view_get_model(GTK_TREE_VIEW(treeview_library));
+
 	//pargument->store_playlist = gtk_list_store_new(COLUMNS, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_FLOAT, G_TYPE_STRING, G_TYPE_STRING);
 	pargument->store_playlist = gtk_list_store_new(COLUMNS, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_FLOAT, G_TYPE_FLOAT, G_TYPE_FLOAT, G_TYPE_FLOAT, G_TYPE_STRING, G_TYPE_STRING);
-	treeview_playlist = gtk_tree_view_new();
 	treeview_playlist = gtk_tree_view_new_with_model(GTK_TREE_MODEL(pargument->store_playlist));
 	setup_tree_view_renderer_play_lib(treeview_playlist);
 	gtk_tree_view_set_reorderable(GTK_TREE_VIEW(treeview_playlist), TRUE);
@@ -924,7 +937,11 @@ int main(int argc, char **argv) {
 	model_playlist = gtk_tree_view_get_model(GTK_TREE_VIEW(treeview_playlist));
 
 	//treeview_artist = gtk_tree_view_new();
-	treeview_artist = setup_tree_view_renderer_artist(pargument);
+	pargument->store_artist = gtk_tree_store_new(NUM_COLS_ARTIST, G_TYPE_STRING);
+	treeview_artist = gtk_tree_view_new_with_model(GTK_TREE_MODEL(pargument->store_artist));
+	gtk_tree_sortable_set_sort_column_id(sortable, ARTIST, GTK_SORT_ASCENDING);
+	setup_tree_view_renderer_artist(treeview_artist, pargument->store_artist, model_library);
+	pargument->treeview_artist = treeview_artist;
 
 	gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(library_panel), GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
 	gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(playlist_panel), GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
@@ -989,6 +1006,7 @@ int main(int argc, char **argv) {
 	g_signal_connect(G_OBJECT(preferences), "activate", G_CALLBACK(preferences_callback), &pref_arguments);
 	g_signal_connect(G_OBJECT(treeview_library), "row-activated", G_CALLBACK(lib_row_activated), pargument);
 	g_signal_connect(G_OBJECT(treeview_playlist), "row-activated", G_CALLBACK(playlist_row_activated), pargument);
+	g_signal_connect(G_OBJECT(treeview_artist), "row-activated", G_CALLBACK(artist_row_activated), pargument);
 	g_signal_connect(G_OBJECT(model_playlist), "row-inserted", G_CALLBACK(ui_playlist_changed), libnotebook);
 	pargument->progressbar_update_signal_id = g_signal_connect(G_OBJECT(pargument->progressbar), 
 		"value-changed", G_CALLBACK(slider_changed), pargument);

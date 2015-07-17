@@ -461,6 +461,7 @@ static void config_folder_changed(char *folder, GtkWidget *parent) {
 			gtk_progress_bar_set_text(GTK_PROGRESS_BAR(progressbar), msg);
 			count++;
 			gtk_progress_bar_set_fraction(GTK_PROGRESS_BAR(progressbar), (float)count/(float)nblines);
+			
 //			g_free(msg);
 		}
 		gtk_main_iteration();
@@ -498,14 +499,12 @@ void folder_chooser(GtkWidget *button, struct pref_arguments *argument) {
 	
 
 static void preferences_callback(GtkMenuItem *preferences, struct pref_arguments *argument) {
-	GtkWidget *dialog, *label, *area, *vbox, *hbox, *library_entry, *browse_button, *alignement, *window_temp;
+	GtkWidget *dialog, *label, *area, *vbox, *hbox, *library_entry, *browse_button, *window_temp;
 	GtkDialogFlags flags = GTK_DIALOG_MODAL | GTK_DIALOG_DESTROY_WITH_PARENT;	
 	gint res;
 
 	label = gtk_label_new("");
 	gtk_label_set_markup(GTK_LABEL(label), "<span weight=\"bold\">Select library location:</span>");
-	alignement = gtk_alignment_new(0, 0.5, 0, 0);
-	gtk_container_add(GTK_CONTAINER(alignement), label);
 	browse_button = gtk_button_new_with_label("Browse...");
 	library_entry = gtk_entry_new();
 	//chooser = gtk_file_chooser_dialog_new("Browse...", GTK_WINDOW(dialog), GTK_FILE_CHOOSER_ACTION_SELECT_FOLDER, "Save", GTK_RESPONSE_ACCEPT, NULL);
@@ -523,7 +522,7 @@ static void preferences_callback(GtkMenuItem *preferences, struct pref_arguments
 	gtk_box_set_homogeneous(GTK_BOX(vbox), TRUE);
 	gtk_box_set_homogeneous(GTK_BOX(hbox), FALSE);
 
-	gtk_box_pack_start(GTK_BOX(vbox), alignement, FALSE, FALSE, 0);
+	gtk_box_pack_start(GTK_BOX(vbox), label, FALSE, FALSE, 0);
 	gtk_box_pack_start(GTK_BOX(vbox), hbox, FALSE, FALSE, 0);
 		gtk_box_pack_start(GTK_BOX(hbox), library_entry, TRUE, TRUE, 0);
 		gtk_box_pack_start(GTK_BOX(hbox), browse_button, FALSE, FALSE, 0);

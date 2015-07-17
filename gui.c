@@ -184,66 +184,135 @@ static void artist_row_activated(GtkTreeView *treeview, GtkTreePath *path, GtkTr
 	GtkTreeModel *model_playlist = gtk_tree_view_get_model(GTK_TREE_VIEW(argument->treeview_playlist));
 	gchar *songtitle;
 	gchar *songalbum;
+	gchar *songartist;
 	gchar *temptitle;
 	gchar *tempalbum;
+	gchar *tempartist;
 	GtkTreeIter lib_iter;
 	gboolean valid;
 
-	if(gtk_tree_model_get_iter(model_artist, &(argument->iter_artist), path)) {
-		//get_playlist_song(GTK_TREE_VIEW(argument->treeview_artist), &argument->current_song, argument);
-		gtk_tree_model_get(model_artist, &(argument->iter_artist), 0, &songtitle, -1);
-		gtk_tree_path_up(path);
-		gtk_tree_model_get_iter(model_artist, &(argument->iter_artist), path);
-		gtk_tree_model_get(model_artist, &(argument->iter_artist), 0, &songalbum, -1);
-		songtitle = strstr(songtitle, "  ") + 2;
+	if(gtk_tree_path_get_depth(path) == 3) {
+		if(gtk_tree_model_get_iter(model_artist, &(argument->iter_artist), path)) {
+			gtk_tree_model_get(model_artist, &(argument->iter_artist), 0, &songtitle, -1);
+			gtk_tree_path_up(path);
+			gtk_tree_model_get_iter(model_artist, &(argument->iter_artist), path);
+			gtk_tree_model_get(model_artist, &(argument->iter_artist), 0, &songalbum, -1);
+			gtk_tree_path_up(path);
+			gtk_tree_model_get_iter(model_artist, &(argument->iter_artist), path);
+			gtk_tree_model_get(model_artist, &(argument->iter_artist), 0, &songartist, -1);
+			songtitle = strstr(songtitle, "  ") + 2;
 
-		valid = gtk_tree_model_get_iter_first(model_library, &lib_iter);
-		while(valid) {
-			gtk_tree_model_get(model_library, &lib_iter, TRACK, &temptitle, ALBUM, &tempalbum, -1);
-		
-   			if((!strcmp(temptitle, songtitle)) && (!strcmp(tempalbum, songalbum)))
-				break;
-			valid = gtk_tree_model_iter_next (model_library,
-                                    &lib_iter);
-		}
-		struct song csong;
-		struct song *song = &csong;
-		gtk_tree_model_get(model_library, &(lib_iter), AFILE, &song->filename, TRACKNUMBER, &song->tracknumber, TRACK, &song->title, ALBUM, &song->album,
-		ARTIST, &song->artist, FORCE, &song->force, FORCE_ENV, &song->force_vector.x, FORCE_AMP,
-		&song->force_vector.y, FORCE_FREQ, &song->force_vector.z, -1);
-		
-		valid = gtk_tree_model_get_iter_first(model_library, &lib_iter);
-		while(valid) {
-			gtk_tree_model_get(model_library, &lib_iter, TRACK, &temptitle, ALBUM, &tempalbum, -1);
-		
-   			if((!strcmp(tempalbum, songalbum))) {
-				playlist_queue(&lib_iter, model_library, GTK_TREE_VIEW(argument->treeview_playlist), argument);
+			valid = gtk_tree_model_get_iter_first(model_library, &lib_iter);
+			while(valid) {
+				gtk_tree_model_get(model_library, &lib_iter, TRACK, &temptitle, ALBUM, &tempalbum, ARTIST, &tempartist, -1);
+			
+   				if((!strcmp(temptitle, songtitle)) && (!strcmp(tempalbum, songalbum)) && (!strcmp(tempartist, songartist)))
+					break;
+				valid = gtk_tree_model_iter_next (model_library,
+ 	               &lib_iter);
 			}
-			valid = gtk_tree_model_iter_next (model_library,
-                                    &lib_iter);
-		}
-
-		valid = gtk_tree_model_get_iter_first(model_playlist, &argument->iter_playlist);
-		while(valid) {
-			gtk_tree_model_get(model_playlist, &(argument->iter_playlist), TRACK, &temptitle, ALBUM, &tempalbum, -1);
-
-   			if((!strcmp(temptitle, songtitle))) {
-				get_playlist_song(GTK_TREE_VIEW(argument->treeview_playlist), &argument->current_song, argument);
-				break;
+				
+			valid = gtk_tree_model_get_iter_first(model_library, &lib_iter);
+			while(valid) {
+				gtk_tree_model_get(model_library, &lib_iter, TRACK, &temptitle, ALBUM, &tempalbum, ARTIST, &tempartist, -1);
+			
+   				if((!strcmp(tempalbum, songalbum)) && (!strcmp(tempartist, songartist))) {
+					playlist_queue(&lib_iter, model_library, GTK_TREE_VIEW(argument->treeview_playlist), argument);
+				}
+				valid = gtk_tree_model_iter_next (model_library,
+					&lib_iter);
 			}
-			valid = gtk_tree_model_iter_next (model_playlist,
-                                    &argument->iter_playlist);
+
+			valid = gtk_tree_model_get_iter_first(model_playlist, &argument->iter_playlist);
+			while(valid) {
+				gtk_tree_model_get(model_playlist, &(argument->iter_playlist), TRACK, &temptitle, -1);
+
+   				if((!strcmp(temptitle, songtitle))) {
+					get_playlist_song(GTK_TREE_VIEW(argument->treeview_playlist), &argument->current_song, argument);
+					break;
+				}
+				valid = gtk_tree_model_iter_next (model_playlist,
+    	            &argument->iter_playlist);
+			}
+
+			start_song(argument);
+
+			if(argument->bartag)
+				g_source_remove(argument->bartag);
+			argument->bartag = g_timeout_add_seconds(1, refresh_progressbar, argument);
 		}
+	}
+	else if(gtk_tree_path_get_depth(path) == 2) {
+		if(gtk_tree_model_get_iter(model_artist, &(argument->iter_artist), path)) {
+			gtk_tree_model_get_iter(model_artist, &(argument->iter_artist), path);
+			gtk_tree_model_get(model_artist, &(argument->iter_artist), 0, &songalbum, -1);
+			gtk_tree_path_up(path);
+			gtk_tree_model_get_iter(model_artist, &(argument->iter_artist), path);
+			gtk_tree_model_get(model_artist, &(argument->iter_artist), 0, &songartist, -1);
+	
+			valid = gtk_tree_model_get_iter_first(model_library, &lib_iter);
+			while(valid) {
+				gtk_tree_model_get(model_library, &lib_iter, TRACK, &temptitle, ALBUM, &tempalbum, ARTIST, &tempartist, -1);
+			
+   				if((!strcmp(tempalbum, songalbum)) && (!strcmp(tempartist, songartist)))
+					break;
+				valid = gtk_tree_model_iter_next (model_library,
+ 	               &lib_iter);
+			}
+			valid = gtk_tree_model_get_iter_first(model_library, &lib_iter);
+			while(valid) {
+				gtk_tree_model_get(model_library, &lib_iter, ALBUM, &tempalbum, ARTIST, &tempartist, -1);
+			
+   				if((!strcmp(tempalbum, songalbum)) && (!strcmp(tempartist, songartist))) {
+					playlist_queue(&lib_iter, model_library, GTK_TREE_VIEW(argument->treeview_playlist), argument);
+				}
+				valid = gtk_tree_model_iter_next (model_library,
+					&lib_iter);
+			}
 
-		start_song(argument);
-	if(argument->bartag)
-			g_source_remove(argument->bartag);
-		argument->bartag = g_timeout_add_seconds(1, refresh_progressbar, argument);
+			gtk_tree_model_get_iter_first(model_playlist, &argument->iter_playlist);
+			get_playlist_song(GTK_TREE_VIEW(argument->treeview_playlist), &argument->current_song, argument);
 
-	//		start_song(argument);
-//		if(argument->bartag)
-//			g_source_remove(argument->bartag);
-//		argument->bartag = g_timeout_add_seconds(1, refresh_progressbar, argument);
+			start_song(argument);
+
+			if(argument->bartag)
+				g_source_remove(argument->bartag);
+			argument->bartag = g_timeout_add_seconds(1, refresh_progressbar, argument);
+		}
+	}
+	else if(gtk_tree_path_get_depth(path) == 1) {
+		if(gtk_tree_model_get_iter(model_artist, &(argument->iter_artist), path)) {
+			gtk_tree_model_get(model_artist, &(argument->iter_artist), 0, &songartist, -1);
+
+			valid = gtk_tree_model_get_iter_first(model_library, &lib_iter);
+			while(valid) {
+				gtk_tree_model_get(model_library, &lib_iter, ARTIST, &tempartist, -1);
+			
+   				if((!strcmp(tempartist, songartist)))
+					break;
+				valid = gtk_tree_model_iter_next (model_library,
+ 	               &lib_iter);
+			}
+			valid = gtk_tree_model_get_iter_first(model_library, &lib_iter);
+			while(valid) {
+				gtk_tree_model_get(model_library, &lib_iter, ARTIST, &tempartist, -1);
+			
+   				if((!strcmp(tempartist, songartist))) {
+					playlist_queue(&lib_iter, model_library, GTK_TREE_VIEW(argument->treeview_playlist), argument);
+				}
+				valid = gtk_tree_model_iter_next (model_library,
+					&lib_iter);
+			}
+			gtk_tree_model_get_iter_first(model_playlist, &argument->iter_playlist);
+			get_playlist_song(GTK_TREE_VIEW(argument->treeview_playlist), &argument->current_song, argument);
+
+			start_song(argument);
+
+			if(argument->bartag)
+				g_source_remove(argument->bartag);
+			argument->bartag = g_timeout_add_seconds(1, refresh_progressbar, argument);
+
+		}
 	}
 }
 static void playlist_row_activated(GtkTreeView *treeview, GtkTreePath *path, GtkTreeViewColumn *column, struct arguments *argument) {
@@ -461,7 +530,7 @@ static void config_folder_changed(char *folder, GtkWidget *parent) {
 			gtk_progress_bar_set_text(GTK_PROGRESS_BAR(progressbar), msg);
 			count++;
 			gtk_progress_bar_set_fraction(GTK_PROGRESS_BAR(progressbar), (float)count/(float)nblines);
-			
+			printf("%s\n", msg);		
 //			g_free(msg);
 		}
 		gtk_main_iteration();

@@ -1,8 +1,8 @@
-CC=gcc
-MCC=x86_64-w64-mingw32-gcc
+CC=gcc -O3 -Wall
+MCC=x86_64-w64-mingw32-gcc -O3 -Wall
 CFLAGS=
 LDFLAGS=`pkg-config --cflags --libs gstreamer-1.0` `pkg-config --cflags gtk+-3.0` `pkg-config --libs gtk+-3.0` -lavformat -lavutil -lavcodec -lm -std=c99
-MLDFLAGS=`x86_64-w64-mingw32-pkg-config --cflags --libs gstreamer-1.0` `x86_64-w64-mingw32-pkg-config --cflags gtk+-3.0` `x86_64-w64-mingw32-pkg-config --libs gtk+-3.0` -mwindows -lavformat -lavutil -lavcodec -lm -std=c99
+MLDFLAGS=`x86_64-w64-mingw32-pkg-config --cflags --libs gstreamer-1.0` `x86_64-w64-mingw32-pkg-config --cflags gtk+-3.0` `x86_64-w64-mingw32-pkg-config --libs gtk+-3.0` -lavformat -lavutil -lavcodec -lm -std=c99 # -mwindows
 
 EXEC=analyze
 
@@ -21,25 +21,25 @@ player_exe: amp_sort_exe.o decode_exe.o envelope_exe.o freq_sort_exe.o gui_exe.o
 	@rm -Rf *.o
 
 analyze_exe.o: analyze.c
-	@$(MCC) -o analyze_exe.o -c analyze.c
+	@$(MCC) -o analyze_exe.o -c analyze.c `x86_64-w64-mingw32-pkg-config --cflags gstreamer-1.0`
 
 amp_sort_exe.o: amp_sort.c
-	@$(MCC) -o amp_sort_exe.o -c amp_sort.c 
+	@$(MCC) -o amp_sort_exe.o -c amp_sort.c `x86_64-w64-mingw32-pkg-config --cflags gstreamer-1.0`
 
 decode_exe.o: decode.c
-	@$(MCC) -o decode_exe.o -c decode.c 
+	@$(MCC) -o decode_exe.o -c decode.c `x86_64-w64-mingw32-pkg-config --cflags gstreamer-1.0`
 
 envelope_exe.o: envelope.c
-	@$(MCC) -o envelope_exe.o -c envelope.c 
+	@$(MCC) -o envelope_exe.o -c envelope.c `x86_64-w64-mingw32-pkg-config --cflags gstreamer-1.0`
 
 gui_exe.o: gui.c
-	@$(MCC) -o gui_exe.o -c gui.c `x86_64-w64-mingw32-pkg-config --cflags gtk+-3.0`
+	@$(MCC) -o gui_exe.o -c gui.c `x86_64-w64-mingw32-pkg-config --cflags gtk+-3.0` `x86_64-w64-mingw32-pkg-config --cflags gstreamer-1.0`
 
 freq_sort_exe.o: freq_sort.c
-	@$(MCC) -o freq_sort_exe.o -c freq_sort.c 
+	@$(MCC) -o freq_sort_exe.o -c freq_sort.c `x86_64-w64-mingw32-pkg-config --cflags gstreamer-1.0`
 
 analyze.o: analyze.c
-	@$(CC) -o analyze.o -c analyze.c `pkg-config --cflags --libs gstreamer-1.0`
+	@$(CC) -o analyze.o -c analyze.c `pkg-config --cflags --libs gstreamer-1.0` 
 
 amp_sort.o: amp_sort.c
 	@$(CC) -o amp_sort.o -c amp_sort.c `pkg-config --cflags --libs gstreamer-1.0`
@@ -51,7 +51,7 @@ envelope.o: envelope.c
 	@$(CC) -o envelope.o -c envelope.c `pkg-config --cflags --libs gstreamer-1.0`
 
 gui_dummy.o: gui_dummy.c
-	@$(CC) -o gui_dummy.o -c gui_dummy.c
+	@$(CC) -o gui_dummy.o -c gui_dummy.c `pkg-config --cflags --libs gstreamer-1.0`
 
 gui.o: gui.c
 	@$(CC) -o gui.o -c gui.c `pkg-config --cflags --libs gstreamer-1.0` `pkg-config --cflags gtk+-3.0`

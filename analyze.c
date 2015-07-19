@@ -9,10 +9,7 @@ float analyze (char *filename, struct song *current_song) {
 		current_song->force_vector.z = freq_sort(*current_song); // Freq sort 
 
 		resnum = MAX(current_song->force_vector.x, 0) + current_song->force_vector.y + current_song->force_vector.z; 
-
 		return resnum;
-		if(debug)
-			printf("FINAL RESULT: %f\n", resnum);
 	}
 	else
 		return 0;

@@ -29,7 +29,6 @@ enum {
 };
 
 struct arguments {
-	//ALint source;
 	gboolean lelelerandom;
 	gboolean random;
 	gboolean repeat;
@@ -90,18 +89,32 @@ static void setup_tree_view_renderer_play_lib(GtkWidget *);
 static void setup_tree_view_renderer_artist(GtkWidget *, GtkTreeStore *, GtkTreeModel *);
 /**
 * Description: Queue next playlist song, and don't play it immediately: useful for gapless
-* Arguments: struct arguments *argument: the global argument struct containing iters
+* Arguments: struct arguments *argument: the global argument struct containing:
+* -the songs history: history
+* -the struct_song current_song to set up: current_song 
+* -the playlist treeview (in order to instert songs there): treeview_playlist
+* -the playlist iter (in order to know what is the next song)
 * Arguments: GstElement *playbin: the playbin where the song is queued
 */
 static void continue_track(GstElement *, struct arguments *);
 /**
 * Description: Refresh the GtkScale progress bar (the song progress bar)
 * Arguments: struct arguments *argument: the global argument struct containing:
-* -the song state
-* -the progressbar widget
-* -the playbin, in order to get the time elapsed in the song
+* -the song state: current_song.state
+* -the progressbar widget: progressbar
+* -the playbin, in order to get the time elapsed in the song: playbin
 */
 static gboolean refresh_progressbar(gpointer);
+/**
+* Description: Callback function called when the user selects (double-click/enter) a song in the library
+* Arguments: GtkTreeView *treeview: the library treeview
+* Arguments: GtkTreePath *path: the path of the selected item in the treeview
+* Arguments: GtkTreeViewColumn *column: the column of the selected item in the treeview
+* Arguments: struct arguments *argument: the global argument struct containing:
+* -the playlist treeview (in order to insert songs there): treeview_playlist
+* -the struct song current_song to set up: current_song
+* -the launched timer tag: bartag
+*/
 static void lib_row_activated(GtkTreeView *, GtkTreePath *, GtkTreeViewColumn *, struct arguments *);
 static void playlist_row_activated(GtkTreeView *, GtkTreePath *, GtkTreeViewColumn *, struct arguments *);
 static void artist_row_activated(GtkTreeView *, GtkTreePath *, GtkTreeViewColumn *, struct arguments *);

@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include "gui.h"
-
+#define PATH_MAX 4086
 float distance(struct vector v1, struct vector v2) {
 	float distance;
 	distance = sqrt((v1.x - v2.x)*(v1.x - v2.x) + (v1.y - v2.y)*(v1.y - v2.y) +
@@ -13,16 +13,26 @@ static void destroy (GtkWidget *window, gpointer data) {
 }
 
 void free_song(struct song *song) {
-	if(song->artist)
+	if(song->artist) {
 		free(song->artist);
-	if(song->title)
+		song->artist = NULL;
+	}
+	if(song->title) {
 		free(song->title);
-	if(song->album)
+		song->title = NULL;
+	}
+	if(song->album) {
 		free(song->album);
-	if(song->tracknumber)
+		song->album = NULL;
+	}
+	if(song->tracknumber) {
 		free(song->tracknumber);
-	if(song->sample_array)
+		song->tracknumber = NULL;
+	}
+	if(song->sample_array) {
 		free(song->sample_array);
+		song->sample_array = NULL;
+	}
 }
 
 void explore(GDir *dir, char *folder, FILE *list) {
@@ -445,9 +455,10 @@ static void next(GtkWidget *button, struct arguments *argument) {
 	model_playlist = gtk_tree_view_get_model(GTK_TREE_VIEW(argument->treeview_playlist));
 	gchar *iter_string;
 	
-	free_song(&argument->current_song);
 	if((iter_string = gtk_tree_model_get_string_from_iter(model_playlist, &argument->iter_playlist))) {
 		argument->history = g_list_prepend(argument->history, iter_string);
+		g_free(iter_string);
+		free_song(&argument->current_song);
 		if(get_next_playlist_song(GTK_TREE_VIEW(argument->treeview_playlist), &argument->current_song, argument)) {
 			start_song(argument);
 		}
@@ -462,7 +473,7 @@ static void previous(GtkWidget *button, struct arguments *argument) {
 
 static void analyze_thread(struct pref_folder_arguments *argument) {
 	struct song song;
-	char *msg;
+	char *msg_thread;
 	char *line = argument->line;
 	FILE *list = argument->list;
 	FILE *library = argument->library;
@@ -472,22 +483,21 @@ static void analyze_thread(struct pref_folder_arguments *argument) {
 
 	song.sample_array = NULL;
 	song.title = song.artist = song.album = song.tracknumber = NULL;
-	while (fgets(line, 1000, list) != NULL) {
+	while (fgets(line, PATH_MAX, list) != NULL) {
 		line[strcspn(line, "\n")] = '\0';
 		if((resnum = analyze(line, &song)) != 0) {
 	//		fprintf(test, "%f %f %f\n", song.force_vector.x, song.force_vector.y, song.force_vector.z);
 			fprintf(library, "%s\n%s\n%s\n%s\n%s\n%f\n%f\n%f\n%f\n", line, song.tracknumber, song.title, song.album, song.artist, resnum, song.force_vector.x,
 				song.force_vector.y, song.force_vector.z);
-			msg = g_malloc(strlen(song.title)*sizeof(char));
-			g_stpcpy(msg, song.title);
-			g_async_queue_push(msg_queue, msg);
+			msg_thread = g_malloc(strlen(song.title)*sizeof(char));
+			g_stpcpy(msg_thread, song.title);
+			g_async_queue_push(msg_queue, msg_thread);
 			free_song(&song);
-			song.sample_array = NULL;
 		}
 	}
-	msg = g_malloc(5);
-	g_stpcpy(msg, "end");
-	g_async_queue_push(msg_queue, msg);
+	msg_thread = g_malloc(4);
+	g_stpcpy(msg_thread, "end");
+	g_async_queue_push(msg_queue, msg_thread);
 	//fclose(test);
 }
 
@@ -505,7 +515,7 @@ static void config_folder_changed(char *folder, GtkWidget *parent) {
 	library = fopen("library.txt", "w");
 	explore(dir, folder, list);
 	int nblines = 0;
-	char line[1000];
+	char line[PATH_MAX];
 	int count = 0;
 	GAsyncQueue *msg_queue = g_async_queue_new();
 	char *msg;
@@ -513,7 +523,7 @@ static void config_folder_changed(char *folder, GtkWidget *parent) {
 
 	fseek(list, 0, SEEK_SET);
 
-	while(fgets(line, 1000, list) != NULL)
+	while(fgets(line, PATH_MAX, list) != NULL)
 		nblines++;
 
 	fseek(list, 0, SEEK_SET);
@@ -532,13 +542,14 @@ static void config_folder_changed(char *folder, GtkWidget *parent) {
 	msg = NULL;
 	
 	g_thread_new("analyze", (GThreadFunc)analyze_thread, &argument);
-	//g_signal_connect(G_OBJECT(preferences), "activate", G_CALLBACK(preferences_callback), &pref_arguments);
+
 	do {
 		if((msg != NULL) && strcmp(msg, "end")) {
 			gtk_progress_bar_set_text(GTK_PROGRESS_BAR(progressbar), msg);
 			count++;
 			gtk_progress_bar_set_fraction(GTK_PROGRESS_BAR(progressbar), (float)count/(float)nblines);
-//			g_free(msg);
+			g_free(msg);
+			msg = NULL;
 		}
 		gtk_main_iteration();
 	} while(((msg = g_async_queue_try_pop(msg_queue)) == NULL) || strcmp(msg, "end")); 
@@ -817,33 +828,33 @@ static void setup_tree_view_renderer_play_lib(GtkWidget *treeview) {
 void display_library(GtkTreeView *treeview, GtkListStore *store) {
 	GtkTreeIter iter;
 	FILE *library;
-	char tempfile[1000];
-	char temptrack[1000];
-	char tempalbum[1000];
-	char tempartist[1000];
-	char temptracknumber[1000];
-	char tempforce[1000];
+	char tempfile[PATH_MAX];
+	char temptrack[PATH_MAX];
+	char tempalbum[PATH_MAX];
+	char tempartist[PATH_MAX];
+	char temptracknumber[PATH_MAX];
+	char tempforce[PATH_MAX];
 	float tempforcef;
-	char tempforce_env[1000];
+	char tempforce_env[PATH_MAX];
 	float tempforce_envf;
-	char tempforce_amp[1000];
+	char tempforce_amp[PATH_MAX];
 	float tempforce_ampf;
-	char tempforce_freq[1000];
+	char tempforce_freq[PATH_MAX];
 	float tempforce_freqf;
 
 	gtk_list_store_clear(store);
 	if((library = fopen("library.txt", "r")) != NULL) {
-		while(fgets(tempfile, 1000, library) != NULL) {
+		while(fgets(tempfile, PATH_MAX, library) != NULL) {
 			tempfile[strcspn(tempfile, "\n")] = '\0';
 
-			if(!fgets(temptracknumber, 1000, library)
-			|| !fgets(temptrack, 1000, library)
-			|| !fgets(tempalbum, 1000, library)
-			|| !fgets(tempartist, 1000, library)
-			|| !fgets(tempforce, 1000, library)
-			|| !fgets(tempforce_env, 1000, library)
-			|| !fgets(tempforce_amp, 1000, library)
-			|| !fgets(tempforce_freq, 1000, library)) {
+			if(!fgets(temptracknumber, PATH_MAX, library)
+			|| !fgets(temptrack, PATH_MAX, library)
+			|| !fgets(tempalbum, PATH_MAX, library)
+			|| !fgets(tempartist, PATH_MAX, library)
+			|| !fgets(tempforce, PATH_MAX, library)
+			|| !fgets(tempforce_env, PATH_MAX, library)
+			|| !fgets(tempforce_amp, PATH_MAX, library)
+			|| !fgets(tempforce_freq, PATH_MAX, library)) {
 				printf("Wrong config file format\n");
 				return;
 			}

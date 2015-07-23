@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include "gui.h"
-#define PATH_MAX 4086
+
 float distance(struct vector v1, struct vector v2) {
 	float distance;
 	distance = sqrt((v1.x - v2.x)*(v1.x - v2.x) + (v1.y - v2.y)*(v1.y - v2.y) +
@@ -489,8 +489,8 @@ static void analyze_thread(struct pref_folder_arguments *argument) {
 	//		fprintf(test, "%f %f %f\n", song.force_vector.x, song.force_vector.y, song.force_vector.z);
 			fprintf(library, "%s\n%s\n%s\n%s\n%s\n%f\n%f\n%f\n%f\n", line, song.tracknumber, song.title, song.album, song.artist, resnum, song.force_vector.x,
 				song.force_vector.y, song.force_vector.z);
-			msg_thread = g_malloc(strlen(song.title)*sizeof(char));
-			g_stpcpy(msg_thread, song.title);
+			msg_thread = g_malloc(strlen(song.title)*sizeof(char) + 1);
+			strncpy(msg_thread, song.title, strlen(song.title) + 1);
 			g_async_queue_push(msg_queue, msg_thread);
 			free_song(&song);
 		}
@@ -507,7 +507,6 @@ static void config_folder_changed(char *folder, GtkWidget *parent) {
 	progressdialog = gtk_dialog_new();
 	gtk_window_set_transient_for(GTK_WINDOW(progressdialog), GTK_WINDOW(parent));
 	area = gtk_dialog_get_content_area(GTK_DIALOG(progressdialog));
-	//struct song song;
 	GDir *dir = g_dir_open (folder, 0, NULL);
 	FILE *list;
 	FILE *library;

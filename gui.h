@@ -7,6 +7,7 @@
 #include <gdk-pixbuf/gdk-pixbuf.h>
 #include <glib/gstdio.h>
 #include <glib.h>
+#include <limits.h>
 
 enum {
 	COLUMN_ARTIST = 0,
@@ -44,8 +45,6 @@ struct arguments {
 	GtkWidget *progressbar;
 	GtkWidget *treeview_playlist;
 	GtkWidget *playpause_button;
-	//GtkWidget *next_button;
-	//GtkWidget *previous_button;
 	GtkTreePath *path;
 	GtkTreeIter iter_playlist;
 	GtkTreeIter iter_library;
@@ -74,19 +73,20 @@ struct pref_folder_arguments {
 	FILE *library;
 };
 
+static void setup_tree_view_renderer_play_lib(GtkWidget *);
 /**
 * Description: Sets up the treeview renderer with columns "playing", "tracknumber", "track",
 * "album", "artist", "force", and sizes it properly
 * Arguments: GtkWidget *treeview: The TreeView to set up
 */
-static void setup_tree_view_renderer_play_lib(GtkWidget *);
+static void setup_tree_view_renderer_artist(GtkWidget *, GtkTreeStore *, GtkTreeModel *);
 /**
 * Description: Sets up the treeview renderer like this: artist->album->songs
 * Arguments: GtkWidget *treeview: the TreeView to set up
 * Arguments: GtkTreeStore *treestore: the treestore associated with the TreeView
 * Arguments: GtkTreeModel *model_library: the model associated with the library treeview (NOT the artist treeview)
 */
-static void setup_tree_view_renderer_artist(GtkWidget *, GtkTreeStore *, GtkTreeModel *);
+static void continue_track(GstElement *, struct arguments *);
 /**
 * Description: Queue next playlist song, and don't play it immediately: useful for gapless
 * Arguments: struct arguments *argument: the global argument struct containing:
@@ -96,7 +96,7 @@ static void setup_tree_view_renderer_artist(GtkWidget *, GtkTreeStore *, GtkTree
 * -the playlist iter (in order to know what is the next song)
 * Arguments: GstElement *playbin: the playbin where the song is queued
 */
-static void continue_track(GstElement *, struct arguments *);
+static gboolean refresh_progressbar(gpointer);
 /**
 * Description: Refresh the GtkScale progress bar (the song progress bar)
 * Arguments: struct arguments *argument: the global argument struct containing:
@@ -104,23 +104,31 @@ static void continue_track(GstElement *, struct arguments *);
 * -the progressbar widget: progressbar
 * -the playbin, in order to get the time elapsed in the song: playbin
 */
-static gboolean refresh_progressbar(gpointer);
+static void lib_row_activated(GtkTreeView *, GtkTreePath *, GtkTreeViewColumn *, struct arguments *);
 /**
 * Description: Callback function called when the user selects (double-click/enter) a song in the library
 * Arguments: GtkTreeView *treeview: the library treeview
-* Arguments: GtkTreePath *path: the path of the selected item in the treeview
+* Arguments: GtkTreePath *path: the path of the selected item in the treeview (useless)
 * Arguments: GtkTreeViewColumn *column: the column of the selected item in the treeview
 * Arguments: struct arguments *argument: the global argument struct containing:
 * -the playlist treeview (in order to insert songs there): treeview_playlist
-* -the struct song current_song to set up: current_song
+* -the struct song to set up: current_song
 * -the launched timer tag: bartag
 */
-static void lib_row_activated(GtkTreeView *, GtkTreePath *, GtkTreeViewColumn *, struct arguments *);
 static void playlist_row_activated(GtkTreeView *, GtkTreePath *, GtkTreeViewColumn *, struct arguments *);
+/**
+* Description: Callback function called when the user selects (double-click/enter) a song in the playlist
+* Arguments: GtkTreeView *treeview: the playlist treeview
+* Arguments: GtkTreePath *path: the path of the selected item in the treeview (useless)
+* Arguments: GtkTreeViewColumn *column: the column of the selected item in the treeview
+* Arguments: struct arguments *argument: the global argument struct containing:
+* -the struct song to set up: current_song
+* -the launched timer tag: bartag
+*/
 static void artist_row_activated(GtkTreeView *, GtkTreePath *, GtkTreeViewColumn *, struct arguments *);
 static void toggle_playpause_button(GtkWidget *, struct arguments *);
-static void next(GtkWidget *, struct arguments *);
-static void previous(GtkWidget *, struct arguments *);
+static void next_buttonf(GtkWidget *, struct arguments *);
+static void previous_buttonf(GtkWidget *, struct arguments *);
 static void destroy(GtkWidget *, gpointer);
 static void config_folder_changed(char *, GtkWidget *);
 static void preferences_callback(GtkMenuItem *preferences, struct pref_arguments *);

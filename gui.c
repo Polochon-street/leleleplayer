@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include "gui.h"
 
-float distance(struct vector v1, struct vector v2) {
+float distance(struct d4vector v1, struct d4vector v2) {
 	float distance;
 	distance = sqrt((v1.x - v2.x)*(v1.x - v2.x) + (v1.y - v2.y)*(v1.y - v2.y) +
 		(v1.z - v2.z)*(v1.z - v2.z));
@@ -69,7 +69,7 @@ void playlist_queue(GtkTreeIter *iter_to_queue, GtkTreeModel *model_library, Gtk
 			gtk_tree_model_get(model_library, iter_to_queue, i, &tempfloat, -1);
 			gtk_list_store_set(argument->store_playlist, &iter_playlist, i, tempfloat,-1);
 		}
-		else if(i == FORCE_ENV) {
+		else if(i == FORCE_TEMPO) {
 			gtk_tree_model_get(model_library, iter_to_queue, i, &tempfloat, -1);
 			gtk_list_store_set(argument->store_playlist, &iter_playlist, i, tempfloat,-1);
 		}
@@ -78,6 +78,10 @@ void playlist_queue(GtkTreeIter *iter_to_queue, GtkTreeModel *model_library, Gtk
 			gtk_list_store_set(argument->store_playlist, &iter_playlist, i, tempfloat,-1);
 		}
 		else if(i == FORCE_FREQ) {
+			gtk_tree_model_get(model_library, iter_to_queue, i, &tempfloat, -1);
+			gtk_list_store_set(argument->store_playlist, &iter_playlist, i, tempfloat,-1);
+		}
+		else if(i == FORCE_ATK) {
 			gtk_tree_model_get(model_library, iter_to_queue, i, &tempfloat, -1);
 			gtk_list_store_set(argument->store_playlist, &iter_playlist, i, tempfloat,-1);
 		}
@@ -95,8 +99,8 @@ void get_playlist_song(GtkTreeView *treeview_playlist, struct song *song, struct
 
 	model_playlist = gtk_tree_view_get_model(treeview_playlist);
 	gtk_tree_model_get(model_playlist, &(argument->iter_playlist), AFILE, &song->filename, TRACKNUMBER, &song->tracknumber, TRACK, &song->title, ALBUM, &song->album,
-		ARTIST, &song->artist, FORCE, &song->force, FORCE_ENV, &song->force_vector.x, FORCE_AMP,
-		&song->force_vector.y, FORCE_FREQ, &song->force_vector.z, -1);
+		ARTIST, &song->artist, FORCE, &song->force, FORCE_TEMPO, &song->force_vector.x, FORCE_AMP,
+		&song->force_vector.y, FORCE_FREQ, &song->force_vector.z, FORCE_ATK, &song->force_vector.t, -1);
 }
 
 gboolean get_next_playlist_song(GtkTreeView *treeview_playlist, struct song *song, struct arguments *argument) {
@@ -115,8 +119,8 @@ gboolean get_next_playlist_song(GtkTreeView *treeview_playlist, struct song *son
 		if(gtk_tree_model_iter_next(model_playlist, &tempiter)) {
 			argument->iter_playlist = tempiter;
 			gtk_tree_model_get(model_playlist, &(argument->iter_playlist), AFILE, &song->filename, TRACKNUMBER, &song->tracknumber, TRACK, &song->title, ALBUM, &song->album,
-				ARTIST, &song->artist, FORCE, &song->force, FORCE_ENV, &song->force_vector.x, FORCE_AMP,
-				&song->force_vector.y, FORCE_FREQ, &song->force_vector.z, -1);
+				ARTIST, &song->artist, FORCE, &song->force, FORCE_TEMPO, &song->force_vector.x, FORCE_AMP,
+				&song->force_vector.y, FORCE_FREQ, &song->force_vector.z, FORCE_ATK, &song->force_vector.t, -1);
 			return TRUE;
 		}
 		else {
@@ -157,13 +161,13 @@ gboolean get_random_playlist_song(GtkTreeView *treeview_playlist, struct song *s
 	} while(found == true);
 
 	gtk_tree_model_get(model_playlist, &(argument->iter_playlist), AFILE, &song->filename, TRACKNUMBER, &song->tracknumber, TRACK, &song->title, ALBUM, &song->album,
-				ARTIST, &song->artist, FORCE, &song->force, FORCE_ENV, &song->force_vector.x, FORCE_AMP,
-				&song->force_vector.y, FORCE_FREQ, &song->force_vector.z, -1);
+				ARTIST, &song->artist, FORCE, &song->force, FORCE_TEMPO, &song->force_vector.x, FORCE_AMP,
+				&song->force_vector.y, FORCE_FREQ, &song->force_vector.z, FORCE_ATK, &song->force_vector.t, -1);
 	return TRUE;
 }
 
 gboolean get_lelelerandom_playlist_song(GtkTreeView *treeview_playlist, struct song *song, struct arguments *argument) {
-	struct vector current_force = argument->current_song.force_vector;
+	struct d4vector current_force = argument->current_song.force_vector;
 	float treshold = 0.45;
 	do {
 		treshold += 0.01;
@@ -491,8 +495,8 @@ static void analyze_thread(struct pref_folder_arguments *argument) {
 		line[strcspn(line, "\n")] = '\0';
 		if((resnum = analyze(line, &song)) != 0) {
 	//		fprintf(test, "%f %f %f\n", song.force_vector.x, song.force_vector.y, song.force_vector.z);
-			fprintf(library, "%s\n%s\n%s\n%s\n%s\n%f\n%f\n%f\n%f\n", line, song.tracknumber, song.title, song.album, song.artist, resnum, song.force_vector.x,
-				song.force_vector.y, song.force_vector.z);
+			fprintf(library, "%s\n%s\n%s\n%s\n%s\n%f\n%f\n%f\n%f\n%f\n", line, song.tracknumber, song.title, song.album, song.artist, resnum, song.force_vector.x,
+				song.force_vector.y, song.force_vector.z, song.force_vector.t);
 			msg_thread = g_malloc(strlen(song.title)*sizeof(char) + 1);
 			strncpy(msg_thread, song.title, strlen(song.title) + 1);
 			g_async_queue_push(msg_queue, msg_thread);
@@ -708,7 +712,6 @@ static gboolean refresh_progressbar(gpointer pargument) {
 		g_signal_handler_block(argument->progressbar, argument->progressbar_update_signal_id);
 		gtk_adjustment_configure(argument->adjust, argument->current_song.current/GST_SECOND, 0, argument->current_song.duration/GST_SECOND, 
 			1, 1, 1);
-	//	gtk_adjustment_set_value(argument->adjust, argument->current_song.current/GST_SECOND);
 		gtk_adjustment_changed(argument->adjust);
 		g_signal_handler_unblock(argument->progressbar, argument->progressbar_update_signal_id);
 		return TRUE;
@@ -848,8 +851,11 @@ void display_library(GtkTreeView *treeview, GtkListStore *store) {
 	float tempforce_ampf;
 	char tempforce_freq[PATH_MAX];
 	float tempforce_freqf;
+	char tempforce_atk[PATH_MAX];
+	float tempforce_atkf;
 
 	gtk_list_store_clear(store);
+
 	if((library = fopen("library.txt", "r")) != NULL) {
 		while(fgets(tempfile, PATH_MAX, library) != NULL) {
 			tempfile[strcspn(tempfile, "\n")] = '\0';
@@ -861,7 +867,8 @@ void display_library(GtkTreeView *treeview, GtkListStore *store) {
 			|| !fgets(tempforce, PATH_MAX, library)
 			|| !fgets(tempforce_env, PATH_MAX, library)
 			|| !fgets(tempforce_amp, PATH_MAX, library)
-			|| !fgets(tempforce_freq, PATH_MAX, library)) {
+			|| !fgets(tempforce_freq, PATH_MAX, library)
+			|| !fgets(tempforce_atk, PATH_MAX, library)) {
 				printf("Wrong config file format\n");
 				return;
 			}
@@ -886,15 +893,19 @@ void display_library(GtkTreeView *treeview, GtkListStore *store) {
 			tempforce_freq[strcspn(tempforce_freq, "\n")] = '\0';
 			tempforce_freqf = atof(tempforce_freq);
 
+			tempforce_atk[strcspn(tempforce_atk, "\n")] = '\0';
+			tempforce_atkf = atof(tempforce_atk);
+
 			if(atof(tempforce) > 0)
 				strcpy(tempforce, "Loud");
-			else if(atof(tempforce) < 0)
+			else if(atof(tempforce) < 0) {
 				strcpy(tempforce, "Calm");
+			}
 			else
 				strcpy(tempforce, "Can't conclude");
 
 			gtk_list_store_append(store, &iter);
-			gtk_list_store_set(store, &iter, PLAYING, "", TRACKNUMBER, temptracknumber, TRACK, temptrack, ALBUM, tempalbum, ARTIST, tempartist, FORCE, tempforcef, FORCE_ENV, tempforce_envf, FORCE_AMP, tempforce_ampf, FORCE_FREQ, tempforce_freqf, TEXTFORCE, tempforce, AFILE, tempfile, -1);
+			gtk_list_store_set(store, &iter, PLAYING, "", TRACKNUMBER, temptracknumber, TRACK, temptrack, ALBUM, tempalbum, ARTIST, tempartist, FORCE, tempforcef, FORCE_TEMPO, tempforce_envf, FORCE_AMP, tempforce_ampf, FORCE_FREQ, tempforce_freqf, FORCE_ATK, tempforce_atkf, TEXTFORCE, tempforce, AFILE, tempfile, -1);
 		}
 		fclose(library);
 	}
@@ -1030,7 +1041,7 @@ int main(int argc, char **argv) {
 	playlist_panel = gtk_scrolled_window_new(NULL, NULL);
 	artist_panel = gtk_scrolled_window_new(NULL, NULL);
 
-	pargument->store_library = gtk_list_store_new(COLUMNS, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_FLOAT, G_TYPE_FLOAT, G_TYPE_FLOAT, G_TYPE_FLOAT, G_TYPE_STRING, G_TYPE_STRING);
+	pargument->store_library = gtk_list_store_new(COLUMNS, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_FLOAT, G_TYPE_FLOAT, G_TYPE_FLOAT, G_TYPE_FLOAT, G_TYPE_FLOAT, G_TYPE_STRING, G_TYPE_STRING);
 	sortable = GTK_TREE_SORTABLE(pargument->store_library);
 	gtk_tree_sortable_set_sort_column_id(sortable, TRACKNUMBER, GTK_SORT_ASCENDING);
 	treeview_library = gtk_tree_view_new_with_model(GTK_TREE_MODEL(pargument->store_library));
@@ -1042,7 +1053,7 @@ int main(int argc, char **argv) {
 	display_library(GTK_TREE_VIEW(treeview_library), pargument->store_library);
 	model_library = gtk_tree_view_get_model(GTK_TREE_VIEW(treeview_library));
 
-	pargument->store_playlist = gtk_list_store_new(COLUMNS, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_FLOAT, G_TYPE_FLOAT, G_TYPE_FLOAT, G_TYPE_FLOAT, G_TYPE_STRING, G_TYPE_STRING);
+	pargument->store_playlist = gtk_list_store_new(COLUMNS, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_FLOAT, G_TYPE_FLOAT, G_TYPE_FLOAT, G_TYPE_FLOAT, G_TYPE_FLOAT, G_TYPE_STRING, G_TYPE_STRING);
 	treeview_playlist = gtk_tree_view_new_with_model(GTK_TREE_MODEL(pargument->store_playlist));
 	setup_tree_view_renderer_play_lib(treeview_playlist);
 	gtk_tree_view_set_reorderable(GTK_TREE_VIEW(treeview_playlist), TRUE);

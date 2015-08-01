@@ -10,15 +10,27 @@ size_t size;
 int debug;
 int cli;
 
-struct vector {
+struct d4vector {
+	float x;
+	float y;
+	float z;
+	float t;
+};
+
+struct d3vector {
 	float x;
 	float y;
 	float z;
 };
 
+struct d2vector {
+	float x;
+	float y;
+};
+
 struct song {
 	float force;
-	struct vector force_vector;
+	struct d4vector force_vector;
 	int8_t* sample_array;
 	int channels;
 	int nSamples;
@@ -40,7 +52,7 @@ struct song {
 struct song next_song;
 
 float amp_sort(struct song);
-float envelope_sort(struct song);
+struct d2vector envelope_sort(struct song);
 int audio_decode(const char *file, struct song *);
 float analyze(char *filename, struct song *); 
 float freq_sort(struct song);

@@ -22,7 +22,9 @@ int main(int argc, char **argv) {
 	struct song song;
 
 	result = analyze(filename, &song);
-	printf("\n-> Final Result: %f\n", result);
+	if(debug)
+		printf("\n-> Final Result: %f\n", result);
+
 	if(result > 0) {
 		if(debug)
 			printf("Loud\n");

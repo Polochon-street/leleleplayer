@@ -14,6 +14,9 @@ enum {
 	NUM_COLS_ARTIST
 };
 
+int calm;
+int count;
+
 enum {
 	PLAYING = 0,
 	TRACKNUMBER,
@@ -21,9 +24,10 @@ enum {
 	ALBUM,
 	ARTIST,
 	FORCE,
-	FORCE_ENV,
+	FORCE_TEMPO,
 	FORCE_AMP,
 	FORCE_FREQ,
+	FORCE_ATK,
 	TEXTFORCE,
 	AFILE,
 	COLUMNS
@@ -141,7 +145,7 @@ static void ui_playlist_changed(GtkTreeModel *, GtkTreePath *, GtkTreeIter *, Gt
 static void toggle_lelele(GtkWidget *button, struct arguments *);
 static void toggle_random(GtkWidget *button, struct arguments *);
 int bufferize(struct song, struct arguments *);
-float distance(struct vector, struct vector);
+float distance(struct d4vector, struct d4vector);
 void pause_song(struct arguments *);
 void start_song(struct arguments *);
 void resume_song(struct arguments *);

@@ -10,21 +10,25 @@ Simple audio player with the main purpose of analyzing music folders in order to
 
 * clone repository on github
 ```bash
-git@github.com:Polochon-street/LPlayer.git
+git clone https://github.com/Polochon-street/leleleplayer.git
 ```
 * go to LPlayer root directory
 ```bash
-cd LPlayer
+cd leleleplayer 
 ```
-* Checkout beta branch
+* Create & go to build directory
 ```bash
-git checkout beta
+mkdir build && cd build
 ```
-* Build the player
+* Generate the Makefile
 ```bash
-make player
+cmake ..
 ```
-* launch player
+* Make the player & the analyze binaries
+```bash
+make
+```
+* Launch player
 ```bash
 ./player
 ```

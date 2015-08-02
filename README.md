@@ -22,7 +22,7 @@ mkdir build && cd build
 ```
 * Generate the Makefile
 ```bash
-cmake ..
+cmake .. -DCMAKE_BUILD_TYPE=Release
 ```
 * Make the player & the analyze binaries
 ```bash

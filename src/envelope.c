@@ -93,7 +93,7 @@ struct d2vector envelope_sort(struct song song) {
 
 	final_tempo = -6*MIN(MIN(period_max1, period_max2), MAX(period_max2, period_max3)) + 6;
 
-	final_atk = 0.00036*atk/song.nSamples - 184.1;
+	final_atk = 0.00036*atk/song.nSamples - 183.5;
 
 	if(debug) {
 		for(i = 0; i < freq_size; ++i)

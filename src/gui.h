@@ -14,9 +14,6 @@ enum {
 	NUM_COLS_ARTIST
 };
 
-int calm;
-int count;
-
 enum {
 	PLAYING = 0,
 	TRACKNUMBER,
@@ -77,20 +74,20 @@ struct pref_folder_arguments {
 	FILE *library;
 };
 
-static void setup_tree_view_renderer_play_lib(GtkWidget *);
+void setup_tree_view_renderer_play_lib(GtkWidget *);
 /**
 * Description: Sets up the treeview renderer with columns "playing", "tracknumber", "track",
 * "album", "artist", "force", and sizes it properly
 * Arguments: GtkWidget *treeview: The TreeView to set up
 */
-static void setup_tree_view_renderer_artist(GtkWidget *, GtkTreeStore *, GtkTreeModel *);
+void setup_tree_view_renderer_artist(GtkWidget *, GtkTreeStore *, GtkTreeModel *);
 /**
 * Description: Sets up the treeview renderer like this: artist->album->songs
 * Arguments: GtkWidget *treeview: the TreeView to set up
 * Arguments: GtkTreeStore *treestore: the treestore associated with the TreeView
 * Arguments: GtkTreeModel *model_library: the model associated with the library treeview (NOT the artist treeview)
 */
-static void continue_track(GstElement *, struct arguments *);
+void continue_track(GstElement *, struct arguments *);
 /**
 * Description: Queue next playlist song, and don't play it immediately: useful for gapless
 * Arguments: struct arguments *argument: the global argument struct containing:
@@ -100,7 +97,7 @@ static void continue_track(GstElement *, struct arguments *);
 * -the playlist iter (in order to know what is the next song)
 * Arguments: GstElement *playbin: the playbin where the song is queued
 */
-static gboolean refresh_progressbar(gpointer);
+gboolean refresh_progressbar(gpointer);
 /**
 * Description: Refresh the GtkScale progress bar (the song progress bar)
 * Arguments: struct arguments *argument: the global argument struct containing:
@@ -108,7 +105,7 @@ static gboolean refresh_progressbar(gpointer);
 * -the progressbar widget: progressbar
 * -the playbin, in order to get the time elapsed in the song: playbin
 */
-static void lib_row_activated(GtkTreeView *, GtkTreePath *, GtkTreeViewColumn *, struct arguments *);
+void lib_row_activated(GtkTreeView *, GtkTreePath *, GtkTreeViewColumn *, struct arguments *);
 /**
 * Description: Callback function called when the user selects (double-click/enter) a song in the library
 * Arguments: GtkTreeView *treeview: the library treeview
@@ -119,7 +116,7 @@ static void lib_row_activated(GtkTreeView *, GtkTreePath *, GtkTreeViewColumn *,
 * -the struct song to set up: current_song
 * -the launched timer tag: bartag
 */
-static void playlist_row_activated(GtkTreeView *, GtkTreePath *, GtkTreeViewColumn *, struct arguments *);
+void playlist_row_activated(GtkTreeView *, GtkTreePath *, GtkTreeViewColumn *, struct arguments *);
 /**
 * Description: Callback function called when the user selects (double-click/enter) a song in the playlist
 * Arguments: GtkTreeView *treeview: the playlist treeview
@@ -129,21 +126,21 @@ static void playlist_row_activated(GtkTreeView *, GtkTreePath *, GtkTreeViewColu
 * -the struct song to set up: current_song
 * -the launched timer tag: bartag
 */
-static void artist_row_activated(GtkTreeView *, GtkTreePath *, GtkTreeViewColumn *, struct arguments *);
-static void toggle_playpause_button(GtkWidget *, struct arguments *);
-static void next_buttonf(GtkWidget *, struct arguments *);
-static void previous_buttonf(GtkWidget *, struct arguments *);
-static void destroy(GtkWidget *, gpointer);
-static void config_folder_changed(char *, GtkWidget *);
-static void preferences_callback(GtkMenuItem *preferences, struct pref_arguments *);
-static void analyze_thread(struct pref_folder_arguments *);
-static void state_changed(GstBus *, GstMessage *, struct arguments *);
-static void slider_changed(GtkRange *, struct arguments *);
-static void volume_scale_changed(GtkScaleButton*, struct arguments *);
-static void refresh_ui(GstBus *, GstMessage *, struct arguments *);
-static void ui_playlist_changed(GtkTreeModel *, GtkTreePath *, GtkTreeIter *, GtkNotebook *);
-static void toggle_lelele(GtkWidget *button, struct arguments *);
-static void toggle_random(GtkWidget *button, struct arguments *);
+void artist_row_activated(GtkTreeView *, GtkTreePath *, GtkTreeViewColumn *, struct arguments *);
+void toggle_playpause_button(GtkWidget *, struct arguments *);
+void next_buttonf(GtkWidget *, struct arguments *);
+void previous_buttonf(GtkWidget *, struct arguments *);
+void destroy(GtkWidget *, gpointer);
+void config_folder_changed(char *, GtkWidget *);
+void preferences_callback(GtkMenuItem *preferences, struct pref_arguments *);
+void analyze_thread(struct pref_folder_arguments *);
+void state_changed(GstBus *, GstMessage *, struct arguments *);
+void slider_changed(GtkRange *, struct arguments *);
+void volume_scale_changed(GtkScaleButton*, struct arguments *);
+void refresh_ui(GstBus *, GstMessage *, struct arguments *);
+void ui_playlist_changed(GtkTreeModel *, GtkTreePath *, GtkTreeIter *, GtkNotebook *);
+void toggle_lelele(GtkWidget *button, struct arguments *);
+void toggle_random(GtkWidget *button, struct arguments *);
 int bufferize(struct song, struct arguments *);
 float distance(struct d4vector, struct d4vector);
 void pause_song(struct arguments *);

@@ -509,6 +509,12 @@ void analyze_thread(struct pref_folder_arguments *argument) {
 	//fclose(test);
 }
 
+gboolean refresh_loading(gpointer argument) {
+	printf("coucou\n");
+	while(gtk_events_pending())
+		gtk_main_iteration();
+}
+
 void config_folder_changed(char *folder, GtkWidget *parent) {
 	GtkWidget *progressbar, *progressdialog, *area;
 	progressbar = gtk_progress_bar_new();
@@ -548,7 +554,7 @@ void config_folder_changed(char *folder, GtkWidget *parent) {
 	gtk_widget_set_size_request(progressbar, 300, 20);
 	gtk_box_pack_start(GTK_BOX(area), progressbar, TRUE, TRUE, 0);
 	gtk_progress_bar_set_show_text(GTK_PROGRESS_BAR(progressbar), 1);
-	gtk_window_set_keep_above(GTK_WINDOW(progressdialog), TRUE);
+	//gtk_window_set_keep_above(GTK_WINDOW(progressdialog), TRUE);
 	gtk_window_set_deletable(GTK_WINDOW(progressdialog), FALSE);
 	gtk_window_set_modal(GTK_WINDOW(progressdialog), TRUE);
 	gtk_widget_show_all(progressdialog);
@@ -569,8 +575,9 @@ void config_folder_changed(char *folder, GtkWidget *parent) {
 			g_free(msg);
 			msg = NULL;
 		}
-		gtk_main_iteration();
-	} while(((msg = g_async_queue_try_pop(msg_queue)) == NULL) || strcmp(msg, "end")); 
+		while (gtk_events_pending ())
+  			gtk_main_iteration ();
+	} while(((msg = g_async_queue_pop(msg_queue)) == NULL) || strcmp(msg, "end")); 
 
 	gtk_widget_destroy(progressdialog);
 	g_free(msg);
@@ -729,7 +736,8 @@ void slider_changed(GtkRange *progressbar, struct arguments *argument) {
 
 void volume_scale_changed(GtkScaleButton* volume_scale, struct arguments *argument) {
 	float vol = pow(gtk_scale_button_get_value(volume_scale), 3);
-	g_object_set(argument->current_song.playbin, "volume", vol, NULL);
+	if(argument->current_song.state != GST_STATE_NULL)
+		g_object_set(argument->current_song.playbin, "volume", vol, NULL);
 }
 
 void setup_tree_view_renderer_artist(GtkWidget *treeview, GtkTreeStore *treestore, GtkTreeModel *model_library) {

@@ -1,5 +1,5 @@
 # leleleplayer
-Leleleplayer is a rather classic audio player, which comes with a home-made library that calculates distance between songs, using it in order to smoothly play similar songs from your audio library.
+Leleleplayer is a classic audio player, which comes with a home-made library that calculates distance between songs, using it in order to smoothly play similar songs from your audio library.
 Handy when you don't want bothering yourself with creating a complete playlist.
 
 ## Dependencies

@@ -159,3 +159,5 @@ gboolean get_next_playlist_song(GtkTreeView *, struct song *, struct arguments *
 gboolean get_random_playlist_song(GtkTreeView *, struct song *, struct arguments *);
 gboolean get_lelelerandom_playlist_song(GtkTreeView *, struct song *, struct arguments *);
 gboolean get_previous_playlist_song(GtkTreeView *, struct song *, struct arguments *);
+gboolean add_album_to_playlist(gchar *, gchar *, struct arguments *);
+gboolean play_playlist_song(gchar *, struct arguments *); 

@@ -11,10 +11,10 @@ int debug;
 int cli;
 
 struct d4vector {
-	float x;
-	float y;
-	float z;
-	float t;
+	float x; // Tempo rating
+	float y; // Amplitude rating
+	float z; // Frequency rating
+	float t; // Attack rating
 };
 
 struct d3vector {

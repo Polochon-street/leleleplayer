@@ -113,8 +113,8 @@ void lib_row_activated(GtkTreeView *, GtkTreePath *, GtkTreeViewColumn *, struct
 * Arguments: GtkTreeViewColumn *column: the column of the selected item in the treeview
 * Arguments: struct arguments *argument: the global argument struct containing:
 * -the playlist treeview (in order to insert songs there): treeview_playlist
-* -the struct song to set up: current_song
-* -the launched timer tag: bartag
+* -an history of played songs: history
+* -the struct argument itself to pass to start_song()
 */
 void playlist_row_activated(GtkTreeView *, GtkTreePath *, GtkTreeViewColumn *, struct arguments *);
 /**
@@ -123,10 +123,22 @@ void playlist_row_activated(GtkTreeView *, GtkTreePath *, GtkTreeViewColumn *, s
 * Arguments: GtkTreePath *path: the path of the selected item in the treeview (useless)
 * Arguments: GtkTreeViewColumn *column: the column of the selected item in the treeview
 * Arguments: struct arguments *argument: the global argument struct containing:
-* -the struct song to set up: current_song
-* -the launched timer tag: bartag
+* -the playlist iter to fill with the selected iter: iter_playlist
+* -the struct argument itself to pass to start_song()
 */
 void artist_row_activated(GtkTreeView *, GtkTreePath *, GtkTreeViewColumn *, struct arguments *);
+/** 
+* Description: Callback function called when the user selects (double-click/enter) a song in the « artist » tab
+* Arguments: GtkTreeview *treeview: the artist treeview
+* Arguments: GtkTreePath *path: the path of the selected item in the treeview (its « level » in the treeview)
+* Arguments: GtkTreeViewColumn *column: the column of the selected item in the treeview
+* Arguments: struct arguments *argument: the global argument struct containing:
+* -the playlist treeview (in order to insert songs there): treeview_playlist
+* -the library treeview (in order to look up for songs): treeview_library
+* -the artist iter to fill with the selected iter: iter_artist
+* -the struct argument itself to pass to start_song(), add_album_to_playlist() and add_artist_to_playlist()
+* -the playlist iter to fill with the first song played: iter_playlist
+*/
 void toggle_playpause_button(GtkWidget *, struct arguments *);
 void next_buttonf(GtkWidget *, struct arguments *);
 void previous_buttonf(GtkWidget *, struct arguments *);
@@ -160,4 +172,5 @@ gboolean get_random_playlist_song(GtkTreeView *, struct song *, struct arguments
 gboolean get_lelelerandom_playlist_song(GtkTreeView *, struct song *, struct arguments *);
 gboolean get_previous_playlist_song(GtkTreeView *, struct song *, struct arguments *);
 gboolean add_album_to_playlist(gchar *, gchar *, struct arguments *);
+gboolean add_artist_to_playlist(gchar *, struct arguments *);
 gboolean play_playlist_song(gchar *, struct arguments *); 

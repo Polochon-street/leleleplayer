@@ -140,6 +140,15 @@ void artist_row_activated(GtkTreeView *, GtkTreePath *, GtkTreeViewColumn *, str
 * -the playlist iter to fill with the first song played: iter_playlist
 */
 void toggle_playpause_button(GtkWidget *, struct arguments *);
+/**
+* Description: Callback function called when the « next » button is clicked
+* Arguments: GtkWidget *button: useless
+* Arguments: struct arguments *argument: the global argument struct containing:
+* -the playlist treeview (in order to get the next playlist song): treeview_playlist
+* -the playlist iter, in order to add its path to the history: iter_playlist
+* -the history list, in order to add the previous song to it: history
+* -the struct argument istelf to pass to start_song()
+*/
 void next_buttonf(GtkWidget *, struct arguments *);
 void previous_buttonf(GtkWidget *, struct arguments *);
 void destroy(GtkWidget *, gpointer);
@@ -167,10 +176,10 @@ void display_library(GtkTreeView *, GtkListStore *);
 void playlist_queue(GtkTreeIter *, GtkTreeModel *, GtkTreeView *, struct arguments *);
 void get_playlist_song(GtkTreeView *, struct song *, struct arguments *);
 void clean_playlist(GtkTreeView *, struct arguments *);
-gboolean get_next_playlist_song(GtkTreeView *, struct song *, struct arguments *);
-gboolean get_random_playlist_song(GtkTreeView *, struct song *, struct arguments *);
-gboolean get_lelelerandom_playlist_song(GtkTreeView *, struct song *, struct arguments *);
-gboolean get_previous_playlist_song(GtkTreeView *, struct song *, struct arguments *);
+gboolean get_next_playlist_song(GtkTreeView *, struct arguments *);
+gboolean get_random_playlist_song(GtkTreeView *, struct arguments *);
+gboolean get_lelelerandom_playlist_song(GtkTreeView *, struct arguments *);
+gboolean get_previous_playlist_song(GtkTreeView *, struct arguments *);
 gboolean add_album_to_playlist(gchar *, gchar *, struct arguments *);
 gboolean add_artist_to_playlist(gchar *, struct arguments *);
 gboolean play_playlist_song(gchar *, struct arguments *); 

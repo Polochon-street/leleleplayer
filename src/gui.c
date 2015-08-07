@@ -178,7 +178,7 @@ gboolean get_next_playlist_song(GtkTreeView *treeview_playlist, struct arguments
 		tempiter = argument->iter_playlist;
 		if(gtk_tree_model_iter_next(model_playlist, &tempiter)) {
 			argument->iter_playlist = tempiter;
-		return TRUE;
+			return TRUE;
 		}
 		else {
 			return FALSE;
@@ -358,6 +358,15 @@ void continue_track(GstElement *playbin, struct arguments *argument) {
 
 void queue_song(struct arguments *argument) {
 	char *uri;
+	GtkTreeModel *model_playlist;
+
+	model_playlist = gtk_tree_view_get_model(GTK_TREE_VIEW(argument->treeview_playlist));
+	gtk_tree_model_get(model_playlist, &(argument->iter_playlist), AFILE, &argument->current_song.filename, 
+	TRACKNUMBER, &argument->current_song.tracknumber, TRACK, &argument->current_song.title, 
+	ALBUM, &argument->current_song.album, ARTIST, &argument->current_song.artist, 
+	FORCE, &argument->current_song.force, FORCE_TEMPO, &argument->current_song.force_vector.x, 
+	FORCE_AMP, &argument->current_song.force_vector.y, FORCE_FREQ, &argument->current_song.force_vector.z, 
+	FORCE_ATK, &argument->current_song.force_vector.t, -1);
 
 	uri = g_filename_to_uri(argument->current_song.filename, NULL, NULL);
 

@@ -221,12 +221,20 @@ gboolean get_random_playlist_song(GtkTreeView *treeview_playlist, struct argumen
 }
 
 gboolean get_lelelerandom_playlist_song(GtkTreeView *treeview_playlist, struct arguments *argument) {
+	GtkTreeModel *model_playlist;
+
+	model_playlist = gtk_tree_view_get_model(GTK_TREE_VIEW(argument->treeview_playlist));
 	struct d4vector current_force = argument->current_song.force_vector;
 	float treshold = 0.45;
 	do {
 		treshold += 0.01;
 		if(!get_random_playlist_song(treeview_playlist, argument))
 			return FALSE;
+		gtk_tree_model_get(model_playlist, &(argument->iter_playlist), FORCE_TEMPO, &argument->current_song.force_vector.x, 
+		FORCE_AMP, &argument->current_song.force_vector.y, FORCE_FREQ, &argument->current_song.force_vector.z, 
+		FORCE_ATK, &argument->current_song.force_vector.t, -1);
+
+		printf("%f\n", distance(current_force, argument->current_song.force_vector));
 	} while(distance(current_force, argument->current_song.force_vector) >= treshold);
 	return TRUE;
 }

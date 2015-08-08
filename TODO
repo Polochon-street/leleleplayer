@@ -1,0 +1,28 @@
+#lelelerandom®
+#volume scale
+#moar effective beat detection
+#popup hover
+#volume scales at each song
+#threads
+#done decode little by little
+#avoid segfaults (check fopen/fprintf etc | next song)
+#use spectrogram (have an array with seconds interval as an index, and each column is an array of fft of seconds interval's amplitude)
+#correct loop
+#work on makefile (-O2 = faster)
+#static dans le .h
+#travailler la présentation dans le readme
+#Rewrite artist_view
+#lib_row_activated should add all the library
+#clean amp_sort and all the files
+clean todo
+mediainfo/spectrogram display
+Timer for sleeping
+Add the whole library to the playlist when added from the first tab
+Text in dialog box
+correct loading dialog box
+add album view
+split gui into more files
+nuage de points selon les genre
+add right click/add to playlist
+Installer for linux/windows with cpack
+add « add to playlist/remove from playlist » 

@@ -9,9 +9,9 @@ int audio_decode(const char *filename, struct song *song) { // decode the track
 	AVCodecContext *c = NULL;
 	AVFormatContext *pFormatCtx;
 	
-	//int8_t* sample_array;
 	int i, d, e;
 	int len;
+	int planar;
 	AVPacket avpkt;
 	AVFrame *decoded_frame = NULL;
 	int8_t *beginning;
@@ -63,7 +63,7 @@ int audio_decode(const char *filename, struct song *song) { // decode the track
 	beginning = song->sample_array;
 	index = 0;
 
-	song->planar = av_sample_fmt_is_planar(c->sample_fmt);
+	planar = av_sample_fmt_is_planar(c->sample_fmt);
 	song->nb_bytes_per_sample = av_get_bytes_per_sample(c->sample_fmt);
 
 	song->channels = c->channels;
@@ -80,6 +80,7 @@ int audio_decode(const char *filename, struct song *song) { // decode the track
 		song->tracknumber = malloc(1*sizeof(char));
 		strcpy(song->tracknumber, "");
 	}
+
 	if(av_dict_get(pFormatCtx->metadata, "title", NULL, AV_DICT_IGNORE_SUFFIX) != NULL) {
 		song->title = malloc(strlen(av_dict_get(pFormatCtx->metadata, "TITLE", NULL, AV_DICT_IGNORE_SUFFIX)->value) + 1);
 		strcpy(song->title, av_dict_get(pFormatCtx->metadata, "TITLE", NULL, AV_DICT_IGNORE_SUFFIX)->value);
@@ -88,6 +89,7 @@ int audio_decode(const char *filename, struct song *song) { // decode the track
 		song->title = malloc(12*sizeof(char));
 		strcpy(song->title, "<no title>");
 	}
+
 	if(av_dict_get(pFormatCtx->metadata, "ARTIST", NULL, AV_DICT_IGNORE_SUFFIX) != NULL) {
 		song->artist= malloc(strlen(av_dict_get(pFormatCtx->metadata, "ARTIST", NULL, AV_DICT_IGNORE_SUFFIX)->value) + 1);
 		strcpy(song->artist, av_dict_get(pFormatCtx->metadata, "ARTIST", NULL, AV_DICT_IGNORE_SUFFIX)->value);
@@ -96,6 +98,7 @@ int audio_decode(const char *filename, struct song *song) { // decode the track
 		song->artist= malloc(12*sizeof(char));
 		strcpy(song->artist, "<no artist>");
 	}
+
 	if(av_dict_get(pFormatCtx->metadata, "ALBUM", NULL, AV_DICT_IGNORE_SUFFIX) != NULL) {
 		song->album= malloc(strlen(av_dict_get(pFormatCtx->metadata, "ALBUM", NULL, AV_DICT_IGNORE_SUFFIX)->value) + 1);
 		strcpy(song->album, av_dict_get(pFormatCtx->metadata, "ALBUM", NULL, AV_DICT_IGNORE_SUFFIX)->value);
@@ -121,11 +124,8 @@ int audio_decode(const char *filename, struct song *song) { // decode the track
 
 			len = avcodec_decode_audio4(c, decoded_frame, &got_frame, &avpkt);
 	
-			if(len < 0) {
-				//printf("Error while decoding\n");
-				//exit(1);
+			if(len < 0)
 				avpkt.size=0;
-			}
 			av_free_packet(&avpkt);
 			/* interesting part: copying decoded data into a huge array */
 			/* flac has a different behaviour from mp3, hence the planar condition */
@@ -137,15 +137,15 @@ int audio_decode(const char *filename, struct song *song) { // decode the track
 					song->nSamples+=data_size/song->nb_bytes_per_sample;
 				}
 				int8_t *p = beginning+index*song->nb_bytes_per_sample;
-				if(song->planar == 1) {
-					for(i = 0; i < decoded_frame->nb_samples*song->nb_bytes_per_sample; i+=song->nb_bytes_per_sample) { 
+				if(planar == 1) {
+					for(i = 0; i < decoded_frame->nb_samples*song->nb_bytes_per_sample; i += song->nb_bytes_per_sample) { 
 						for(e = 0; e < c->channels; ++e)
 							for(d = 0; d < song->nb_bytes_per_sample; ++d) 
 								*(p++) = ((int8_t*)(decoded_frame->extended_data[e]))[i+d];
 					}
 					index+=data_size/song->nb_bytes_per_sample;
 				}
-				else if(song->planar == 0) {
+				else if(planar == 0) {
 					memcpy(index*song->nb_bytes_per_sample+beginning, decoded_frame->extended_data[0], data_size);
 	        		index+=data_size/song->nb_bytes_per_sample; 
 				}
@@ -155,10 +155,7 @@ int audio_decode(const char *filename, struct song *song) { // decode the track
 	/* cleaning memory */
 
 	avformat_close_input(&pFormatCtx);
-
 	song->sample_array = beginning;
-//	av_frame_free(&decoded_frame);
-//	av_free_packet(&avpkt);
 
 	return 0;
 } 

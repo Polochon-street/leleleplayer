@@ -3,7 +3,6 @@
 
 #define WIN_BITS 10
 #define WIN_SIZE (1 << WIN_BITS)
-//#define MAX( a, b ) ( ((a) > (b)) ? (a) : (b) )
 
 struct d2vector envelope_sort(struct song song) {
 	struct d2vector result;
@@ -17,7 +16,7 @@ struct d2vector envelope_sort(struct song song) {
 	FILE *file_env;
 	size_t rbuf_head = 0;
 	int16_t d_envelope = 0;
-	int32_t sample_max = (1 << 8*song.nb_bytes_per_sample)/2;
+	uint64_t sample_max = (1 << (8*song.nb_bytes_per_sample - 1));
 	int64_t atk = 0;
 	float final_tempo = 0;
 	float final_atk;

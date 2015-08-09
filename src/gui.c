@@ -1,5 +1,51 @@
 #include <stdio.h>
 #include "gui.h"
+#include <gdk/gdk.h>
+
+#include <gdk/gdkx.h>
+#include <gst/video/videooverlay.h>
+#include <gst/video/video.h>
+
+gboolean draw_rectangle_vis(GtkWidget *widget, GdkEventExpose *event, struct arguments *argument) {
+	if(argument->current_song.state < GST_STATE_PAUSED) {
+    GtkAllocation allocation;
+    GdkWindow *window = gtk_widget_get_window (widget);
+    cairo_t *cr;
+
+    gtk_widget_get_allocation (widget, &allocation);
+    cr = gdk_cairo_create (window);
+    cairo_set_source_rgb (cr, 0, 0, 0);
+    cairo_rectangle (cr, 0, 0, allocation.width, allocation.height);
+    cairo_fill (cr);
+    cairo_destroy (cr);
+  }
+   
+  return FALSE;
+}
+
+gboolean filter_vis_features(GstPluginFeature *feature, gpointer data) {
+	GstElementFactory *factory;
+   
+	if (!GST_IS_ELEMENT_FACTORY (feature))
+    	return FALSE;
+	factory = GST_ELEMENT_FACTORY (feature);
+	if (!g_strrstr (gst_element_factory_get_klass (factory), "Visualization"))
+    	return FALSE;
+
+	return TRUE;
+}
+
+void pass_overlay_handle(GtkWidget *widget, struct arguments *argument) {
+	GdkWindow *window = gtk_widget_get_window(widget);
+	guintptr window_handle;
+
+	if(!gdk_window_ensure_native(window))
+		g_error("Couldn't create native window needed for GstXOverlay!");
+
+	window_handle = GDK_WINDOW_XID(window);
+
+	gst_video_overlay_set_window_handle(GST_VIDEO_OVERLAY(argument->current_song.playbin), window_handle);
+}
 
 float distance(struct d4vector v1, struct d4vector v2) {
 	float distance;
@@ -385,6 +431,10 @@ void queue_song(struct arguments *argument) {
 void start_song(struct arguments *argument) {
 	char *uri;
 	GtkTreeModel *model_playlist;
+	GstElement *vis_plugin;
+	GstElementFactory *selected_factory = NULL;
+	GList *list, *walk;
+	guint flags;
 
 	model_playlist = gtk_tree_view_get_model(GTK_TREE_VIEW(argument->treeview_playlist));
 
@@ -397,10 +447,38 @@ void start_song(struct arguments *argument) {
 
 	gtk_widget_set_sensitive(argument->progressbar, TRUE);
 	uri = g_filename_to_uri(argument->current_song.filename, NULL, NULL);
+	
+	list = gst_registry_feature_filter(gst_registry_get(), filter_vis_features, FALSE, NULL);
+
+	for(walk = list; walk != NULL; walk = g_list_next(walk)) {
+		const gchar *name;
+		GstElementFactory *factory;
+
+		factory = GST_ELEMENT_FACTORY(walk->data);
+		name = gst_element_factory_get_longname(factory);
+
+		if(selected_factory == NULL || g_str_has_prefix(name, "Waveform")) {
+			selected_factory = factory;
+		}
+	}
+
+	if(!selected_factory)
+		g_printf("No visualization plugins found!\n");
+
+	vis_plugin = gst_element_factory_create(selected_factory, NULL);
+
+	if(!vis_plugin)
+		g_printf("Couldn't create the visualizator factory element!\n");
 
 	gst_element_set_state(argument->current_song.playbin, GST_STATE_NULL);
 	g_object_set(argument->current_song.playbin, "uri", uri, NULL);
+	g_object_get(argument->current_song.playbin, "flags", &flags, NULL);
+	flags |= (1 << 3);
+	g_object_set(argument->current_song.playbin, "flags", flags, NULL);
+	g_object_set(argument->current_song.playbin, "vis-plugin", vis_plugin, NULL);
+	g_object_set(argument->current_song.playbin, "force-aspect-ratio", FALSE, NULL);
 	gst_element_set_state(argument->current_song.playbin, GST_STATE_PLAYING);
+
 	if(argument->bartag)
 			g_source_remove(argument->bartag);
 	argument->bartag = g_timeout_add_seconds(1, refresh_progressbar, argument);
@@ -999,7 +1077,8 @@ int main(int argc, char **argv) {
 
 	GtkWidget *window, *treeview_library, *treeview_playlist, *treeview_artist, *library_panel, *artist_panel, *playlist_panel, *vboxv,
 		*playbox, *volumebox, *randombox, *repeat_button, *random_button, *lelele_button, *labelbox, *next_button, *previous_button, *menubar, *edit, *editmenu, 
-		*preferences, *libnotebook;
+		*preferences, *libnotebook, *mediainfo_expander, *video_window, *mediainfo_box, *mediainfo_labelbox;
+	
 	GtkTreeModel *model_playlist;
 	GtkTreeModel *model_library;
 	GtkTreeSortable *sortable;
@@ -1108,6 +1187,12 @@ int main(int argc, char **argv) {
 	gtk_label_set_markup(GTK_LABEL(pargument->album_label), "<span foreground=\"grey\">No song currently playing</span>");
 	pargument->artist_label = gtk_label_new("");
 	libnotebook = gtk_notebook_new();
+	mediainfo_expander = gtk_expander_new("Visualizer/Mediainfo");
+	mediainfo_labelbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
+	mediainfo_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
+	video_window = gtk_drawing_area_new();
+	gtk_widget_set_size_request(video_window, -1, 50);
+	gtk_expander_set_expanded(GTK_EXPANDER(mediainfo_expander), TRUE);
 
 	gtk_menu_item_set_submenu(GTK_MENU_ITEM(edit), editmenu);
 	gtk_menu_shell_append(GTK_MENU_SHELL(menubar), edit);
@@ -1138,6 +1223,8 @@ int main(int argc, char **argv) {
 	pargument->progressbar_update_signal_id = g_signal_connect(G_OBJECT(pargument->progressbar), 
 		"value-changed", G_CALLBACK(slider_changed), pargument);
 	g_signal_connect(G_OBJECT(window), "destroy", G_CALLBACK(destroy), NULL);	
+	g_signal_connect(video_window, "realize", G_CALLBACK(pass_overlay_handle), pargument);
+	g_signal_connect(video_window, "draw", G_CALLBACK(draw_rectangle_vis), pargument);
 
 	gtk_container_add(GTK_CONTAINER(library_panel), treeview_library);
 	gtk_container_add(GTK_CONTAINER(playlist_panel), treeview_playlist);
@@ -1173,11 +1260,15 @@ int main(int argc, char **argv) {
 		gtk_button_box_set_layout(GTK_BUTTON_BOX(volumebox), GTK_BUTTONBOX_CENTER);
 		gtk_box_pack_start(GTK_BOX(volumebox), pargument->volume_scale, FALSE, FALSE, 1);
 		gtk_button_box_set_child_non_homogeneous(GTK_BUTTON_BOX(volumebox), pargument->volume_scale, TRUE);
+	gtk_box_pack_start(GTK_BOX(vboxv), mediainfo_expander, FALSE, FALSE, 1);
+	gtk_container_add(GTK_CONTAINER(mediainfo_expander), mediainfo_box);
+		gtk_box_pack_start(GTK_BOX(mediainfo_box), video_window, TRUE, TRUE, 1);
+		gtk_box_pack_start(GTK_BOX(mediainfo_box), mediainfo_labelbox, FALSE, FALSE, 1);
+			gtk_box_pack_start(GTK_BOX(mediainfo_labelbox), gtk_label_new("More information:"), FALSE, FALSE, 1);
+			gtk_box_pack_start(GTK_BOX(mediainfo_labelbox), gtk_label_new("Genre:"), FALSE, FALSE, 1);
+			gtk_box_pack_start(GTK_BOX(mediainfo_labelbox), gtk_label_new("Bitrate:"), FALSE, FALSE, 1);
+			gtk_box_pack_start(GTK_BOX(mediainfo_labelbox), gtk_label_new("Sample rate:"), FALSE, FALSE, 1);
 	gtk_box_pack_start(GTK_BOX(vboxv), pargument->progressbar, FALSE, FALSE, 1);
-/*	gtk_box_pack_start(GTK_BOX(vboxv), libplaypane, TRUE, TRUE, 1);
-		gtk_paned_add1(GTK_PANED(libplaypane), library_panel);
-		gtk_paned_add2(GTK_PANED(libplaypane), playlist_panel);
-		gtk_paned_set_position(GTK_PANED(libplaypane), 500);*/
 	gtk_box_pack_start(GTK_BOX(vboxv), libnotebook, TRUE, TRUE, 1);
 		gtk_notebook_append_page(GTK_NOTEBOOK(libnotebook), library_panel, gtk_label_new("Library"));
 		gtk_notebook_append_page(GTK_NOTEBOOK(libnotebook), artist_panel, gtk_label_new("Artists"));

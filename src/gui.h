@@ -57,6 +57,7 @@ struct arguments {
 	GtkWidget *album_label, *title_label, *artist_label;
 	GtkAdjustment *adjust;
 	GtkWidget *volume_scale;
+	GtkWidget *video_window;
 };
 
 struct pref_arguments {
@@ -176,6 +177,9 @@ void display_library(GtkTreeView *, GtkListStore *);
 void playlist_queue(GtkTreeIter *, GtkTreeModel *, GtkTreeView *, struct arguments *);
 void get_playlist_song(GtkTreeView *, struct song *, struct arguments *);
 void clean_playlist(GtkTreeView *, struct arguments *);
+void pass_overlay_handle(GtkWidget *, struct arguments *);
+gboolean draw_rectangle_vis(GtkWidget *, GdkEventExpose *, struct arguments *);
+gboolean filter_vis_features(GstPluginFeature *, gpointer);
 gboolean get_next_playlist_song(GtkTreeView *, struct arguments *);
 gboolean get_random_playlist_song(GtkTreeView *, struct arguments *);
 gboolean get_lelelerandom_playlist_song(GtkTreeView *, struct arguments *);

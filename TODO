@@ -14,8 +14,7 @@
 #Rewrite artist_view
 #lib_row_activated should add all the library
 #clean amp_sort and all the files
-clean todo
-mediainfo/spectrogram display
+mediainfo/spectrogram display: display mediainfo and avoid the visualizer showing in another window if the expander has not been first expanded if L1195 is commented
 Timer for sleeping
 Add the whole library to the playlist when added from the first tab
 Text in dialog box

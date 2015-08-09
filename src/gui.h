@@ -150,7 +150,6 @@ void toggle_playpause_button(GtkWidget *, struct arguments *);
 * -the history list, in order to add the previous song to it: history
 * -the struct argument istelf to pass to start_song()
 */
-void next_buttonf(GtkWidget *, struct arguments *);
 void previous_buttonf(GtkWidget *, struct arguments *);
 void destroy(GtkWidget *, gpointer);
 void config_folder_changed(char *, GtkWidget *);

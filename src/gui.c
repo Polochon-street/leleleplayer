@@ -6,45 +6,21 @@
 #include <gst/video/videooverlay.h>
 #include <gst/video/video.h>
 
-gboolean draw_rectangle_vis(GtkWidget *widget, GdkEventExpose *event, struct arguments *argument) {
-	if(argument->current_song.state < GST_STATE_PAUSED) {
-    GtkAllocation allocation;
-    GdkWindow *window = gtk_widget_get_window (widget);
-    cairo_t *cr;
-
-    gtk_widget_get_allocation (widget, &allocation);
-    cr = gdk_cairo_create (window);
-    cairo_set_source_rgb (cr, 0, 0, 0);
-    cairo_rectangle (cr, 0, 0, allocation.width, allocation.height);
-    cairo_fill (cr);
-    cairo_destroy (cr);
-  }
-   
-  return FALSE;
-}
+#include <gst/gl/gl.h>
+#if GST_GL_HAVE_WINDOW_X11 && defined (GDK_WINDOWING_X11)
+#include <gst/gl/x11/gstgldisplay_x11.h>
+#endif
 
 gboolean filter_vis_features(GstPluginFeature *feature, gpointer data) {
 	GstElementFactory *factory;
    
-	if (!GST_IS_ELEMENT_FACTORY (feature))
+	if(!GST_IS_ELEMENT_FACTORY (feature))
     	return FALSE;
 	factory = GST_ELEMENT_FACTORY (feature);
-	if (!g_strrstr (gst_element_factory_get_klass (factory), "Visualization"))
+	if (!g_strrstr(gst_element_factory_get_klass(factory), "Visualization"))
     	return FALSE;
 
 	return TRUE;
-}
-
-void pass_overlay_handle(GtkWidget *widget, struct arguments *argument) {
-	GdkWindow *window = gtk_widget_get_window(widget);
-	guintptr window_handle;
-
-	if(!gdk_window_ensure_native(window))
-		g_error("Couldn't create native window needed for GstXOverlay!");
-
-	window_handle = GDK_WINDOW_XID(window);
-
-	gst_video_overlay_set_window_handle(GST_VIDEO_OVERLAY(argument->current_song.playbin), window_handle);
 }
 
 float distance(struct d4vector v1, struct d4vector v2) {
@@ -100,6 +76,47 @@ void explore(GDir *dir, char *folder, FILE *list) {
 	}
 	if (file == NULL) {
 		g_dir_close(dir);
+	}
+}
+
+void tags_obtained(GstElement *playbin, gint stream, struct arguments *argument) {
+	gint i;
+	GstTagList *tags;
+	gchar *str, *total_str;
+	gint n_audio, n_text, rate, channels;
+	GstStructure *s;
+	GstPad *pad;
+	GstCaps *caps;
+	gchar *str_genre, *str_samplerate, *str_bitrate, *str_channels;
+
+	g_object_get(argument->current_song.playbin, "n-audio", &n_audio, NULL);
+	g_object_get(argument->current_song.playbin, "n-text", &n_text, NULL);
+
+	g_signal_emit_by_name(argument->current_song.playbin, "get-audio-pad", 0, &pad);
+	caps = gst_pad_get_current_caps(pad);
+
+	s = gst_caps_get_structure(caps, 0);
+
+	gst_structure_get_int(s, "channels", &channels);
+	gst_structure_get_int(s, "rate", &rate);
+	str_channels = g_strdup_printf("Channels: %d", channels);
+	gtk_label_set_text(GTK_LABEL(argument->channels_label), str_channels);
+	str_samplerate = g_strdup_printf("Sample rate: %dHz", rate);
+	gtk_label_set_text(GTK_LABEL(argument->samplerate_label), str_samplerate);
+	g_signal_emit_by_name(argument->current_song.playbin, "get-audio-tags", i, &tags);
+	if(tags) {
+		printf("\naudio stream %d\n", i);
+		if(gst_tag_list_get_string(tags, GST_TAG_GENRE, &str)) {
+			str_genre = g_strdup_printf("Genre: %s", str);
+			gtk_label_set_text(GTK_LABEL(argument->genre_label), str_genre);
+		}
+		if(gst_tag_list_get_string(tags, GST_TAG_LANGUAGE_CODE, &str)) {
+			printf(" language: %s\n", str);
+		}
+		if(gst_tag_list_get_uint(tags, GST_TAG_BITRATE, &rate)) {
+			str_bitrate = g_strdup_printf("Bit rate: %dkB/s", rate/1000);
+			gtk_label_set_text(GTK_LABEL(argument->bitrate_label), str_bitrate);
+		}
 	}
 }
 
@@ -457,7 +474,7 @@ void start_song(struct arguments *argument) {
 		factory = GST_ELEMENT_FACTORY(walk->data);
 		name = gst_element_factory_get_longname(factory);
 
-		if(selected_factory == NULL || g_str_has_prefix(name, "Waveform")) {
+		if(selected_factory == NULL || g_str_has_prefix(name, "Spectroscope")) {
 			selected_factory = factory;
 		}
 	}
@@ -478,7 +495,6 @@ void start_song(struct arguments *argument) {
 	g_object_set(argument->current_song.playbin, "vis-plugin", vis_plugin, NULL);
 	g_object_set(argument->current_song.playbin, "force-aspect-ratio", FALSE, NULL);
 	gst_element_set_state(argument->current_song.playbin, GST_STATE_PLAYING);
-
 	if(argument->bartag)
 			g_source_remove(argument->bartag);
 	argument->bartag = g_timeout_add_seconds(1, refresh_progressbar, argument);
@@ -1077,7 +1093,7 @@ int main(int argc, char **argv) {
 
 	GtkWidget *window, *treeview_library, *treeview_playlist, *treeview_artist, *library_panel, *artist_panel, *playlist_panel, *vboxv,
 		*playbox, *volumebox, *randombox, *repeat_button, *random_button, *lelele_button, *labelbox, *next_button, *previous_button, *menubar, *edit, *editmenu, 
-		*preferences, *libnotebook, *mediainfo_expander, *video_window, *mediainfo_box, *mediainfo_labelbox;
+		*preferences, *libnotebook, *mediainfo_expander, *mediainfo_box, *mediainfo_labelbox, *area;
 	
 	GtkTreeModel *model_playlist;
 	GtkTreeModel *model_library;
@@ -1090,6 +1106,7 @@ int main(int argc, char **argv) {
 		NULL
 	};
 
+	GstElement *gtk_sink;
 	GstBus *bus;
 
 	pargument->lelelerandom = 0;
@@ -1118,6 +1135,17 @@ int main(int argc, char **argv) {
 		g_error("Not all elements could be created.\n");
 	bus = gst_element_get_bus(pargument->current_song.playbin);
 	gst_bus_add_signal_watch(bus);
+	
+	if((gtk_sink = gst_element_factory_make("gtksink", NULL))) {
+		//GstElement *video_sink;
+		//video_sink = gst_element_factory_make("glsinkbin", NULL);
+		//g_object_set(video_sink, "sink", gtk_sink, NULL);
+		g_object_get(gtk_sink, "widget", &area, NULL);
+
+		g_object_set(pargument->current_song.playbin, "video-sink", gtk_sink, NULL);	
+		//g_object_set(pargument->current_song.playbin, "video-sink", gtk_sink, NULL);
+	}	
+
 
 	library_panel = gtk_scrolled_window_new(NULL, NULL);
 	playlist_panel = gtk_scrolled_window_new(NULL, NULL);
@@ -1186,13 +1214,15 @@ int main(int argc, char **argv) {
 	pargument->album_label = gtk_label_new("");
 	gtk_label_set_markup(GTK_LABEL(pargument->album_label), "<span foreground=\"grey\">No song currently playing</span>");
 	pargument->artist_label = gtk_label_new("");
+	pargument->genre_label = gtk_label_new("Genre:");
+	pargument->samplerate_label = gtk_label_new("Sample rate:");
+	pargument->bitrate_label = gtk_label_new("Bitrate:");
+	pargument->channels_label = gtk_label_new("Channels:");
 	libnotebook = gtk_notebook_new();
 	mediainfo_expander = gtk_expander_new("Visualizer/Mediainfo");
 	mediainfo_labelbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
 	mediainfo_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
-	video_window = gtk_drawing_area_new();
-	gtk_widget_set_size_request(video_window, -1, 50);
-	gtk_expander_set_expanded(GTK_EXPANDER(mediainfo_expander), TRUE);
+	gtk_widget_set_size_request(area, -1, 50);
 
 	gtk_menu_item_set_submenu(GTK_MENU_ITEM(edit), editmenu);
 	gtk_menu_shell_append(GTK_MENU_SHELL(menubar), edit);
@@ -1208,6 +1238,8 @@ int main(int argc, char **argv) {
 	g_signal_connect(G_OBJECT(bus), "message::state-changed", G_CALLBACK(state_changed), pargument);
 	g_signal_connect(G_OBJECT(pargument->current_song.playbin), "about-to-finish", G_CALLBACK(continue_track), pargument);
 	g_signal_connect(G_OBJECT(bus), "message::stream-start", G_CALLBACK(refresh_ui), pargument);
+	g_signal_connect(G_OBJECT(pargument->current_song.playbin), "audio-tags-changed", G_CALLBACK(tags_obtained), pargument);
+	g_signal_connect(G_OBJECT(pargument->current_song.playbin), "text-tags-changed", G_CALLBACK(tags_obtained), pargument);
 	g_signal_connect(G_OBJECT(pargument->playpause_button), "clicked", G_CALLBACK(toggle_playpause_button), pargument);
 	g_signal_connect(G_OBJECT(pargument->volume_scale), "value-changed", G_CALLBACK(volume_scale_changed), pargument);
 	g_signal_connect(G_OBJECT(random_button), "clicked", G_CALLBACK(toggle_random), pargument);
@@ -1221,10 +1253,8 @@ int main(int argc, char **argv) {
 	g_signal_connect(G_OBJECT(treeview_artist), "row-activated", G_CALLBACK(artist_row_activated), pargument);
 	g_signal_connect(G_OBJECT(model_playlist), "row-inserted", G_CALLBACK(ui_playlist_changed), libnotebook);
 	pargument->progressbar_update_signal_id = g_signal_connect(G_OBJECT(pargument->progressbar), 
-		"value-changed", G_CALLBACK(slider_changed), pargument);
+	"value-changed", G_CALLBACK(slider_changed), pargument);
 	g_signal_connect(G_OBJECT(window), "destroy", G_CALLBACK(destroy), NULL);	
-	g_signal_connect(video_window, "realize", G_CALLBACK(pass_overlay_handle), pargument);
-	g_signal_connect(video_window, "draw", G_CALLBACK(draw_rectangle_vis), pargument);
 
 	gtk_container_add(GTK_CONTAINER(library_panel), treeview_library);
 	gtk_container_add(GTK_CONTAINER(playlist_panel), treeview_playlist);
@@ -1262,12 +1292,13 @@ int main(int argc, char **argv) {
 		gtk_button_box_set_child_non_homogeneous(GTK_BUTTON_BOX(volumebox), pargument->volume_scale, TRUE);
 	gtk_box_pack_start(GTK_BOX(vboxv), mediainfo_expander, FALSE, FALSE, 1);
 	gtk_container_add(GTK_CONTAINER(mediainfo_expander), mediainfo_box);
-		gtk_box_pack_start(GTK_BOX(mediainfo_box), video_window, TRUE, TRUE, 1);
+		gtk_box_pack_start(GTK_BOX(mediainfo_box), area, TRUE, TRUE, 1);
 		gtk_box_pack_start(GTK_BOX(mediainfo_box), mediainfo_labelbox, FALSE, FALSE, 1);
 			gtk_box_pack_start(GTK_BOX(mediainfo_labelbox), gtk_label_new("More information:"), FALSE, FALSE, 1);
-			gtk_box_pack_start(GTK_BOX(mediainfo_labelbox), gtk_label_new("Genre:"), FALSE, FALSE, 1);
-			gtk_box_pack_start(GTK_BOX(mediainfo_labelbox), gtk_label_new("Bitrate:"), FALSE, FALSE, 1);
-			gtk_box_pack_start(GTK_BOX(mediainfo_labelbox), gtk_label_new("Sample rate:"), FALSE, FALSE, 1);
+			gtk_box_pack_start(GTK_BOX(mediainfo_labelbox), pargument->genre_label,FALSE, FALSE, 1);
+			gtk_box_pack_start(GTK_BOX(mediainfo_labelbox), pargument->bitrate_label, FALSE, FALSE, 1);
+			gtk_box_pack_start(GTK_BOX(mediainfo_labelbox), pargument->channels_label, FALSE, FALSE, 1);
+			gtk_box_pack_start(GTK_BOX(mediainfo_labelbox), pargument->samplerate_label, FALSE, FALSE, 1);
 	gtk_box_pack_start(GTK_BOX(vboxv), pargument->progressbar, FALSE, FALSE, 1);
 	gtk_box_pack_start(GTK_BOX(vboxv), libnotebook, TRUE, TRUE, 1);
 		gtk_notebook_append_page(GTK_NOTEBOOK(libnotebook), library_panel, gtk_label_new("Library"));
@@ -1276,7 +1307,6 @@ int main(int argc, char **argv) {
 
 	gtk_scale_button_set_value(GTK_SCALE_BUTTON(pargument->volume_scale), 0.4);
 	gtk_container_add(GTK_CONTAINER(window), vboxv);
-
 	gtk_widget_show_all(window);
 
 	gtk_main();

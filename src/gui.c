@@ -73,7 +73,7 @@ void explore(GDir *dir, char *folder, FILE *list) {
 
 void tags_obtained(GstElement *playbin, gint stream, struct arguments *argument) {
 	GstTagList *tags;
-	gchar str[256];
+	gchar *str;
 	gint samplerate = 0, channels = 0, bitrate;
 	GstStructure *s;
 	GstPad *pad;
@@ -93,31 +93,38 @@ void tags_obtained(GstElement *playbin, gint stream, struct arguments *argument)
 	else {
 		argument->str_channels = g_strdup("Number of channels not found");
 	}
-
+	printf("channels: %d\n", strlen(argument->str_channels));
 	gtk_label_set_text(GTK_LABEL(argument->channels_label), argument->str_channels);
 	g_free(argument->str_channels);
-	
+	argument->str_channels = NULL;
+
 	if(samplerate) {
 		argument->str_samplerate = g_strdup_printf("Sample rate: %dHz", samplerate);
 	}
 	else {
 		argument->str_samplerate = g_strdup("Sample rate not found");
 	}
-
+	
+	printf("samplerate: %d\n", strlen(argument->str_samplerate));
 	gtk_label_set_text(GTK_LABEL(argument->samplerate_label), argument->str_samplerate);
 	g_free(argument->str_samplerate);
+	argument->str_samplerate = NULL;
 
 	g_signal_emit_by_name(argument->current_song.playbin, "get-audio-tags", 0, &tags);
 	if(tags) {
 		if(gst_tag_list_get_string(tags, GST_TAG_GENRE, &str)) {
 			argument->str_genre = g_strdup_printf("Genre: %s", str);
+			printf("str: %d\n", strlen(str));
 			g_free(str);
+			str = NULL;
 		}
 		else {
 			argument->str_genre = g_strdup("No genre found");
 		}
+		printf("genre: %d\n", strlen(argument->str_genre));
 		gtk_label_set_text(GTK_LABEL(argument->genre_label), argument->str_genre);
 		g_free(argument->str_genre);
+		argument->str_genre = NULL;
 
 		if(gst_tag_list_get_uint(tags, GST_TAG_BITRATE, &bitrate)) {
 			argument->str_bitrate = g_strdup_printf("Bit rate: %dkB/s", bitrate/1000);
@@ -125,8 +132,10 @@ void tags_obtained(GstElement *playbin, gint stream, struct arguments *argument)
 		else {
 			argument->str_bitrate = g_strdup("Bitrate not found");
 		}
+		printf("bitrate: %d\n", strlen(argument->str_bitrate));
 		gtk_label_set_text(GTK_LABEL(argument->bitrate_label), argument->str_bitrate);
 		g_free(argument->str_bitrate);
+		argument->str_bitrate = NULL;
 	}
 	gst_tag_list_free(tags);
 }
@@ -1307,13 +1316,13 @@ int main(int argc, char **argv) {
 		gtk_button_box_set_child_non_homogeneous(GTK_BUTTON_BOX(volumebox), pargument->volume_scale, TRUE);
 	gtk_box_pack_start(GTK_BOX(vboxv), mediainfo_expander, FALSE, FALSE, 1);
 	gtk_container_add(GTK_CONTAINER(mediainfo_expander), mediainfo_box);
-		gtk_box_pack_start(GTK_BOX(mediainfo_box), area, TRUE, TRUE, 1);
 		gtk_box_pack_start(GTK_BOX(mediainfo_box), mediainfo_labelbox, FALSE, FALSE, 1);
 			gtk_box_pack_start(GTK_BOX(mediainfo_labelbox), gtk_label_new("More information:"), FALSE, FALSE, 1);
 			gtk_box_pack_start(GTK_BOX(mediainfo_labelbox), pargument->genre_label,FALSE, FALSE, 1);
 			gtk_box_pack_start(GTK_BOX(mediainfo_labelbox), pargument->bitrate_label, FALSE, FALSE, 1);
 			gtk_box_pack_start(GTK_BOX(mediainfo_labelbox), pargument->channels_label, FALSE, FALSE, 1);
 			gtk_box_pack_start(GTK_BOX(mediainfo_labelbox), pargument->samplerate_label, FALSE, FALSE, 1);
+		gtk_box_pack_start(GTK_BOX(mediainfo_box), area, TRUE, TRUE, 1);
 	gtk_box_pack_start(GTK_BOX(vboxv), pargument->progressbar, FALSE, FALSE, 1);
 	gtk_box_pack_start(GTK_BOX(vboxv), libnotebook, TRUE, TRUE, 1);
 		gtk_notebook_append_page(GTK_NOTEBOOK(libnotebook), library_panel, gtk_label_new("Library"));

@@ -4,7 +4,7 @@ project(leleleplayer C)
 
 find_package(PkgConfig REQUIRED)
 
-pkg_check_modules(MULTIMEDIA REQUIRED libavformat libavutil libavcodec gstreamer-1.0)
+pkg_check_modules(MULTIMEDIA REQUIRED libavformat libavutil libavcodec gstreamer-1.0 gstreamer-video-1.0 x11)
 pkg_check_modules(GTK REQUIRED gtk+-3.0)
 
 include_directories(${MULTIMEDIA_INCLUDE_DIRS} ${GTK_INCLUDE_DIRS})

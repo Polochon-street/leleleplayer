@@ -8,7 +8,8 @@
 #include <glib/gstdio.h>
 #include <glib.h>
 #include <limits.h>
-
+#define GST_USE_UNSTABLE_API
+#include <gst/gl/gl.h>
 enum {
 	COLUMN_ARTIST = 0,
 	NUM_COLS_ARTIST
@@ -56,6 +57,7 @@ struct arguments {
 	GtkTreeViewColumn *column;
 	GtkWidget *album_label, *title_label, *artist_label;
 	GtkWidget *genre_label, *samplerate_label, *bitrate_label, *channels_label;
+	gchar *str_genre, *str_samplerate, *str_channels, *str_bitrate;
 	GtkAdjustment *adjust;
 	GtkWidget *volume_scale;
 	GtkWidget *video_window;

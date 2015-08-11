@@ -1,15 +1,7 @@
 #include <stdio.h>
 #include "gui.h"
-#include <gdk/gdk.h>
 
-#include <gdk/gdkx.h>
-#include <gst/video/videooverlay.h>
-#include <gst/video/video.h>
-
-#include <gst/gl/gl.h>
-#if GST_GL_HAVE_WINDOW_X11 && defined (GDK_WINDOWING_X11)
-#include <gst/gl/x11/gstgldisplay_x11.h>
-#endif
+#include <X11/Xlib.h>
 
 gboolean filter_vis_features(GstPluginFeature *feature, gpointer data) {
 	GstElementFactory *factory;
@@ -80,17 +72,12 @@ void explore(GDir *dir, char *folder, FILE *list) {
 }
 
 void tags_obtained(GstElement *playbin, gint stream, struct arguments *argument) {
-	gint i;
 	GstTagList *tags;
-	gchar *str, *total_str;
-	gint n_audio, n_text, rate, channels;
+	gchar str[256];
+	gint samplerate = 0, channels = 0, bitrate;
 	GstStructure *s;
 	GstPad *pad;
 	GstCaps *caps;
-	gchar *str_genre, *str_samplerate, *str_bitrate, *str_channels;
-
-	g_object_get(argument->current_song.playbin, "n-audio", &n_audio, NULL);
-	g_object_get(argument->current_song.playbin, "n-text", &n_text, NULL);
 
 	g_signal_emit_by_name(argument->current_song.playbin, "get-audio-pad", 0, &pad);
 	caps = gst_pad_get_current_caps(pad);
@@ -98,26 +85,50 @@ void tags_obtained(GstElement *playbin, gint stream, struct arguments *argument)
 	s = gst_caps_get_structure(caps, 0);
 
 	gst_structure_get_int(s, "channels", &channels);
-	gst_structure_get_int(s, "rate", &rate);
-	str_channels = g_strdup_printf("Channels: %d", channels);
-	gtk_label_set_text(GTK_LABEL(argument->channels_label), str_channels);
-	str_samplerate = g_strdup_printf("Sample rate: %dHz", rate);
-	gtk_label_set_text(GTK_LABEL(argument->samplerate_label), str_samplerate);
-	g_signal_emit_by_name(argument->current_song.playbin, "get-audio-tags", i, &tags);
-	if(tags) {
-		printf("\naudio stream %d\n", i);
-		if(gst_tag_list_get_string(tags, GST_TAG_GENRE, &str)) {
-			str_genre = g_strdup_printf("Genre: %s", str);
-			gtk_label_set_text(GTK_LABEL(argument->genre_label), str_genre);
-		}
-		if(gst_tag_list_get_string(tags, GST_TAG_LANGUAGE_CODE, &str)) {
-			printf(" language: %s\n", str);
-		}
-		if(gst_tag_list_get_uint(tags, GST_TAG_BITRATE, &rate)) {
-			str_bitrate = g_strdup_printf("Bit rate: %dkB/s", rate/1000);
-			gtk_label_set_text(GTK_LABEL(argument->bitrate_label), str_bitrate);
-		}
+	gst_structure_get_int(s, "rate", &samplerate);
+
+	if(channels) {
+		argument->str_channels = g_strdup_printf("Channels: %d", channels);
 	}
+	else {
+		argument->str_channels = g_strdup("Number of channels not found");
+	}
+
+	gtk_label_set_text(GTK_LABEL(argument->channels_label), argument->str_channels);
+	g_free(argument->str_channels);
+	
+	if(samplerate) {
+		argument->str_samplerate = g_strdup_printf("Sample rate: %dHz", samplerate);
+	}
+	else {
+		argument->str_samplerate = g_strdup("Sample rate not found");
+	}
+
+	gtk_label_set_text(GTK_LABEL(argument->samplerate_label), argument->str_samplerate);
+	g_free(argument->str_samplerate);
+
+	g_signal_emit_by_name(argument->current_song.playbin, "get-audio-tags", 0, &tags);
+	if(tags) {
+		if(gst_tag_list_get_string(tags, GST_TAG_GENRE, &str)) {
+			argument->str_genre = g_strdup_printf("Genre: %s", str);
+			g_free(str);
+		}
+		else {
+			argument->str_genre = g_strdup("No genre found");
+		}
+		gtk_label_set_text(GTK_LABEL(argument->genre_label), argument->str_genre);
+		g_free(argument->str_genre);
+
+		if(gst_tag_list_get_uint(tags, GST_TAG_BITRATE, &bitrate)) {
+			argument->str_bitrate = g_strdup_printf("Bit rate: %dkB/s", bitrate/1000);
+		}
+		else {
+			argument->str_bitrate = g_strdup("Bitrate not found");
+		}
+		gtk_label_set_text(GTK_LABEL(argument->bitrate_label), argument->str_bitrate);
+		g_free(argument->str_bitrate);
+	}
+	gst_tag_list_free(tags);
 }
 
 gboolean add_artist_to_playlist(gchar *artist, struct arguments *argument) {
@@ -297,7 +308,6 @@ gboolean get_lelelerandom_playlist_song(GtkTreeView *treeview_playlist, struct a
 		FORCE_AMP, &argument->current_song.force_vector.y, FORCE_FREQ, &argument->current_song.force_vector.z, 
 		FORCE_ATK, &argument->current_song.force_vector.t, -1);
 
-		printf("%f\n", distance(current_force, argument->current_song.force_vector));
 	} while(distance(current_force, argument->current_song.force_vector) >= treshold);
 	return TRUE;
 }
@@ -440,8 +450,8 @@ void queue_song(struct arguments *argument) {
 	FORCE_ATK, &argument->current_song.force_vector.t, -1);
 
 	uri = g_filename_to_uri(argument->current_song.filename, NULL, NULL);
-
 	g_object_set(argument->current_song.playbin, "uri", uri, NULL);
+
 	g_free(uri); 
 }
 
@@ -474,7 +484,7 @@ void start_song(struct arguments *argument) {
 		factory = GST_ELEMENT_FACTORY(walk->data);
 		name = gst_element_factory_get_longname(factory);
 
-		if(selected_factory == NULL || g_str_has_prefix(name, "Spectroscope")) {
+		if(selected_factory == NULL || g_str_has_prefix(name, "Waveform")) {
 			selected_factory = factory;
 		}
 	}
@@ -785,7 +795,6 @@ void refresh_ui(GstBus *bus, GstMessage *msg, struct arguments *argument) {
 	g_signal_handler_block(argument->progressbar, argument->progressbar_update_signal_id);
 	gtk_adjustment_configure(argument->adjust, 0, 0, argument->current_song.duration/GST_SECOND, 
 		1, 1, 1);
-	gtk_adjustment_changed(argument->adjust);
 	g_signal_handler_unblock(argument->progressbar, argument->progressbar_update_signal_id);
 	refresh_progressbar(argument);
 	
@@ -795,7 +804,7 @@ void ui_playlist_changed(GtkTreeModel *playlist_model, GtkTreePath *path, GtkTre
 	gtk_notebook_set_current_page(libnotebook, 2);
 }
 
- gboolean refresh_progressbar(gpointer pargument) {
+gboolean refresh_progressbar(gpointer pargument) {
 	struct arguments *argument = (struct arguments*)pargument;
 	GstFormat fmt = GST_FORMAT_TIME;
 
@@ -808,7 +817,6 @@ void ui_playlist_changed(GtkTreeModel *playlist_model, GtkTreePath *path, GtkTre
 		g_signal_handler_block(argument->progressbar, argument->progressbar_update_signal_id);
 		gtk_adjustment_configure(argument->adjust, argument->current_song.current/GST_SECOND, 0, argument->current_song.duration/GST_SECOND, 
 			1, 1, 1);
-		gtk_adjustment_changed(argument->adjust);
 		g_signal_handler_unblock(argument->progressbar, argument->progressbar_update_signal_id);
 		return TRUE;
 	}
@@ -1109,6 +1117,8 @@ int main(int argc, char **argv) {
 	GstElement *gtk_sink;
 	GstBus *bus;
 
+	XInitThreads();
+
 	pargument->lelelerandom = 0;
 	pargument->random = 0;
 	pargument->repeat = 0;
@@ -1119,6 +1129,7 @@ int main(int argc, char **argv) {
 	pargument->elapsed = g_timer_new();
 	pargument->current_song.state = GST_STATE_NULL;
 	pargument->current_song.artist = pargument->current_song.title = pargument->current_song.album = pargument->current_song.tracknumber = NULL;
+	pargument->str_genre = pargument->str_bitrate = pargument->str_samplerate = pargument->str_channels = NULL;
 	pargument->history = NULL;
 	pargument->current_song.sample_array = NULL;
 	pargument->bartag = 0;
@@ -1135,15 +1146,20 @@ int main(int argc, char **argv) {
 		g_error("Not all elements could be created.\n");
 	bus = gst_element_get_bus(pargument->current_song.playbin);
 	gst_bus_add_signal_watch(bus);
+	if((gtk_sink = gst_element_factory_make("gtkglsink", NULL))) {
+		GstElement *video_sink;
+
+		g_object_get(gtk_sink, "widget", &area, NULL);
 	
+		video_sink = gst_element_factory_make("glsinkbin", NULL);
+		g_object_set(video_sink, "sink", gtk_sink, NULL);
+	
+		g_object_set(pargument->current_song.playbin, "video-sink", video_sink, NULL);
+	} 
 	if((gtk_sink = gst_element_factory_make("gtksink", NULL))) {
-		//GstElement *video_sink;
-		//video_sink = gst_element_factory_make("glsinkbin", NULL);
-		//g_object_set(video_sink, "sink", gtk_sink, NULL);
 		g_object_get(gtk_sink, "widget", &area, NULL);
 
 		g_object_set(pargument->current_song.playbin, "video-sink", gtk_sink, NULL);	
-		//g_object_set(pargument->current_song.playbin, "video-sink", gtk_sink, NULL);
 	}	
 
 
@@ -1239,7 +1255,6 @@ int main(int argc, char **argv) {
 	g_signal_connect(G_OBJECT(pargument->current_song.playbin), "about-to-finish", G_CALLBACK(continue_track), pargument);
 	g_signal_connect(G_OBJECT(bus), "message::stream-start", G_CALLBACK(refresh_ui), pargument);
 	g_signal_connect(G_OBJECT(pargument->current_song.playbin), "audio-tags-changed", G_CALLBACK(tags_obtained), pargument);
-	g_signal_connect(G_OBJECT(pargument->current_song.playbin), "text-tags-changed", G_CALLBACK(tags_obtained), pargument);
 	g_signal_connect(G_OBJECT(pargument->playpause_button), "clicked", G_CALLBACK(toggle_playpause_button), pargument);
 	g_signal_connect(G_OBJECT(pargument->volume_scale), "value-changed", G_CALLBACK(volume_scale_changed), pargument);
 	g_signal_connect(G_OBJECT(random_button), "clicked", G_CALLBACK(toggle_random), pargument);

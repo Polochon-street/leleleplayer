@@ -72,72 +72,8 @@ void explore(GDir *dir, char *folder, FILE *list) {
 }
 
 void tags_obtained(GstElement *playbin, gint stream, struct arguments *argument) {
-	GstTagList *tags;
-	gchar *str;
-	gint samplerate = 0, channels = 0, bitrate;
-	GstStructure *s;
-	GstPad *pad;
-	GstCaps *caps;
-
-	g_signal_emit_by_name(argument->current_song.playbin, "get-audio-pad", 0, &pad);
-	caps = gst_pad_get_current_caps(pad);
-
-	s = gst_caps_get_structure(caps, 0);
-
-	gst_structure_get_int(s, "channels", &channels);
-	gst_structure_get_int(s, "rate", &samplerate);
-
-	if(channels) {
-		argument->str_channels = g_strdup_printf("Channels: %d", channels);
-	}
-	else {
-		argument->str_channels = g_strdup("Number of channels not found");
-	}
-	printf("channels: %d\n", strlen(argument->str_channels));
-	gtk_label_set_text(GTK_LABEL(argument->channels_label), argument->str_channels);
-	g_free(argument->str_channels);
-	argument->str_channels = NULL;
-
-	if(samplerate) {
-		argument->str_samplerate = g_strdup_printf("Sample rate: %dHz", samplerate);
-	}
-	else {
-		argument->str_samplerate = g_strdup("Sample rate not found");
-	}
-	
-	printf("samplerate: %d\n", strlen(argument->str_samplerate));
-	gtk_label_set_text(GTK_LABEL(argument->samplerate_label), argument->str_samplerate);
-	g_free(argument->str_samplerate);
-	argument->str_samplerate = NULL;
-
-	g_signal_emit_by_name(argument->current_song.playbin, "get-audio-tags", 0, &tags);
-	if(tags) {
-		if(gst_tag_list_get_string(tags, GST_TAG_GENRE, &str)) {
-			argument->str_genre = g_strdup_printf("Genre: %s", str);
-			printf("str: %d\n", strlen(str));
-			g_free(str);
-			str = NULL;
-		}
-		else {
-			argument->str_genre = g_strdup("No genre found");
-		}
-		printf("genre: %d\n", strlen(argument->str_genre));
-		gtk_label_set_text(GTK_LABEL(argument->genre_label), argument->str_genre);
-		g_free(argument->str_genre);
-		argument->str_genre = NULL;
-
-		if(gst_tag_list_get_uint(tags, GST_TAG_BITRATE, &bitrate)) {
-			argument->str_bitrate = g_strdup_printf("Bit rate: %dkB/s", bitrate/1000);
-		}
-		else {
-			argument->str_bitrate = g_strdup("Bitrate not found");
-		}
-		printf("bitrate: %d\n", strlen(argument->str_bitrate));
-		gtk_label_set_text(GTK_LABEL(argument->bitrate_label), argument->str_bitrate);
-		g_free(argument->str_bitrate);
-		argument->str_bitrate = NULL;
-	}
-	gst_tag_list_free(tags);
+	GstMessage *msg = gst_message_new_application(NULL, gst_structure_new("tags", NULL));
+	gst_element_post_message(argument->current_song.playbin, msg);
 }
 
 gboolean add_artist_to_playlist(gchar *artist, struct arguments *argument) {
@@ -793,7 +729,7 @@ void refresh_ui(GstBus *bus, GstMessage *msg, struct arguments *argument) {
 	
 		gtk_label_set_text(GTK_LABEL(argument->album_label), argument->current_song.album);
 		gtk_label_set_text(GTK_LABEL(argument->artist_label), argument->current_song.artist);
-		gtk_label_set_text(GTK_LABEL(argument->title_label), argument->current_song.title);
+		gtk_label_set_text(GTK_LABEL(argument->title_label), argument->current_song.title);	
 	}
 	while(!gst_element_query_duration(argument->current_song.playbin, fmt,
 		&(argument->current_song.duration)))
@@ -807,6 +743,70 @@ void refresh_ui(GstBus *bus, GstMessage *msg, struct arguments *argument) {
 	g_signal_handler_unblock(argument->progressbar, argument->progressbar_update_signal_id);
 	refresh_progressbar(argument);
 	
+}
+
+void refresh_ui_mediainfo(GstBus *bus, GstMessage *msg, struct arguments *argument) {
+	GstTagList *tags;
+	gchar *str;
+	gint samplerate = 0, channels = 0, bitrate;
+	GstStructure *s;
+	GstPad *pad;
+	GstCaps *caps;
+
+	g_signal_emit_by_name(argument->current_song.playbin, "get-audio-pad", 0, &pad);
+	caps = gst_pad_get_current_caps(pad);
+
+	s = gst_caps_get_structure(caps, 0);
+
+	gst_structure_get_int(s, "channels", &channels);
+	gst_structure_get_int(s, "rate", &samplerate);
+
+	if(channels) {
+		argument->str_channels = g_strdup_printf("Channels: %d", channels);
+	}
+	else {
+		argument->str_channels = g_strdup("Number of channels not found");
+	}
+
+	if(samplerate) {
+		argument->str_samplerate = g_strdup_printf("Sample rate: %dHz", samplerate);
+	}
+	else {
+		argument->str_samplerate = g_strdup("Sample rate not found");
+	}
+
+	g_signal_emit_by_name(argument->current_song.playbin, "get-audio-tags", 0, &tags);
+	if(tags) {
+		if(gst_tag_list_get_string(tags, GST_TAG_GENRE, &str)) {
+			argument->str_genre = g_strdup_printf("Genre: %s", str);
+			g_free(str);
+			str = NULL;
+		}
+		else {
+			argument->str_genre = g_strdup("No genre found");
+		}
+
+		if(gst_tag_list_get_uint(tags, GST_TAG_BITRATE, &bitrate)) {
+			argument->str_bitrate = g_strdup_printf("Bit rate: %dkB/s", bitrate/1000);
+		}
+		else {
+			argument->str_bitrate = g_strdup("Bitrate not found");
+		}
+	}
+	gst_tag_list_free(tags);
+
+	gtk_label_set_text(GTK_LABEL(argument->channels_label), argument->str_channels);
+	g_free(argument->str_channels);
+	gtk_label_set_text(GTK_LABEL(argument->samplerate_label), argument->str_samplerate);
+	g_free(argument->str_samplerate);
+	argument->str_samplerate = NULL;
+	argument->str_channels = NULL;
+	gtk_label_set_text(GTK_LABEL(argument->genre_label), argument->str_genre);
+	g_free(argument->str_genre);
+	argument->str_genre = NULL;
+	gtk_label_set_text(GTK_LABEL(argument->bitrate_label), argument->str_bitrate);
+	g_free(argument->str_bitrate);
+	argument->str_bitrate = NULL;
 }
 
 void ui_playlist_changed(GtkTreeModel *playlist_model, GtkTreePath *path, GtkTreeIter *iter, GtkNotebook *libnotebook) {
@@ -1263,6 +1263,7 @@ int main(int argc, char **argv) {
 	g_signal_connect(G_OBJECT(bus), "message::state-changed", G_CALLBACK(state_changed), pargument);
 	g_signal_connect(G_OBJECT(pargument->current_song.playbin), "about-to-finish", G_CALLBACK(continue_track), pargument);
 	g_signal_connect(G_OBJECT(bus), "message::stream-start", G_CALLBACK(refresh_ui), pargument);
+	g_signal_connect(G_OBJECT(bus), "message::application", G_CALLBACK(refresh_ui_mediainfo), pargument);
 	g_signal_connect(G_OBJECT(pargument->current_song.playbin), "audio-tags-changed", G_CALLBACK(tags_obtained), pargument);
 	g_signal_connect(G_OBJECT(pargument->playpause_button), "clicked", G_CALLBACK(toggle_playpause_button), pargument);
 	g_signal_connect(G_OBJECT(pargument->volume_scale), "value-changed", G_CALLBACK(volume_scale_changed), pargument);
@@ -1316,13 +1317,13 @@ int main(int argc, char **argv) {
 		gtk_button_box_set_child_non_homogeneous(GTK_BUTTON_BOX(volumebox), pargument->volume_scale, TRUE);
 	gtk_box_pack_start(GTK_BOX(vboxv), mediainfo_expander, FALSE, FALSE, 1);
 	gtk_container_add(GTK_CONTAINER(mediainfo_expander), mediainfo_box);
+		gtk_box_pack_start(GTK_BOX(mediainfo_box), area, TRUE, TRUE, 1);
 		gtk_box_pack_start(GTK_BOX(mediainfo_box), mediainfo_labelbox, FALSE, FALSE, 1);
 			gtk_box_pack_start(GTK_BOX(mediainfo_labelbox), gtk_label_new("More information:"), FALSE, FALSE, 1);
 			gtk_box_pack_start(GTK_BOX(mediainfo_labelbox), pargument->genre_label,FALSE, FALSE, 1);
 			gtk_box_pack_start(GTK_BOX(mediainfo_labelbox), pargument->bitrate_label, FALSE, FALSE, 1);
 			gtk_box_pack_start(GTK_BOX(mediainfo_labelbox), pargument->channels_label, FALSE, FALSE, 1);
 			gtk_box_pack_start(GTK_BOX(mediainfo_labelbox), pargument->samplerate_label, FALSE, FALSE, 1);
-		gtk_box_pack_start(GTK_BOX(mediainfo_box), area, TRUE, TRUE, 1);
 	gtk_box_pack_start(GTK_BOX(vboxv), pargument->progressbar, FALSE, FALSE, 1);
 	gtk_box_pack_start(GTK_BOX(vboxv), libnotebook, TRUE, TRUE, 1);
 		gtk_notebook_append_page(GTK_NOTEBOOK(libnotebook), library_panel, gtk_label_new("Library"));

@@ -1,7 +1,4 @@
-#include <stdio.h>
 #include "gui.h"
-
-#include <X11/Xlib.h>
 
 gboolean filter_vis_features(GstPluginFeature *feature, gpointer data) {
 	GstElementFactory *factory;
@@ -619,9 +616,8 @@ void config_folder_changed(char *folder, GtkWidget *parent) {
 			g_free(msg);
 			msg = NULL;
 		}
-		while (gtk_events_pending ())
-  			gtk_main_iteration ();
-	} while(((msg = g_async_queue_pop(msg_queue)) == NULL) || strcmp(msg, "end")); 
+  		gtk_main_iteration ();
+	} while(((msg = g_async_queue_try_pop(msg_queue)) == NULL) || strcmp(msg, "end")); 
 
 	gtk_widget_destroy(progressdialog);
 	g_free(msg);
@@ -698,7 +694,8 @@ void state_changed(GstBus *bus, GstMessage *msg, struct arguments *argument) {
 
 	if(GST_MESSAGE_SRC(msg) == GST_OBJECT(argument->current_song.playbin)) {
 		gst_message_parse_state_changed(msg, &old_state, &new_state, &pending_state);
-    	argument->current_song.state = new_state; 
+    	argument->current_song.state = new_state;
+		printf("state changed: %d\n", argument->current_song.state);
 	}
 }
 
@@ -841,9 +838,8 @@ void slider_changed(GtkRange *progressbar, struct arguments *argument) {
 } 
 
 void volume_scale_changed(GtkScaleButton* volume_scale, struct arguments *argument) {
-	float vol = pow(gtk_scale_button_get_value(volume_scale), 3);
-	if(argument->current_song.state != GST_STATE_NULL)
-		g_object_set(argument->current_song.playbin, "volume", vol, NULL);
+	double vol = pow(gtk_scale_button_get_value(volume_scale), 3);
+	g_object_set(argument->current_song.playbin, "volume", vol, NULL);
 }
 
 void setup_tree_view_renderer_artist(GtkWidget *treeview, GtkTreeStore *treestore, GtkTreeModel *model_library) {
@@ -1125,8 +1121,10 @@ int main(int argc, char **argv) {
 
 	GstElement *gtk_sink;
 	GstBus *bus;
-
-	XInitThreads();
+	
+	#ifdef linux
+		XInitThreads();
+	#endif
 
 	pargument->lelelerandom = 0;
 	pargument->random = 0;
@@ -1169,7 +1167,7 @@ int main(int argc, char **argv) {
 		g_object_get(gtk_sink, "widget", &area, NULL);
 
 		g_object_set(pargument->current_song.playbin, "video-sink", gtk_sink, NULL);	
-	}	
+	} 
 
 
 	library_panel = gtk_scrolled_window_new(NULL, NULL);
@@ -1208,7 +1206,7 @@ int main(int argc, char **argv) {
 	pargument->elapsed = g_timer_new();
 	playbox = gtk_button_box_new(GTK_ORIENTATION_HORIZONTAL);
 	randombox = gtk_button_box_new(GTK_ORIENTATION_HORIZONTAL);
-	volumebox= gtk_button_box_new(GTK_ORIENTATION_HORIZONTAL);
+	volumebox = gtk_button_box_new(GTK_ORIENTATION_HORIZONTAL);
 	pargument->playpause_button= gtk_button_new();
 	random_button = gtk_toggle_button_new();
 	gtk_button_set_image(GTK_BUTTON(random_button), gtk_image_new_from_icon_name("media-playlist-shuffle-symbolic", GTK_ICON_SIZE_BUTTON));

@@ -10,6 +10,11 @@
 #include <limits.h>
 #define GST_USE_UNSTABLE_API
 #include <gst/gl/gl.h>
+
+#ifdef linux
+#include <X11/Xlib.h>
+#endif
+
 enum {
 	COLUMN_ARTIST = 0,
 	NUM_COLS_ARTIST

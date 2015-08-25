@@ -14,9 +14,10 @@
 #Rewrite artist_view
 #lib_row_activated should add all the library
 #clean amp_sort and all the files
-mediainfo/spectrogram display: display mediainfo and avoid the visualizer showing in another window if the expander has not been first expanded if L1195 is commented
+#mediainfo/spectrogram display: display mediainfo and avoid the visualizer showing in another window if the expander has not been first expanded if L1195 is commented
+#↑ windows support
+Check memory leaks
 Timer for sleeping
-Add the whole library to the playlist when added from the first tab
 Text in dialog box
 correct loading dialog box
 add album view
@@ -25,3 +26,4 @@ nuage de points selon les genre
 add right click/add to playlist
 Installer for linux/windows with cpack
 add « add to playlist/remove from playlist » 
+Add rapid scan

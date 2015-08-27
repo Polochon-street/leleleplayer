@@ -14,10 +14,9 @@ struct d2vector envelope_sort(struct song song) {
 	float decr_speed = 1/((float)song.sample_rate*0.45); // Make the envelope converge to zero in 0.45s
 	float delta_freq = (float)song.sample_rate/((float)precision*freq_size);
 	FILE *file_env;
-	size_t rbuf_head = 0;
-	int16_t d_envelope = 0;
+	double d_envelope = 0;
 	uint64_t sample_max = (1 << (8*song.nb_bytes_per_sample - 1));
-	int64_t atk = 0;
+	double atk = 0;
 	float final_tempo = 0;
 	float final_atk;
 	float env, env_prev = 0;
@@ -27,12 +26,12 @@ struct d2vector envelope_sort(struct song song) {
 	float period_max3 = 0;
 	file_env = fopen("file_env.txt", "w");
 
-	d_freq = (FFTSample*)av_malloc(freq_size*sizeof(FFTSample));
+	d_freq = av_malloc(freq_size*sizeof(FFTSample));
 
 	if(song.nSamples % freq_size > 0)
 		song.nSamples -= song.nSamples%freq_size; 
 
-	x = (FFTSample*)av_malloc(WIN_SIZE*sizeof(FFTSample));
+	x = av_malloc(WIN_SIZE*sizeof(FFTSample));
 	fft = av_rdft_init(WIN_BITS, DFT_R2C);
 
 	for(i = 0; i < freq_size; ++i)
@@ -41,19 +40,14 @@ struct d2vector envelope_sort(struct song song) {
 	for(i = 0; i < WIN_SIZE; ++i)
 		x[i] = 0.0f;
 
-	for(i = 0; i < song.nSamples; i++) {	
+	for(i = 0; i < song.nSamples; i++) {
 		env = MAX(env_prev - decr_speed*env_prev, (float)(abs(((int16_t*)song.sample_array)[i])));
 
 		if(i >= precision && i % precision == 0) {
 			if((i/precision) % WIN_SIZE != 0) {
-				d_envelope += x[(i/precision) % WIN_SIZE - 1] - x[(i/precision) % WIN_SIZE - 2];
-				atk += d_envelope > 0 ? d_envelope*d_envelope : 0;
-				x[(i/precision) % WIN_SIZE - 1] = env;
+				x[(i/precision) % WIN_SIZE - 1] = env; 
 			}
 			else {
-				d_envelope += (x[WIN_SIZE -1] - x[WIN_SIZE-2])/sample_max;
-				atk += d_envelope*d_envelope;
-
 				x[WIN_SIZE - 1] = env;
 				av_rdft_calc(fft, x);
 				for(d = 1; d < freq_size - 1; ++d) {
@@ -65,7 +59,13 @@ struct d2vector envelope_sort(struct song song) {
 				d_freq[0] = 0;
 			}
 		}
-		rbuf_head = (rbuf_head+1) % (2*precision);
+		else if(i % precision == 0)
+			if((i/precision) % WIN_SIZE != 0)
+				x[(i/precision) % WIN_SIZE - 1] = env;
+
+		d_envelope = (double)(env - env_prev)/(double)sample_max;
+		atk += d_envelope*d_envelope > 0. ? d_envelope*d_envelope : 0.;
+
 		env_prev = env;
 	}
 
@@ -82,6 +82,7 @@ struct d2vector envelope_sort(struct song song) {
 		else if(d_freq[(int)period_max3] < d_freq[i])
 			period_max3 = (float)i;
 	}
+
 	period_max1++;
 	period_max2++;
 	period_max3++;
@@ -91,8 +92,7 @@ struct d2vector envelope_sort(struct song song) {
 	period_max3 = 1/(period_max3*delta_freq);
 
 	final_tempo = -6*MIN(MIN(period_max1, period_max2), MAX(period_max2, period_max3)) + 6;
-
-	final_atk = 0.00036*atk/song.nSamples - 183.5;
+	final_atk = atk/song.nSamples*pow(10, 7) - 6;
 
 	if(debug) {
 		for(i = 0; i < freq_size; ++i)
@@ -105,8 +105,13 @@ struct d2vector envelope_sort(struct song song) {
 		printf("Attack result: %f\n", final_atk);
 	}
 
-	fclose(file_env); 
 	result.x = final_tempo;
 	result.y = final_atk;
+
+	av_rdft_end(fft);
+	av_free(d_freq);
+	av_free(x);
+	fclose(file_env); 
+
 	return result;
 }

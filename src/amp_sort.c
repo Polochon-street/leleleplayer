@@ -1,6 +1,6 @@
 #include "analyze.h"
-#define SIZE 32768
-#define SIZE_32 1 << 31
+#define SIZE 32769
+#define SIZE_32 (1 << 31) + 1
 #define INT_INF 0
 #define INT_SUP 2000
 #define max( a, b ) ( ((a) > (b)) ? (a) : (b) )
@@ -30,9 +30,9 @@ float amp_sort(struct song song) {
 		for(e = song.nSamples - 1; ((int16_t*)song.sample_array)[e] == 0; --e)
 			;
 		p16 = (int16_t*)song.sample_array + d;
-		for(i = d; i <= e; ++i) 
+		for(i = d; i <= e; ++i) {
 			++histogram[abs(*(p16++))];
-
+		}
 	}
 	else if(song.nb_bytes_per_sample == 4) {
 		for(d = 0; ((int32_t*)song.sample_array)[d] == 0; ++d)

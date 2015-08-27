@@ -1,5 +1,28 @@
 #include "analyze.h"
 
+void free_song(struct song *song) {
+	if(song->artist) {
+		free(song->artist);
+		song->artist = NULL;
+	}
+	if(song->title) {
+		free(song->title);
+		song->title = NULL;
+	}
+	if(song->album) {
+		free(song->album);
+		song->album = NULL;
+	}
+	if(song->tracknumber) {
+		free(song->tracknumber);
+		song->tracknumber = NULL;
+	}
+	if(song->sample_array) {
+		free(song->sample_array);
+		song->sample_array = NULL;
+	}
+}
+
 float analyze (char *filename, struct song *current_song) {
 	float resnum;
 	struct d2vector envelope_result;

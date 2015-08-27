@@ -121,6 +121,8 @@ float freq_sort(struct song song) {
 		printf("Sum: %f\n", tab_sum);
 		printf("Freq result: %f\n", resnum_freq);
 	}
-	
+	av_free(x);
+	av_free(spectre_moy);
+	av_rdft_end(fft);
 	return (resnum_freq); 
 }

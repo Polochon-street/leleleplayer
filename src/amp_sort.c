@@ -1,13 +1,6 @@
 #include "analyze.h"
 #define SIZE 32769
-<<<<<<< HEAD
-<<<<<<< HEAD
 #define SIZE_32 (1 << 31) + 1
-=======
-=======
->>>>>>> e26f819b8213461a69c77d612b2fd7813b4201da
-#define SIZE_32 1 << 31
->>>>>>> e26f819b8213461a69c77d612b2fd7813b4201da
 #define INT_INF 0
 #define INT_SUP 2000
 #define max( a, b ) ( ((a) > (b)) ? (a) : (b) )

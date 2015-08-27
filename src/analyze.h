@@ -31,6 +31,7 @@ struct song {
 	int channels;
 	int nSamples;
 	int sample_rate;
+	int bitrate;
 	int nb_bytes_per_sample;
 	GstElement *playbin;
 	GstState state;
@@ -41,6 +42,7 @@ struct song {
 	char *title;
 	char *album;
 	char *tracknumber;
+	char *genre;
 };
 
 float amp_sort(struct song);
@@ -49,3 +51,4 @@ int audio_decode(const char *file, struct song *);
 float analyze(char *filename, struct song *); 
 float freq_sort(struct song);
 int gui(int argc, char **argv);
+void free_song(struct song *);

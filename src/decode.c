@@ -57,8 +57,8 @@ int audio_decode(const char *filename, struct song *song) { // decode the track
 	song->nSamples = (((uint64_t)(pFormatCtx->duration)*(uint64_t)song->sample_rate)/(uint64_t)AV_TIME_BASE)*c->channels;
 	song->sample_array = malloc(size);
 
-	for(i = 0; i < song->nSamples; ++i)
-		*(song->sample_array + i) = 0;
+	for(i = 0; i < size; ++i)
+		song->sample_array[i] = 0;
 
 	beginning = song->sample_array;
 	index = 0;
@@ -125,16 +125,18 @@ int audio_decode(const char *filename, struct song *song) { // decode the track
 			len = avcodec_decode_audio4(c, decoded_frame, &got_frame, &avpkt);
 	
 			if(len < 0)
-				avpkt.size=0;
+				avpkt.size = 0;
+
 			av_free_packet(&avpkt);
+
 			/* interesting part: copying decoded data into a huge array */
 			/* flac has a different behaviour from mp3, hence the planar condition */
 			if(got_frame) {
 				size_t data_size = av_samples_get_buffer_size(NULL, c->channels, decoded_frame->nb_samples, c->sample_fmt, 1); 
 
 				if(index*song->nb_bytes_per_sample + data_size > size) {
-					beginning = realloc(beginning, (size+=data_size));
-					song->nSamples+=data_size/song->nb_bytes_per_sample;
+					beginning = realloc(beginning, (size += data_size));
+					song->nSamples += data_size/song->nb_bytes_per_sample;
 				}
 				int8_t *p = beginning+index*song->nb_bytes_per_sample;
 				if(planar == 1) {
@@ -143,19 +145,24 @@ int audio_decode(const char *filename, struct song *song) { // decode the track
 							for(d = 0; d < song->nb_bytes_per_sample; ++d) 
 								*(p++) = ((int8_t*)(decoded_frame->extended_data[e]))[i+d];
 					}
-					index+=data_size/song->nb_bytes_per_sample;
+					index += data_size/song->nb_bytes_per_sample;
 				}
 				else if(planar == 0) {
-					memcpy(index*song->nb_bytes_per_sample+beginning, decoded_frame->extended_data[0], data_size);
-	        		index+=data_size/song->nb_bytes_per_sample; 
+					memcpy(index*song->nb_bytes_per_sample + beginning, decoded_frame->extended_data[0], data_size);
+	        		index += data_size/song->nb_bytes_per_sample; 
 				}
-			} 
+			}
 		}
 	}
-	/* cleaning memory */
-
-	avformat_close_input(&pFormatCtx);
 	song->sample_array = beginning;
+
+	/* cleaning memory */
+	
+	avcodec_close(c);
+	av_frame_unref(decoded_frame);
+	av_frame_free(&decoded_frame);
+	av_free_packet(&avpkt);
+	avformat_close_input(&pFormatCtx);
 
 	return 0;
 } 

@@ -1,8 +1,5 @@
-#define INBUF_SIZE 4096
-#define AUDIO_INBUF_SIZE 20480
-#define AUDIO_REFILL_THRESH 4096
-
 #include "analyze.h"
+#include <libavformat/coucou/internal.h>
 
 int audio_decode(const char *filename, struct song *song) { // decode the track
 	AVCodec *codec = NULL;
@@ -35,7 +32,7 @@ int audio_decode(const char *filename, struct song *song) { // decode the track
 		song->nSamples = 0;
 		return 1;
 	} 
-
+	
 	audioStream = av_find_best_stream(pFormatCtx, AVMEDIA_TYPE_AUDIO, -1, -1, &codec, 0);
 	c = pFormatCtx->streams[audioStream]->codec;
 	
@@ -112,7 +109,7 @@ int audio_decode(const char *filename, struct song *song) { // decode the track
 	while(av_read_frame(pFormatCtx, &avpkt) >= 0) {
 		if(avpkt.stream_index == audioStream) {
 			got_frame = 0; 
-		
+			
 			if(!decoded_frame) {
 				if(!(decoded_frame = av_frame_alloc())) {
 					printf("Could not allocate audio frame\n");
@@ -153,11 +150,19 @@ int audio_decode(const char *filename, struct song *song) { // decode the track
 				}
 			}
 		}
+		else
+			av_free_packet(&avpkt); /* Dropping the damn album cover */
 	}
 	song->sample_array = beginning;
 
 	/* cleaning memory */
-	
+	avpkt.data = NULL;
+	avpkt.size = 0;
+
+	do {
+		avcodec_decode_audio4(c, decoded_frame, &got_frame, &avpkt);
+	} while(got_frame); 
+
 	avcodec_close(c);
 	av_frame_unref(decoded_frame);
 	av_frame_free(&decoded_frame);

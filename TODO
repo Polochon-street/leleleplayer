@@ -16,7 +16,9 @@
 #clean amp_sort and all the files
 #mediainfo/spectrogram display: display mediainfo and avoid the visualizer showing in another window if the expander has not been first expanded if L1195 is commented
 #↑ windows support
-Check memory leaks
+#Check memory leaks
+Complete menu (open/close/quit)
+Add rapid scan
 Timer for sleeping
 Text in dialog box
 correct loading dialog box
@@ -26,4 +28,3 @@ nuage de points selon les genre
 add right click/add to playlist
 Installer for linux/windows with cpack
 add « add to playlist/remove from playlist » 
-Add rapid scan

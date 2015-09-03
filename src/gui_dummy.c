@@ -21,8 +21,8 @@ int main(int argc, char **argv) {
 	}
 	struct song song;
 
-	result = analyze(filename, &song);
-	free_song(&song);
+	result = lelele_analyze(filename, &song);
+	lelele_free_song(&song);
 	if(debug)
 		printf("\n-> Final Result: %f\n", result);
 

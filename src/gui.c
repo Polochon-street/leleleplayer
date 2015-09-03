@@ -350,7 +350,7 @@ void continue_track(GstElement *playbin, struct arguments *argument) {
 	
 	argument->history = g_list_prepend(argument->history, gtk_tree_model_get_string_from_iter(model_playlist, &argument->iter_playlist));
 	if(!argument->repeat) {
-		free_song(&argument->current_song); 
+		lelele_free_song(&argument->current_song); 
 		get_next_playlist_song(GTK_TREE_VIEW(argument->treeview_playlist), argument);
 	}
 	queue_song(argument);
@@ -458,7 +458,7 @@ void next_buttonf(GtkWidget *button, struct arguments *argument) {
 	
 	if((iter_string = gtk_tree_model_get_string_from_iter(model_playlist, &argument->iter_playlist))) {
 		argument->history = g_list_prepend(argument->history, iter_string);
-		free_song(&argument->current_song);
+		lelele_free_song(&argument->current_song);
 		if(get_next_playlist_song(GTK_TREE_VIEW(argument->treeview_playlist), argument)) {
 			start_song(argument);
 		}
@@ -466,7 +466,7 @@ void next_buttonf(GtkWidget *button, struct arguments *argument) {
 }
 
 void previous_buttonf(GtkWidget *button, struct arguments *argument) {
-	free_song(&argument->current_song);
+	lelele_free_song(&argument->current_song);
 	if(get_previous_playlist_song(GTK_TREE_VIEW(argument->treeview_playlist), argument)) {
 		start_song(argument);
 	}
@@ -486,7 +486,7 @@ void analyze_thread(struct pref_folder_arguments *argument) {
 	song.title = song.artist = song.album = song.tracknumber = NULL;
 	while(fgets(line, PATH_MAX, list) != NULL) {
 		line[strcspn(line, "\n")] = '\0';
-		if((resnum = analyze(line, &song)) != 0) {
+		if((resnum = lelele_analyze(line, &song)) != 0) {
 			debug = 1;
 	//		fprintf(test, "%f %f %f\n", song.force_vector.x, song.force_vector.y, song.force_vector.z);
 			fprintf(library, "%s\n%s\n%s\n%s\n%s\n%f\n%f\n%f\n%f\n%f\n", line, song.tracknumber, song.title, song.album, song.artist, resnum, song.force_vector.x,
@@ -494,7 +494,7 @@ void analyze_thread(struct pref_folder_arguments *argument) {
 			msg_thread = g_malloc(strlen(song.title)*sizeof(char) + 1);
 			strncpy(msg_thread, song.title, strlen(song.title) + 1);
 			g_async_queue_push(msg_queue, msg_thread);
-			free_song(&song);
+			lelele_free_song(&song);
 		}
 	}
 	msg_thread = g_malloc(4);
@@ -1058,7 +1058,8 @@ int main(int argc, char **argv) {
 	struct pref_arguments pref_arguments;
 
 	GtkWidget *window, *treeview_library, *treeview_playlist, *treeview_artist, *library_panel, *artist_panel, *playlist_panel, *vboxv,
-		*playbox, *volumebox, *randombox, *repeat_button, *random_button, *lelele_button, *labelbox, *next_button, *previous_button, *menubar, *edit, *editmenu, 
+		*playbox, *volumebox, *randombox, *repeat_button, *random_button, *lelele_button, *labelbox, *next_button, *previous_button, *menubar, 
+		*edit, *editmenu, *file, *filemenu, *close, 
 		*preferences, *libnotebook, *mediainfo_expander, *mediainfo_box, *mediainfo_labelbox, *area;
 	
 	GtkTreeModel *model_playlist;
@@ -1210,6 +1211,8 @@ int main(int argc, char **argv) {
 	pargument->progressbar = gtk_scale_new(GTK_ORIENTATION_HORIZONTAL, pargument->adjust);
 	pargument->volume_scale = gtk_scale_button_new(GTK_ICON_SIZE_BUTTON, 0, 1, 0.1, volume);
 	menubar = gtk_menu_bar_new();
+	file = gtk_menu_item_new_with_label("File");
+	filemenu = gtk_menu_new();
 	edit = gtk_menu_item_new_with_label("Edit");
 	editmenu = gtk_menu_new();
 	gtk_scale_set_draw_value((GtkScale*)pargument->progressbar, FALSE);
@@ -1230,10 +1233,14 @@ int main(int argc, char **argv) {
 	mediainfo_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
 	gtk_widget_set_size_request(area, -1, 50);
 
+	gtk_menu_item_set_submenu(GTK_MENU_ITEM(file), filemenu);
 	gtk_menu_item_set_submenu(GTK_MENU_ITEM(edit), editmenu);
+	gtk_menu_shell_append(GTK_MENU_SHELL(menubar), file);
 	gtk_menu_shell_append(GTK_MENU_SHELL(menubar), edit);
 
+	close = gtk_menu_item_new_with_label("Close");
 	preferences = gtk_menu_item_new_with_label("Preferences");
+	gtk_menu_shell_append(GTK_MENU_SHELL(filemenu), close);
 	gtk_menu_shell_append(GTK_MENU_SHELL(editmenu), preferences);
 
 	pref_arguments.window = window;
@@ -1254,6 +1261,7 @@ int main(int argc, char **argv) {
 	g_signal_connect(G_OBJECT(next_button), "clicked", G_CALLBACK(next_buttonf), pargument);
 	g_signal_connect(G_OBJECT(previous_button), "clicked", G_CALLBACK(previous_buttonf), pargument);
 	g_signal_connect(G_OBJECT(preferences), "activate", G_CALLBACK(preferences_callback), &pref_arguments);
+	g_signal_connect(G_OBJECT(close), "activate", G_CALLBACK(destroy), pargument);
 	g_signal_connect(G_OBJECT(treeview_library), "row-activated", G_CALLBACK(lib_row_activated), pargument);
 	g_signal_connect(G_OBJECT(treeview_playlist), "row-activated", G_CALLBACK(playlist_row_activated), pargument);
 	g_signal_connect(G_OBJECT(treeview_artist), "row-activated", G_CALLBACK(artist_row_activated), pargument);

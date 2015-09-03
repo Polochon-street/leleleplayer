@@ -377,11 +377,7 @@ void queue_song(struct arguments *argument) {
 void start_song(struct arguments *argument) {
 	char *uri;
 	GtkTreeModel *model_playlist;
-	GstElement *vis_plugin;
-	GstElementFactory *selected_factory = NULL;
-	GList *list, *walk;
-	guint flags;
-
+	
 	model_playlist = gtk_tree_view_get_model(GTK_TREE_VIEW(argument->treeview_playlist));
 
 	gtk_tree_model_get(model_playlist, &(argument->iter_playlist), AFILE, &argument->current_song.filename, 
@@ -394,35 +390,8 @@ void start_song(struct arguments *argument) {
 	gtk_widget_set_sensitive(argument->progressbar, TRUE);
 	uri = g_filename_to_uri(argument->current_song.filename, NULL, NULL);
 	
-	list = gst_registry_feature_filter(gst_registry_get(), filter_vis_features, FALSE, NULL);
-
-	for(walk = list; walk != NULL; walk = g_list_next(walk)) {
-		const gchar *name;
-		GstElementFactory *factory;
-
-		factory = GST_ELEMENT_FACTORY(walk->data);
-		name = gst_element_factory_get_longname(factory);
-
-		if(selected_factory == NULL || g_str_has_prefix(name, "Waveform")) {
-			selected_factory = factory;
-		}
-	}
-
-	if(!selected_factory)
-		g_printf("No visualization plugins found!\n");
-
-	vis_plugin = gst_element_factory_create(selected_factory, NULL);
-
-	if(!vis_plugin)
-		g_printf("Couldn't create the visualizator factory element!\n");
-
 	gst_element_set_state(argument->current_song.playbin, GST_STATE_NULL);
 	g_object_set(argument->current_song.playbin, "uri", uri, NULL);
-	g_object_get(argument->current_song.playbin, "flags", &flags, NULL);
-	flags |= (1 << 3);
-	g_object_set(argument->current_song.playbin, "flags", flags, NULL);
-	g_object_set(argument->current_song.playbin, "vis-plugin", vis_plugin, NULL);
-	g_object_set(argument->current_song.playbin, "force-aspect-ratio", FALSE, NULL);
 	gst_element_set_state(argument->current_song.playbin, GST_STATE_PLAYING);
 	if(argument->bartag)
 			g_source_remove(argument->bartag);
@@ -841,9 +810,12 @@ void setup_tree_view_renderer_artist(GtkWidget *treeview, GtkTreeStore *treestor
 			if(g_strcmp0(tempartist1, tempartist2)) {
 			 	gtk_tree_store_append(treestore, &toplevel, NULL);
   				gtk_tree_store_set(treestore, &toplevel,
-                     COLUMN_ARTIST, tempartist1,
-                     -1);
+                COLUMN_ARTIST, tempartist1, -1);
 			
+				g_free(tempartist1);
+				g_free(tempartist2);
+				tempartist1 = tempartist2 = NULL;
+
 				gtk_tree_model_get(model_library, &tempiter_artist, ARTIST, &tempartist2, -1);
 			}
 			gtk_tree_model_get(model_library, &tempiter_artist, ALBUM, &tempalbum1, -1);
@@ -864,8 +836,9 @@ void setup_tree_view_renderer_artist(GtkWidget *treeview, GtkTreeStore *treestor
 			gtk_tree_store_append(treestore, &lowlevel, &child);
   			gtk_tree_store_set(treestore, &lowlevel, COLUMN_ARTIST, song, -1);
 			g_free(temptrack);
-			temptrack = NULL;
+			g_free(temptracknumber);
 			g_free(song);
+			temptrack = temptracknumber = song = NULL;
 			
 		} while(gtk_tree_model_iter_next(model_library, &tempiter_artist));
 	}
@@ -1147,6 +1120,39 @@ int main(int argc, char **argv) {
 
 		g_object_set(pargument->current_song.playbin, "video-sink", gtk_sink, NULL);	
 	} 
+
+	GstElement *vis_plugin;
+	GstElementFactory *selected_factory = NULL;
+	GList *list, *walk;
+	guint flags;
+	list = gst_registry_feature_filter(gst_registry_get(), filter_vis_features, FALSE, NULL);
+
+	for(walk = list; walk != NULL; walk = g_list_next(walk)) {
+		const gchar *name;
+		GstElementFactory *factory;
+
+		factory = GST_ELEMENT_FACTORY(walk->data);
+		name = gst_element_factory_get_longname(factory);
+
+		if(selected_factory == NULL || g_str_has_prefix(name, "Waveform")) {
+			selected_factory = factory;
+		}
+	}
+
+	if(!selected_factory)
+		g_printf("No visualization plugins found!\n");
+
+	vis_plugin = gst_element_factory_create(selected_factory, NULL);
+
+	if(!vis_plugin)
+		g_printf("Couldn't create the visualizator factory element!\n");
+
+	g_object_get(pargument->current_song.playbin, "flags", &flags, NULL);
+	flags |= (1 << 3);
+	g_object_set(pargument->current_song.playbin, "flags", flags, NULL);
+	g_object_set(pargument->current_song.playbin, "vis-plugin", vis_plugin, NULL);
+	g_object_set(pargument->current_song.playbin, "force-aspect-ratio", FALSE, NULL);
+
 
 	library_panel = gtk_scrolled_window_new(NULL, NULL);
 	playlist_panel = gtk_scrolled_window_new(NULL, NULL);

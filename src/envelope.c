@@ -39,7 +39,7 @@ struct d2vector envelope_sort(struct song song) {
 
 	for(i = 0; i < WIN_SIZE; ++i)
 		x[i] = 0.0f;
-
+	
 	for(i = 0; i < song.nSamples; i++) {
 		env = MAX(env_prev - decr_speed*env_prev, (float)(abs(((int16_t*)song.sample_array)[i])));
 

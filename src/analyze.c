@@ -27,6 +27,9 @@ float analyze (char *filename, struct song *current_song) {
 	float resnum;
 	struct d2vector envelope_result;
 
+	if(debug)
+		printf("\nAnalyzing: %s\n\n", filename);
+
 	if(audio_decode(filename, current_song) == 0) { // Decode audio track
 		envelope_result = envelope_sort(*current_song); // Global envelope sort
 		current_song->force_vector.x = envelope_result.x; // Tempo sort

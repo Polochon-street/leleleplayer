@@ -45,7 +45,6 @@ struct arguments {
 	int bartag;
 	int playlist_count;
 	gulong progressbar_update_signal_id;
-	GTimer *elapsed;
 	GList *history;
 	GtkWidget *treeview_library;
 	GtkWidget *treeview_artist;
@@ -159,7 +158,7 @@ void toggle_playpause_button(GtkWidget *, struct arguments *);
 * -the struct argument istelf to pass to start_song()
 */
 void previous_buttonf(GtkWidget *, struct arguments *);
-void destroy(GtkWidget *, gpointer);
+void destroy(GtkWidget *, struct arguments *);
 void config_folder_changed(char *, GtkWidget *);
 void preferences_callback(GtkMenuItem *preferences, struct pref_arguments *);
 void analyze_thread(struct pref_folder_arguments *);

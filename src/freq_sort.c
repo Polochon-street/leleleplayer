@@ -50,15 +50,21 @@ float freq_sort(struct song song) {
 	
 	fft = av_rdft_init(WIN_BITS, DFT_R2C);
 
-	for(i = 0, iFrame = 0; iFrame < nFrames; i+=song.channels*WIN_SIZE, iFrame++) {
+	for(i = 0, iFrame = 0; iFrame < nFrames; i += song.channels*WIN_SIZE, iFrame++) {
 		if(song.nb_bytes_per_sample == 2) {
-			for(d = 0; d < WIN_SIZE; d++)
-				x[d] = (float)((((int16_t*)song.sample_array)[i+2*d] + ((int16_t*)song.sample_array)[i+2*d+1])/2)*hann_window[d]; 
+			if(song.channels == 2)
+				for(d = 0; d < WIN_SIZE; d++)
+					x[d] = (float)((((int16_t*)song.sample_array)[i+2*d] + ((int16_t*)song.sample_array)[i+2*d+1])/2)*hann_window[d]; 
+			else
+				for(d = 0; d < WIN_SIZE; ++d)
+					x[d] = (float)(((int16_t*)song.sample_array)[i+d])*hann_window[d]; 
 		}
-
 		else if (song.nb_bytes_per_sample == 4) {
-			for(d = 0; d < WIN_SIZE; d++) 
-				x[d] = (float)(( ((int32_t*)song.sample_array)[i+2*d] + ((int32_t*)song.sample_array)[i+2*d+1])/2)*hann_window[d];
+			if(song.channels == 2)
+				for(d = 0; d < WIN_SIZE; d++) 
+					x[d] = (float)(( ((int32_t*)song.sample_array)[i+2*d] + ((int32_t*)song.sample_array)[i+2*d+1])/2)*hann_window[d];
+			else
+				x[d] = (float)(((int16_t*)song.sample_array)[i+d])*hann_window[d]; 
 		}
 
 		av_rdft_calc(fft, x);
@@ -92,6 +98,8 @@ float freq_sort(struct song song) {
 			fprintf(file2, "%f\n", spectre_moy[d]);
 			break;
 		}
+		fclose(file1);
+		fclose(file2);
 	}
 
 	tab_bandes[0] = (spectre_moy[1] + spectre_moy[2])/2;

@@ -1,6 +1,6 @@
 #include "analyze.h"
 #define SIZE 32769
-#define SIZE_32 (1 << 31) + 1
+#define SIZE_32 (1u << 31)
 #define INT_INF 0
 #define INT_SUP 2000
 #define max( a, b ) ( ((a) > (b)) ? (a) : (b) )
@@ -16,6 +16,7 @@ float amp_sort(struct song song) {
 	int16_t* p16;
 	int32_t* p32;
 	FILE *file_amp;
+	float quot_32to16 = (float)(SIZE-1)/(float)SIZE_32;
 	float resnum_amp = 0;
 	
 	for(i = 0; i < SIZE; ++i) {
@@ -40,8 +41,9 @@ float amp_sort(struct song song) {
 		for(e = song.nSamples - 1; ((int32_t*)song.sample_array)[e] == 0; --e)
 			;
 		p32 = (int32_t*)song.sample_array + d;
-		for(i = d; i <= e; ++i) 
-			++histogram[abs(*(p32++)*(float)SIZE/(SIZE_32))];
+		for(i = d; i <= e; ++i) {
+			++histogram[(uint16_t)fabs((float)(*(p32++))*quot_32to16)];
+		}
 	}
 	
 	for(i = 0; i < SIZE; ++i)
@@ -83,6 +85,7 @@ float amp_sort(struct song song) {
 		printf("Criterion: loud < 25 < 30 < 35 < calm\n");
 		printf("Histogram integration: %f\n", histogram_integ);
 		printf("Amplitude result: %f\n", resnum_amp);	
+		fclose(file_amp);
 	}
 
 	return (resnum_amp);

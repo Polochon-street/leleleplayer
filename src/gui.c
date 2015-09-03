@@ -3,9 +3,9 @@
 gboolean filter_vis_features(GstPluginFeature *feature, gpointer data) {
 	GstElementFactory *factory;
    
-	if(!GST_IS_ELEMENT_FACTORY (feature))
+	if(!GST_IS_ELEMENT_FACTORY(feature))
     	return FALSE;
-	factory = GST_ELEMENT_FACTORY (feature);
+	factory = GST_ELEMENT_FACTORY(feature);
 	if (!g_strrstr(gst_element_factory_get_klass(factory), "Visualization"))
     	return FALSE;
 
@@ -19,35 +19,12 @@ float distance(struct d4vector v1, struct d4vector v2) {
 	return distance;
 }
 
-void destroy(GtkWidget *window, gpointer data) {
-	gtk_main_quit ();
+void destroy(GtkWidget *window, struct arguments *argument) {
+	gtk_main_quit();
 }
 
 gboolean ignore_destroy(GtkWidget *window, gpointer data) {
 	return TRUE;
-}
-
-void free_song(struct song *song) {
-	if(song->artist) {
-		free(song->artist);
-		song->artist = NULL;
-	}
-	if(song->title) {
-		free(song->title);
-		song->title = NULL;
-	}
-	if(song->album) {
-		free(song->album);
-		song->album = NULL;
-	}
-	if(song->tracknumber) {
-		free(song->tracknumber);
-		song->tracknumber = NULL;
-	}
-	if(song->sample_array) {
-		free(song->sample_array);
-		song->sample_array = NULL;
-	}
 }
 
 void explore(GDir *dir, char *folder, FILE *list) {
@@ -541,6 +518,7 @@ void analyze_thread(struct pref_folder_arguments *argument) {
 	while(fgets(line, PATH_MAX, list) != NULL) {
 		line[strcspn(line, "\n")] = '\0';
 		if((resnum = analyze(line, &song)) != 0) {
+			debug = 1;
 	//		fprintf(test, "%f %f %f\n", song.force_vector.x, song.force_vector.y, song.force_vector.z);
 			fprintf(library, "%s\n%s\n%s\n%s\n%s\n%f\n%f\n%f\n%f\n%f\n", line, song.tracknumber, song.title, song.album, song.artist, resnum, song.force_vector.x,
 				song.force_vector.y, song.force_vector.z, song.force_vector.t);
@@ -648,7 +626,7 @@ void folder_chooser(GtkWidget *button, struct pref_arguments *argument) {
 	gtk_entry_set_text((GtkEntry*)argument->library_entry, argument->folder);
 }
 	
- void preferences_callback(GtkMenuItem *preferences, struct pref_arguments *argument) {
+void preferences_callback(GtkMenuItem *preferences, struct pref_arguments *argument) {
 	GtkWidget *dialog, *label, *area, *vbox, *hbox, *library_entry, *browse_button, *window_temp;
 	GtkDialogFlags flags = GTK_DIALOG_MODAL | GTK_DIALOG_DESTROY_WITH_PARENT;	
 	gint res;
@@ -695,7 +673,6 @@ void state_changed(GstBus *bus, GstMessage *msg, struct arguments *argument) {
 	if(GST_MESSAGE_SRC(msg) == GST_OBJECT(argument->current_song.playbin)) {
 		gst_message_parse_state_changed(msg, &old_state, &new_state, &pending_state);
     	argument->current_song.state = new_state;
-		printf("state changed: %d\n", argument->current_song.state);
 	}
 }
 
@@ -739,7 +716,6 @@ void refresh_ui(GstBus *bus, GstMessage *msg, struct arguments *argument) {
 		1, 1, 1);
 	g_signal_handler_unblock(argument->progressbar, argument->progressbar_update_signal_id);
 	refresh_progressbar(argument);
-	
 }
 
 void refresh_ui_mediainfo(GstBus *bus, GstMessage *msg, struct arguments *argument) {
@@ -874,17 +850,21 @@ void setup_tree_view_renderer_artist(GtkWidget *treeview, GtkTreeStore *treestor
 			if(g_strcmp0(tempalbum1, tempalbum2)) {
 				gtk_tree_store_append(treestore, &child, &toplevel);
   				gtk_tree_store_set(treestore, &child,
-                  	COLUMN_ARTIST, tempalbum1,
-                    -1);
-					gtk_tree_model_get(model_library, &tempiter_artist, ALBUM, &tempalbum2, -1);
+                COLUMN_ARTIST, tempalbum1, -1);
+
+				g_free(tempalbum1);
+				g_free(tempalbum2);
+				tempalbum2 = tempalbum1 = NULL;
+
+				gtk_tree_model_get(model_library, &tempiter_artist, ALBUM, &tempalbum2, -1);
 			}
 			gtk_tree_model_get(model_library, &tempiter_artist, TRACK, &temptrack, -1);
 			gtk_tree_model_get(model_library, &tempiter_artist, TRACKNUMBER, &temptracknumber, -1);
-				gchar *song = g_strconcat(temptracknumber, "  ", temptrack, NULL);
-				gtk_tree_store_append(treestore, &lowlevel, &child);
-  					gtk_tree_store_set(treestore, &lowlevel,
-                    	COLUMN_ARTIST, song,
-                    -1);
+			gchar *song = g_strconcat(temptracknumber, "  ", temptrack, NULL);
+			gtk_tree_store_append(treestore, &lowlevel, &child);
+  			gtk_tree_store_set(treestore, &lowlevel, COLUMN_ARTIST, song, -1);
+			g_free(temptrack);
+			temptrack = NULL;
 			g_free(song);
 			
 		} while(gtk_tree_model_iter_next(model_library, &tempiter_artist));
@@ -1133,15 +1113,14 @@ int main(int argc, char **argv) {
 	pargument->playlist_count = 0;
 	pargument->iter_library.stamp = 0;
 	pargument->current_song.duration = GST_CLOCK_TIME_NONE;
-	pargument->elapsed = g_timer_new();
 	pargument->current_song.state = GST_STATE_NULL;
 	pargument->current_song.artist = pargument->current_song.title = pargument->current_song.album = pargument->current_song.tracknumber = NULL;
 	pargument->str_genre = pargument->str_bitrate = pargument->str_samplerate = pargument->str_channels = NULL;
 	pargument->history = NULL;
 	pargument->current_song.sample_array = NULL;
 	pargument->bartag = 0;
-	gtk_init(&argc, &argv);
-	
+
+	gtk_init(&argc, &argv);	
 	gst_init(&argc, &argv);
 	
 	window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
@@ -1168,7 +1147,6 @@ int main(int argc, char **argv) {
 
 		g_object_set(pargument->current_song.playbin, "video-sink", gtk_sink, NULL);	
 	} 
-
 
 	library_panel = gtk_scrolled_window_new(NULL, NULL);
 	playlist_panel = gtk_scrolled_window_new(NULL, NULL);
@@ -1203,7 +1181,6 @@ int main(int argc, char **argv) {
 	gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(library_panel), GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
 	gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(playlist_panel), GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
 	gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(artist_panel), GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
-	pargument->elapsed = g_timer_new();
 	playbox = gtk_button_box_new(GTK_ORIENTATION_HORIZONTAL);
 	randombox = gtk_button_box_new(GTK_ORIENTATION_HORIZONTAL);
 	volumebox = gtk_button_box_new(GTK_ORIENTATION_HORIZONTAL);
@@ -1277,7 +1254,7 @@ int main(int argc, char **argv) {
 	g_signal_connect(G_OBJECT(model_playlist), "row-inserted", G_CALLBACK(ui_playlist_changed), libnotebook);
 	pargument->progressbar_update_signal_id = g_signal_connect(G_OBJECT(pargument->progressbar), 
 	"value-changed", G_CALLBACK(slider_changed), pargument);
-	g_signal_connect(G_OBJECT(window), "destroy", G_CALLBACK(destroy), NULL);	
+	g_signal_connect(G_OBJECT(window), "destroy", G_CALLBACK(destroy), pargument);	
 
 	gtk_container_add(GTK_CONTAINER(library_panel), treeview_library);
 	gtk_container_add(GTK_CONTAINER(playlist_panel), treeview_playlist);
@@ -1333,5 +1310,11 @@ int main(int argc, char **argv) {
 	gtk_widget_show_all(window);
 
 	gtk_main();
+
+	gst_object_unref(bus);
+
+	gst_element_set_state(pargument->current_song.playbin, GST_STATE_NULL);
+	gst_object_unref(pargument->current_song.playbin);
+
 	return 0;
 }

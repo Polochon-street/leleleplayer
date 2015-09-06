@@ -141,23 +141,34 @@ void artist_row_activated(GtkTreeView *, GtkTreePath *, GtkTreeViewColumn *, str
 * Arguments: GtkTreePath *path: the path of the selected item in the treeview (its « level » in the treeview)
 * Arguments: GtkTreeViewColumn *column: the column of the selected item in the treeview
 * Arguments: struct arguments *argument: the global argument struct containing:
-* -the playlist treeview (in order to insert songs there): treeview_playlist
-* -the library treeview (in order to look up for songs): treeview_library
+* -the playlist treeview in order to insert songs there: treeview_playlist
+* -the library treeview in order to look up for songs: treeview_library
 * -the artist iter to fill with the selected iter: iter_artist
 * -the struct argument itself to pass to start_song(), add_album_to_playlist() and add_artist_to_playlist()
 * -the playlist iter to fill with the first song played: iter_playlist
 */
 void toggle_playpause_button(GtkWidget *, struct arguments *);
 /**
-* Description: Callback function called when the « next » button is clicked
+* Description: Callback function called when the « previous » button is clicked
 * Arguments: GtkWidget *button: useless
 * Arguments: struct arguments *argument: the global argument struct containing:
-* -the playlist treeview (in order to get the next playlist song): treeview_playlist
+* -the playlist treeview in order to get the next playlist song: treeview_playlist
 * -the playlist iter, in order to add its path to the history: iter_playlist
 * -the history list, in order to add the previous song to it: history
+* -the current song struct, in order to free it and reallocate it
 * -the struct argument istelf to pass to start_song()
 */
+void next_buttonf(GtkWidget *, struct arguments *);
+/**
+* Description: Callback function called when the « previous » button is clicked
+* Arguments: GtkWidget *button: useless
+* Arguments: struct arguments *argument: the global argument struct containing:
+* -the playlist treeview (in order to get the previous playlist song with get_previous_playlist_song(): treeview_playlist)
+* -the current song struct, in order to free it and reallocate it
+* -the struct argument itself to pass to start_song() and get_next_playlist_song()
+*/
 void previous_buttonf(GtkWidget *, struct arguments *);
+void next_buttonf(GtkWidget *, struct arguments *);
 void destroy(GtkWidget *, struct arguments *);
 void config_folder_changed(char *, GtkWidget *);
 void preferences_callback(GtkMenuItem *preferences, struct pref_arguments *);
@@ -192,3 +203,8 @@ gboolean get_previous_playlist_song(GtkTreeView *, struct arguments *);
 gboolean add_album_to_playlist(gchar *, gchar *, struct arguments *);
 gboolean add_artist_to_playlist(gchar *, struct arguments *);
 gboolean play_playlist_song(gchar *, struct arguments *); 
+gboolean ui_init(struct arguments *);
+gint sort_iter_compare_func(GtkTreeModel *, GtkTreeIter *, GtkTreeIter *, gpointer);
+gint sort_artist_album_tracks(GtkTreeModel *, GtkTreeIter *, GtkTreeIter *, gpointer);
+gint sort_force(GtkTreeModel *, GtkTreeIter *, GtkTreeIter *, gpointer);
+

@@ -168,10 +168,15 @@ void next_buttonf(GtkWidget *, struct arguments *);
 * -the struct argument itself to pass to start_song() and get_next_playlist_song()
 */
 void previous_buttonf(GtkWidget *, struct arguments *);
-void next_buttonf(GtkWidget *, struct arguments *);
+/**
+* Description: Callback function called when trying to quit the player
+* Arguments: struct arguments *argument: the global argument struct containing:
+* -the playbin, in order to set its state to NULL, which is necessary when quitting: current_song.playbin
+*/
 void destroy(GtkWidget *, struct arguments *);
 void config_folder_changed(char *, GtkWidget *);
-void preferences_callback(GtkMenuItem *preferences, struct pref_arguments *);
+void open_audio_file(GtkMenuItem *, struct arguments *);
+void preferences_callback(GtkMenuItem *, struct pref_arguments *);
 void analyze_thread(struct pref_folder_arguments *);
 void state_changed(GstBus *, GstMessage *, struct arguments *);
 void slider_changed(GtkRange *, struct arguments *);

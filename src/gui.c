@@ -1,6 +1,7 @@
 #include "gui.h"
 
 void destroy(GtkWidget *window, struct arguments *argument) {
+	gst_element_set_state(argument->current_song.playbin, GST_STATE_NULL);
 	gtk_main_quit();
 }
 
@@ -26,7 +27,6 @@ void artist_row_activated(GtkTreeView *treeview, GtkTreePath *path, GtkTreeViewC
 	GtkTreeIter lib_iter;
 	gboolean valid;
 
-	
 	clean_playlist(GTK_TREE_VIEW(argument->treeview_playlist), argument);
 
 	if(gtk_tree_path_get_depth(path) == 3) {
@@ -933,8 +933,6 @@ int main(int argc, char **argv) {
 	gtk_main();
 
 	gst_object_unref(bus);
-
-	gst_element_set_state(pargument->current_song.playbin, GST_STATE_NULL);
 	gst_object_unref(pargument->current_song.playbin);
 
 	return 0;

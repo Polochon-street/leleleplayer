@@ -715,7 +715,7 @@ int main(int argc, char **argv) {
 
 	GtkWidget *window, *treeview_library, *treeview_playlist, *treeview_artist, *library_panel, *artist_panel, *playlist_panel, *vboxv,
 		*playbox, *volumebox, *randombox, *repeat_button, *random_button, *lelele_button, *labelbox, *next_button, *previous_button, 
-		*menubar, *file, *filemenu, *open, *close, *edit, *editmenu, *preferences,
+		*menubar, *file, *filemenu, *open, *add_file, *close, *edit, *editmenu, *preferences,
 		*libnotebook, *mediainfo_expander, *mediainfo_box, *mediainfo_labelbox, *area;
 	
 	GtkTreeModel *model_playlist;
@@ -896,6 +896,7 @@ int main(int argc, char **argv) {
 	gtk_menu_shell_append(GTK_MENU_SHELL(menubar), edit);
 
 	open = gtk_menu_item_new_with_label("Open...");
+	add_file = gtk_menu_item_new_with_label("Add file to playlist...");
 	close = gtk_menu_item_new_with_label("Close");
 	preferences = gtk_menu_item_new_with_label("Preferences");
 	gtk_menu_shell_append(GTK_MENU_SHELL(filemenu), open);

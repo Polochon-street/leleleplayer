@@ -1,5 +1,4 @@
 #include "analyze.h"
-#include <libavformat/coucou/internal.h>
 
 int audio_decode(const char *filename, struct song *song) { // decode the track
 	AVCodec *codec = NULL;

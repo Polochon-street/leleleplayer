@@ -18,6 +18,7 @@
 #↑ windows support
 #Check memory leaks
 Complete menu (open/close/quit)
+add « add to playlist/remove from playlist » 
 Add rapid scan
 Timer for sleeping
 Text in dialog box
@@ -27,4 +28,4 @@ split gui into more files
 nuage de points selon les genre
 add right click/add to playlist
 Installer for linux/windows with cpack
-add « add to playlist/remove from playlist » 
+add more flags for analyze

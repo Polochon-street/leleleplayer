@@ -244,7 +244,7 @@ void continue_track(GstElement *playbin, struct arguments *argument) {
 	
 	argument->history = g_list_prepend(argument->history, gtk_tree_model_get_string_from_iter(model_playlist, &argument->iter_playlist));
 	if(!argument->repeat) {
-		free_song(&argument->current_song); 
+		lelele_free_song(&argument->current_song); 
 		get_next_playlist_song(GTK_TREE_VIEW(argument->treeview_playlist), argument);
 	}
 	queue_song(argument);

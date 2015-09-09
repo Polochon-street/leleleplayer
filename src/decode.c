@@ -21,29 +21,28 @@ int audio_decode(const char *filename, struct song *song) { // decode the track
 	pFormatCtx = avformat_alloc_context();
 
 	if(avformat_open_input(&pFormatCtx, filename, NULL, NULL) < 0) {
-		printf("Couldn't open file: %s, %d\n", filename, errno);
-		song->nSamples = 0;
+		printf("Couldn't open file: %s\n", filename, errno);
 		return 1;
 	}
 
 	if(avformat_find_stream_info(pFormatCtx, NULL) < 0) {
 		printf("Couldn't find stream information\n");
-		song->nSamples = 0;
 		return 1;
 	} 
 	
-	audioStream = av_find_best_stream(pFormatCtx, AVMEDIA_TYPE_AUDIO, -1, -1, &codec, 0);
+	if(audioStream = av_find_best_stream(pFormatCtx, AVMEDIA_TYPE_AUDIO, -1, -1, &codec, 0) < 0) {
+		printf("Couldn't find a suitable audio stream\n");
+		return 1;
+	}
 	c = pFormatCtx->streams[audioStream]->codec;
-	
+
 	if (!codec) {
 		printf("Codec not found!\n");
-		song->nSamples = 0;
 		return 1;
 	}
 
 	if(avcodec_open2(c, codec, NULL) < 0) {
 		printf("Could not open codec\n");
-		song->nSamples = 0;
 		return 1;
 	}
 	

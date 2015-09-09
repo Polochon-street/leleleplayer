@@ -151,7 +151,7 @@ void next_buttonf(GtkWidget *button, struct arguments *argument) {
 	
 	if((iter_string = gtk_tree_model_get_string_from_iter(model_playlist, &argument->iter_playlist))) {
 		argument->history = g_list_prepend(argument->history, iter_string);
-		free_song(&argument->current_song);
+		lelele_free_song(&argument->current_song);
 		if(get_next_playlist_song(GTK_TREE_VIEW(argument->treeview_playlist), argument)) {
 			start_song(argument);
 		}
@@ -159,7 +159,7 @@ void next_buttonf(GtkWidget *button, struct arguments *argument) {
 }
 
 void previous_buttonf(GtkWidget *button, struct arguments *argument) {
-	free_song(&argument->current_song);
+	lelele_free_song(&argument->current_song);
 	if(get_previous_playlist_song(GTK_TREE_VIEW(argument->treeview_playlist), argument)) {
 		start_song(argument);
 	}
@@ -179,7 +179,7 @@ void analyze_thread(struct pref_folder_arguments *argument) {
 	song.title = song.artist = song.album = song.tracknumber = NULL;
 	while(fgets(line, PATH_MAX, list) != NULL) {
 		line[strcspn(line, "\n")] = '\0';
-		if((resnum = analyze(line, &song)) != 0) {
+		if((resnum = lelele_analyze(line, &song)) != 0) {
 			debug = 1;
 	//		fprintf(test, "%f %f %f\n", song.force_vector.x, song.force_vector.y, song.force_vector.z);
 			fprintf(library, "%s\n%s\n%s\n%s\n%s\n%f\n%f\n%f\n%f\n%f\n", line, song.tracknumber, song.title, song.album, song.artist, resnum, song.force_vector.x,
@@ -187,7 +187,7 @@ void analyze_thread(struct pref_folder_arguments *argument) {
 			msg_thread = g_malloc(strlen(song.title)*sizeof(char) + 1);
 			strncpy(msg_thread, song.title, strlen(song.title) + 1);
 			g_async_queue_push(msg_queue, msg_thread);
-			free_song(&song);
+			lelele_free_song(&song);
 		}
 	}
 	msg_thread = g_malloc(4);
@@ -348,7 +348,7 @@ void open_audio_file(GtkMenuItem *close, struct arguments *argument) {
 		char *filename;
 		GtkFileChooser *chooser = GTK_FILE_CHOOSER(dialog);
 		filename = gtk_file_chooser_get_filename(chooser);
-		resnum = analyze(filename, &song);
+		resnum = lelele_analyze(filename, &song);
 	
 		gtk_list_store_append(argument->store_playlist, &iter_playlist);
 		gtk_list_store_set(argument->store_playlist, &iter_playlist, PLAYING, "", -1);
@@ -372,7 +372,7 @@ void open_audio_file(GtkMenuItem *close, struct arguments *argument) {
 		argument->iter_playlist = iter_playlist;
 		argument->history = g_list_prepend(argument->history, gtk_tree_model_get_string_from_iter(model_playlist, &argument->iter_playlist));
 		g_free(filename);
-		free_song(&song);
+		lelele_free_song(&song);
 	
 		start_song(argument);
 	}	

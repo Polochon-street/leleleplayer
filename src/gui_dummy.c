@@ -20,6 +20,7 @@ int main(int argc, char **argv) {
 		}	
 	}
 	struct song song;
+	song.artist = song.title = song.album = song.tracknumber = song.sample_array = NULL;
 
 	result = lelele_analyze(filename, &song);
 	lelele_free_song(&song);

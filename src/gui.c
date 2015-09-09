@@ -329,6 +329,60 @@ void preferences_callback(GtkMenuItem *preferences, struct pref_arguments *argum
 	argument->window = window_temp;
 }
 
+void add_file_to_playlist(GtkMenuItem *add_file, struct arguments *argument) {
+	struct song song;
+	int resnum;
+	GtkWidget *dialog;
+	GtkFileChooserAction action = GTK_FILE_CHOOSER_ACTION_OPEN;
+	gint res;
+	GSList *filelist;
+	char *filename;
+	GtkTreeModel *model_playlist;
+	GtkTreeIter iter_playlist;
+	model_playlist = gtk_tree_view_get_model(GTK_TREE_VIEW(argument->treeview_playlist));
+
+	dialog = gtk_file_chooser_dialog_new("Open audio file(s)", GTK_WINDOW(gtk_widget_get_toplevel(GTK_WIDGET(add_file))),
+	action, "Cancel", GTK_RESPONSE_CANCEL, "Open", GTK_RESPONSE_ACCEPT, NULL);
+	GtkFileChooser *chooser = GTK_FILE_CHOOSER(dialog);
+
+	gtk_file_chooser_set_select_multiple(chooser, TRUE);
+
+	res = gtk_dialog_run(GTK_DIALOG(dialog));
+	if(res == GTK_RESPONSE_ACCEPT) {
+		if(argument->iter_playlist.stamp)
+			argument->history = g_list_prepend(argument->history, gtk_tree_model_get_string_from_iter(model_playlist, &argument->iter_playlist));
+		for(filelist = gtk_file_chooser_get_filenames(chooser); filelist; filelist = filelist->next) {
+			GtkFileChooser *chooser = GTK_FILE_CHOOSER(dialog);
+			filename = (gchar*)filelist->data;
+			if((resnum = lelele_analyze(filename, &song)) == 0)
+				printf("Couldn't conclude\n");
+			else {
+				gtk_list_store_append(argument->store_playlist, &iter_playlist);
+				gtk_list_store_set(argument->store_playlist, &iter_playlist, PLAYING, "", -1);
+				gtk_list_store_set(argument->store_playlist, &iter_playlist, TRACKNUMBER, song.tracknumber, -1);
+				gtk_list_store_set(argument->store_playlist, &iter_playlist, TRACK, song.title, -1);
+				gtk_list_store_set(argument->store_playlist, &iter_playlist, ALBUM, song.album, -1);
+				gtk_list_store_set(argument->store_playlist, &iter_playlist, ARTIST, song.artist, -1);		
+				gtk_list_store_set(argument->store_playlist, &iter_playlist, FORCE_TEMPO, song.force_vector.x, -1);
+				gtk_list_store_set(argument->store_playlist, &iter_playlist, FORCE_AMP, song.force_vector.y, -1);
+				gtk_list_store_set(argument->store_playlist, &iter_playlist, FORCE_FREQ, song.force_vector.z, -1);
+				gtk_list_store_set(argument->store_playlist, &iter_playlist, FORCE_ATK, song.force_vector.t, -1);
+				if(resnum > 0)
+					gtk_list_store_set(argument->store_playlist, &iter_playlist, TEXTFORCE, "Loud", -1);
+				else if(resnum < 0)
+					gtk_list_store_set(argument->store_playlist, &iter_playlist, TEXTFORCE, "Calm", -1);
+				gtk_list_store_set(argument->store_playlist, &iter_playlist, AFILE, filename, -1);
+				argument->playlist_count++;
+
+				argument->iter_playlist = iter_playlist;
+				lelele_free_song(&song);
+			}
+			g_free(filename);
+		}
+	}
+	gtk_widget_destroy(dialog);
+}
+
 void open_audio_file(GtkMenuItem *close, struct arguments *argument) {
 	struct song song;
 	int resnum;
@@ -344,37 +398,39 @@ void open_audio_file(GtkMenuItem *close, struct arguments *argument) {
 
 	res = gtk_dialog_run(GTK_DIALOG(dialog));
 	if(res == GTK_RESPONSE_ACCEPT) {
-		argument->history = g_list_prepend(argument->history, gtk_tree_model_get_string_from_iter(model_playlist, &argument->iter_playlist));
+		if(argument->iter_playlist.stamp)
+			argument->history = g_list_prepend(argument->history, gtk_tree_model_get_string_from_iter(model_playlist, &argument->iter_playlist));
 		char *filename;
 		GtkFileChooser *chooser = GTK_FILE_CHOOSER(dialog);
 		filename = gtk_file_chooser_get_filename(chooser);
-		resnum = lelele_analyze(filename, &song);
-	
-		gtk_list_store_append(argument->store_playlist, &iter_playlist);
-		gtk_list_store_set(argument->store_playlist, &iter_playlist, PLAYING, "", -1);
-		gtk_list_store_set(argument->store_playlist, &iter_playlist, TRACKNUMBER, song.tracknumber, -1);
-		gtk_list_store_set(argument->store_playlist, &iter_playlist, TRACK, song.title, -1);
-		gtk_list_store_set(argument->store_playlist, &iter_playlist, ALBUM, song.album, -1);
-		gtk_list_store_set(argument->store_playlist, &iter_playlist, ARTIST, song.artist, -1);		
-		gtk_list_store_set(argument->store_playlist, &iter_playlist, FORCE_TEMPO, song.force_vector.x, -1);
-		gtk_list_store_set(argument->store_playlist, &iter_playlist, FORCE_AMP, song.force_vector.y, -1);
-		gtk_list_store_set(argument->store_playlist, &iter_playlist, FORCE_FREQ, song.force_vector.z, -1);
-		gtk_list_store_set(argument->store_playlist, &iter_playlist, FORCE_ATK, song.force_vector.t, -1);
-		if(resnum > 0)
-			gtk_list_store_set(argument->store_playlist, &iter_playlist, TEXTFORCE, "Loud", -1);
-		else if(resnum < 0)
-			gtk_list_store_set(argument->store_playlist, &iter_playlist, TEXTFORCE, "Calm", -1);
-		else
-			gtk_list_store_set(argument->store_playlist, &iter_playlist, TEXTFORCE, "Couldn't conclude", -1);
-		gtk_list_store_set(argument->store_playlist, &iter_playlist, AFILE, filename, -1);
-		argument->playlist_count++;
+		if((resnum = lelele_analyze(filename, &song)) == 0)
+			printf("Couldn't conclude\n");
+		else {
+			gtk_list_store_append(argument->store_playlist, &iter_playlist);
+			gtk_list_store_set(argument->store_playlist, &iter_playlist, PLAYING, "", -1);
+			gtk_list_store_set(argument->store_playlist, &iter_playlist, TRACKNUMBER, song.tracknumber, -1);
+			gtk_list_store_set(argument->store_playlist, &iter_playlist, TRACK, song.title, -1);
+			gtk_list_store_set(argument->store_playlist, &iter_playlist, ALBUM, song.album, -1);
+			gtk_list_store_set(argument->store_playlist, &iter_playlist, ARTIST, song.artist, -1);		
+			gtk_list_store_set(argument->store_playlist, &iter_playlist, FORCE_TEMPO, song.force_vector.x, -1);
+			gtk_list_store_set(argument->store_playlist, &iter_playlist, FORCE_AMP, song.force_vector.y, -1);
+			gtk_list_store_set(argument->store_playlist, &iter_playlist, FORCE_FREQ, song.force_vector.z, -1);
+			gtk_list_store_set(argument->store_playlist, &iter_playlist, FORCE_ATK, song.force_vector.t, -1);
+			if(resnum > 0)
+				gtk_list_store_set(argument->store_playlist, &iter_playlist, TEXTFORCE, "Loud", -1);
+			else if(resnum < 0)
+				gtk_list_store_set(argument->store_playlist, &iter_playlist, TEXTFORCE, "Calm", -1);
+			else
+				gtk_list_store_set(argument->store_playlist, &iter_playlist, TEXTFORCE, "Couldn't conclude", -1);
+			gtk_list_store_set(argument->store_playlist, &iter_playlist, AFILE, filename, -1);
+			argument->playlist_count++;
 
-		argument->iter_playlist = iter_playlist;
-		argument->history = g_list_prepend(argument->history, gtk_tree_model_get_string_from_iter(model_playlist, &argument->iter_playlist));
+			argument->iter_playlist = iter_playlist;
+			argument->history = g_list_prepend(argument->history, gtk_tree_model_get_string_from_iter(model_playlist, &argument->iter_playlist));
+			lelele_free_song(&song);
+			start_song(argument);
+		}
 		g_free(filename);
-		lelele_free_song(&song);
-	
-		start_song(argument);
 	}	
 	gtk_widget_destroy(dialog);
 }
@@ -742,6 +798,7 @@ int main(int argc, char **argv) {
 	pargument->first = 1;
 	pargument->playlist_count = 0;
 	pargument->iter_library.stamp = 0;
+	pargument->iter_playlist.stamp = 0;
 	pargument->current_song.duration = GST_CLOCK_TIME_NONE;
 	pargument->current_song.state = GST_STATE_NULL;
 	pargument->current_song.artist = pargument->current_song.title = pargument->current_song.album = pargument->current_song.tracknumber = NULL;
@@ -900,6 +957,7 @@ int main(int argc, char **argv) {
 	close = gtk_menu_item_new_with_label("Close");
 	preferences = gtk_menu_item_new_with_label("Preferences");
 	gtk_menu_shell_append(GTK_MENU_SHELL(filemenu), open);
+	gtk_menu_shell_append(GTK_MENU_SHELL(filemenu), add_file);
 	gtk_menu_shell_append(GTK_MENU_SHELL(filemenu), close);
 	gtk_menu_shell_append(GTK_MENU_SHELL(editmenu), preferences);
 
@@ -922,6 +980,7 @@ int main(int argc, char **argv) {
 	g_signal_connect(G_OBJECT(previous_button), "clicked", G_CALLBACK(previous_buttonf), pargument);
 	g_signal_connect(G_OBJECT(preferences), "activate", G_CALLBACK(preferences_callback), &pref_arguments);
 	g_signal_connect(G_OBJECT(open), "activate", G_CALLBACK(open_audio_file), pargument);
+	g_signal_connect(G_OBJECT(add_file), "activate", G_CALLBACK(add_file_to_playlist), pargument);
 	g_signal_connect(G_OBJECT(close), "activate", G_CALLBACK(destroy), pargument);
 	g_signal_connect(G_OBJECT(treeview_library), "row-activated", G_CALLBACK(lib_row_activated), pargument);
 	g_signal_connect(G_OBJECT(treeview_playlist), "row-activated", G_CALLBACK(playlist_row_activated), pargument);

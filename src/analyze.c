@@ -1,6 +1,6 @@
 #include "analyze.h"
 
-void free_song(struct song *song) {
+void lelele_free_song(struct song *song) {
 	if(song->artist) {
 		free(song->artist);
 		song->artist = NULL;
@@ -23,7 +23,7 @@ void free_song(struct song *song) {
 	}
 }
 
-float analyze (char *filename, struct song *current_song) {
+float lelele_analyze (char *filename, struct song *current_song) {
 	float resnum;
 	struct d2vector envelope_result;
 

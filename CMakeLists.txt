@@ -18,13 +18,8 @@ add_definitions(${MULTIMEDIA_CFLAGS_OTHER} ${GTK_CFLAGS_OTHER})
 ADD_LIBRARY(lelele src/amp_sort.c src/decode.c src/envelope.c src/freq_sort.c src/analyze.c)
 target_link_libraries(lelele ${MULTIMEDIA_LIBRARIES})
 
-#if(WIN32)
-#SET(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
-#SET(BUILD_SHARED_LIBRARIES OFF)
-#SET(CMAKE_EXE_LINKER_FLAGS "-static")
-#endif()
 add_executable(analyze src/gui_dummy.c)
-add_executable(player src/gui.c) #win32
+add_executable(player src/gui.c src/gtk_gst_utility.c) #win32
 target_link_libraries(player ${GTK_LIBRARIES})
 
 foreach (EXE analyze player)

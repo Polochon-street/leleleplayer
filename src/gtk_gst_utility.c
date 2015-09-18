@@ -238,16 +238,17 @@ void clean_playlist(GtkTreeView *treeview_playlist, struct arguments *argument) 
 }
 
 void continue_track(GstElement *playbin, struct arguments *argument) {
-	GtkTreeModel *model_playlist;
-
-	model_playlist = gtk_tree_view_get_model(GTK_TREE_VIEW(argument->treeview_playlist));
+	GstStructure *structure;	
 	
-	argument->history = g_list_prepend(argument->history, gtk_tree_model_get_string_from_iter(model_playlist, &argument->iter_playlist));
-	if(!argument->repeat) {
-		lelele_free_song(&argument->current_song); 
-		get_next_playlist_song(GTK_TREE_VIEW(argument->treeview_playlist), argument);
-	}
-	queue_song(argument);
+	structure = gst_structure_new_empty("next_song");
+
+	GstMessage *msg = gst_message_new_application(GST_OBJECT(playbin), structure);
+
+	g_mutex_lock(&argument->queue_mutex);
+	gst_element_post_message(argument->current_song.playbin, msg);
+
+	g_cond_wait(&argument->queue_cond, &argument->queue_mutex);
+	g_mutex_unlock(&argument->queue_mutex);
 }
 
 void queue_song(struct arguments *argument) {
@@ -264,7 +265,7 @@ void queue_song(struct arguments *argument) {
 
 	uri = g_filename_to_uri(argument->current_song.filename, NULL, NULL);
 	g_object_set(argument->current_song.playbin, "uri", uri, NULL);
-
+	
 	g_free(uri); 
 }
 

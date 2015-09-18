@@ -10,7 +10,12 @@ gboolean ignore_destroy(GtkWidget *window, gpointer data) {
 }
 
 void tags_obtained(GstElement *playbin, gint stream, struct arguments *argument) {
-	GstMessage *msg = gst_message_new_application(NULL, gst_structure_new("tags", NULL));
+	GstStructure *structure;	
+	
+	structure = gst_structure_new_empty("tags");
+
+	GstMessage *msg = gst_message_new_application(GST_OBJECT(playbin), structure);
+
 	gst_element_post_message(argument->current_song.playbin, msg);
 }
 
@@ -173,19 +178,18 @@ void analyze_thread(struct pref_folder_arguments *argument) {
 	FILE *library = argument->library;
 	//FILE *test = fopen("test.txt", "w");
 	GAsyncQueue *msg_queue = argument->msg_queue;
-	float resnum;
+	int resnum;
 
 	song.sample_array = NULL;
 	song.title = song.artist = song.album = song.tracknumber = NULL;
 	while(fgets(line, PATH_MAX, list) != NULL) {
 		line[strcspn(line, "\n")] = '\0';
-		if((resnum = lelele_analyze(line, &song)) != 0) {
-			debug = 1;
+		if((resnum = lelele_analyze(line, &song, 0, 1)) < 3) {
 	//		fprintf(test, "%f %f %f\n", song.force_vector.x, song.force_vector.y, song.force_vector.z);
-			fprintf(library, "%s\n%s\n%s\n%s\n%s\n%f\n%f\n%f\n%f\n%f\n", line, song.tracknumber, song.title, song.album, song.artist, resnum, song.force_vector.x,
+			fprintf(library, "%s\n%s\n%s\n%s\n%s\n%d\n%f\n%f\n%f\n%f\n", line, song.tracknumber, song.title, song.album, song.artist, resnum, song.force_vector.x,
 				song.force_vector.y, song.force_vector.z, song.force_vector.t);
-			msg_thread = g_malloc(strlen(song.title)*sizeof(char) + 1);
-			strncpy(msg_thread, song.title, strlen(song.title) + 1);
+			msg_thread = g_malloc(strlen(line)*sizeof(char) + 1);
+			strncpy(msg_thread, line, strlen(line) + 1);
 			g_async_queue_push(msg_queue, msg_thread);
 			lelele_free_song(&song);
 		}
@@ -354,7 +358,7 @@ void add_file_to_playlist(GtkMenuItem *add_file, struct arguments *argument) {
 		for(filelist = gtk_file_chooser_get_filenames(chooser); filelist; filelist = filelist->next) {
 			GtkFileChooser *chooser = GTK_FILE_CHOOSER(dialog);
 			filename = (gchar*)filelist->data;
-			if((resnum = lelele_analyze(filename, &song)) == 0)
+			if((resnum = lelele_analyze(filename, &song, 0, 0)) == 0)
 				printf("Couldn't conclude\n");
 			else {
 				gtk_list_store_append(argument->store_playlist, &iter_playlist);
@@ -403,9 +407,9 @@ void open_audio_file(GtkMenuItem *close, struct arguments *argument) {
 		char *filename;
 		GtkFileChooser *chooser = GTK_FILE_CHOOSER(dialog);
 		filename = gtk_file_chooser_get_filename(chooser);
-		if((resnum = lelele_analyze(filename, &song)) == 0)
+		if((resnum = lelele_analyze(filename, &song, 0, 0)) == 0)
 			printf("Couldn't conclude\n");
-		else {
+		else { // Create an iter_forge() function?
 			gtk_list_store_append(argument->store_playlist, &iter_playlist);
 			gtk_list_store_set(argument->store_playlist, &iter_playlist, PLAYING, "", -1);
 			gtk_list_store_set(argument->store_playlist, &iter_playlist, TRACKNUMBER, song.tracknumber, -1);
@@ -441,9 +445,9 @@ void refresh_ui(GstBus *bus, GstMessage *msg, struct arguments *argument) {
 	GtkTreeViewColumn *column;
 	GtkTreeModel *model_playlist;
 	GtkTreeIter temp_iter;
-
-	GstFormat fmt = GST_FORMAT_TIME;
 	
+	GstFormat fmt = GST_FORMAT_TIME;
+
 	if((model_playlist = gtk_tree_view_get_model(GTK_TREE_VIEW(argument->treeview_playlist)))) {
 		selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(argument->treeview_playlist));
 		path = gtk_tree_model_get_path(model_playlist, &argument->iter_playlist);
@@ -477,68 +481,87 @@ void refresh_ui(GstBus *bus, GstMessage *msg, struct arguments *argument) {
 	refresh_progressbar(argument);
 }
 
-void refresh_ui_mediainfo(GstBus *bus, GstMessage *msg, struct arguments *argument) {
-	GstTagList *tags;
-	gchar *str;
-	gint samplerate = 0, channels = 0, bitrate;
-	GstStructure *s;
-	GstPad *pad;
-	GstCaps *caps;
+void message_application(GstBus *bus, GstMessage *msg, struct arguments *argument) {
+	const GstStructure *structure = gst_message_get_structure(msg);
+	if(!strcmp(gst_structure_get_name(structure), "tags")) {
+		GstTagList *tags;
+		gchar *str;
+		gint samplerate = 0, channels = 0, bitrate;
+		GstStructure *s;
+		GstPad *pad;
+		GstCaps *caps;
 
-	g_signal_emit_by_name(argument->current_song.playbin, "get-audio-pad", 0, &pad);
-	caps = gst_pad_get_current_caps(pad);
+		g_signal_emit_by_name(argument->current_song.playbin, "get-audio-pad", 0, &pad);
+		caps = gst_pad_get_current_caps(pad);
 
-	s = gst_caps_get_structure(caps, 0);
+		s = gst_caps_get_structure(caps, 0);
 
-	gst_structure_get_int(s, "channels", &channels);
-	gst_structure_get_int(s, "rate", &samplerate);
+		gst_structure_get_int(s, "channels", &channels);
+		gst_structure_get_int(s, "rate", &samplerate);
 
-	if(channels) {
-		argument->str_channels = g_strdup_printf("Channels: %d", channels);
-	}
-	else {
-		argument->str_channels = g_strdup("Number of channels not found");
-	}
-
-	if(samplerate) {
-		argument->str_samplerate = g_strdup_printf("Sample rate: %dHz", samplerate);
-	}
-	else {
-		argument->str_samplerate = g_strdup("Sample rate not found");
-	}
-
-	g_signal_emit_by_name(argument->current_song.playbin, "get-audio-tags", 0, &tags);
-	if(tags) {
-		if(gst_tag_list_get_string(tags, GST_TAG_GENRE, &str)) {
-			argument->str_genre = g_strdup_printf("Genre: %s", str);
-			g_free(str);
-			str = NULL;
+		if(channels) {
+			argument->str_channels = g_strdup_printf("Channels: %d", channels);
 		}
 		else {
-			argument->str_genre = g_strdup("No genre found");
+			argument->str_channels = g_strdup("Number of channels not found");
 		}
 
-		if(gst_tag_list_get_uint(tags, GST_TAG_BITRATE, &bitrate)) {
-			argument->str_bitrate = g_strdup_printf("Bit rate: %dkB/s", bitrate/1000);
+		if(samplerate) {
+			argument->str_samplerate = g_strdup_printf("Sample rate: %dHz", samplerate);
 		}
 		else {
-			argument->str_bitrate = g_strdup("Bitrate not found");
+			argument->str_samplerate = g_strdup("Sample rate not found");
+		}
+
+		g_signal_emit_by_name(argument->current_song.playbin, "get-audio-tags", 0, &tags);
+		if(tags) {
+			if(gst_tag_list_get_string(tags, GST_TAG_GENRE, &str)) {
+				argument->str_genre = g_strdup_printf("Genre: %s", str);
+				g_free(str);
+				str = NULL;
+			}
+			else {
+				argument->str_genre = g_strdup("No genre found");
+			}
+
+			if(gst_tag_list_get_uint(tags, GST_TAG_BITRATE, &bitrate)) {
+				argument->str_bitrate = g_strdup_printf("Bit rate: %dkB/s", bitrate/1000);
+			}
+			else {
+				argument->str_bitrate = g_strdup("Bitrate not found");
+			}
+		}
+		gst_tag_list_free(tags);
+
+		gtk_label_set_text(GTK_LABEL(argument->channels_label), argument->str_channels);
+		g_free(argument->str_channels);
+		gtk_label_set_text(GTK_LABEL(argument->samplerate_label), argument->str_samplerate);
+		g_free(argument->str_samplerate);
+		argument->str_samplerate = NULL;
+		argument->str_channels = NULL;
+		gtk_label_set_text(GTK_LABEL(argument->genre_label), argument->str_genre);
+		g_free(argument->str_genre);
+		argument->str_genre = NULL;
+		gtk_label_set_text(GTK_LABEL(argument->bitrate_label), argument->str_bitrate);
+		g_free(argument->str_bitrate);
+		argument->str_bitrate = NULL;
+	}
+	else if(!strcmp(gst_structure_get_name(structure), "next_song")) {
+		GtkTreeModel *model_playlist;
+
+		model_playlist = gtk_tree_view_get_model(GTK_TREE_VIEW(argument->treeview_playlist));
+		
+		argument->history = g_list_prepend(argument->history, gtk_tree_model_get_string_from_iter(model_playlist, &argument->iter_playlist));
+		if(!argument->repeat) {
+			lelele_free_song(&argument->current_song); 
+			if(get_next_playlist_song(GTK_TREE_VIEW(argument->treeview_playlist), argument)) {
+				queue_song(argument);
+				g_mutex_lock(&argument->queue_mutex);
+				g_cond_signal(&argument->queue_cond);
+				g_mutex_unlock(&argument->queue_mutex);
+			}
 		}
 	}
-	gst_tag_list_free(tags);
-
-	gtk_label_set_text(GTK_LABEL(argument->channels_label), argument->str_channels);
-	g_free(argument->str_channels);
-	gtk_label_set_text(GTK_LABEL(argument->samplerate_label), argument->str_samplerate);
-	g_free(argument->str_samplerate);
-	argument->str_samplerate = NULL;
-	argument->str_channels = NULL;
-	gtk_label_set_text(GTK_LABEL(argument->genre_label), argument->str_genre);
-	g_free(argument->str_genre);
-	argument->str_genre = NULL;
-	gtk_label_set_text(GTK_LABEL(argument->bitrate_label), argument->str_bitrate);
-	g_free(argument->str_bitrate);
-	argument->str_bitrate = NULL;
 }
 
 void ui_playlist_changed(GtkTreeModel *playlist_model, GtkTreePath *path, GtkTreeIter *iter, GtkNotebook *libnotebook) {
@@ -749,9 +772,9 @@ void display_library(GtkTreeView *treeview, GtkListStore *store) {
 			tempforce_atk[strcspn(tempforce_atk, "\n")] = '\0';
 			tempforce_atkf = atof(tempforce_atk);
 
-			if(atof(tempforce) > 0)
+			if(atof(tempforce) == 0)
 				strcpy(tempforce, "Loud");
-			else if(atof(tempforce) < 0) {
+			else if(atof(tempforce) == 1) {
 				strcpy(tempforce, "Calm");
 			}
 			else
@@ -969,7 +992,7 @@ int main(int argc, char **argv) {
 	g_signal_connect(G_OBJECT(bus), "message::state-changed", G_CALLBACK(state_changed), pargument);
 	g_signal_connect(G_OBJECT(pargument->current_song.playbin), "about-to-finish", G_CALLBACK(continue_track), pargument);
 	g_signal_connect(G_OBJECT(bus), "message::stream-start", G_CALLBACK(refresh_ui), pargument);
-	g_signal_connect(G_OBJECT(bus), "message::application", G_CALLBACK(refresh_ui_mediainfo), pargument);
+	g_signal_connect(G_OBJECT(bus), "message::application", G_CALLBACK(message_application), pargument);
 	g_signal_connect(G_OBJECT(pargument->current_song.playbin), "audio-tags-changed", G_CALLBACK(tags_obtained), pargument);
 	g_signal_connect(G_OBJECT(pargument->playpause_button), "clicked", G_CALLBACK(toggle_playpause_button), pargument);
 	g_signal_connect(G_OBJECT(pargument->volume_scale), "value-changed", G_CALLBACK(volume_scale_changed), pargument);
@@ -1039,7 +1062,7 @@ int main(int argc, char **argv) {
 		gtk_notebook_append_page(GTK_NOTEBOOK(libnotebook), artist_panel, gtk_label_new("Artists"));
 		gtk_notebook_append_page(GTK_NOTEBOOK(libnotebook), playlist_panel, gtk_label_new("Playlist"));
 
-	gtk_scale_button_set_value(GTK_SCALE_BUTTON(pargument->volume_scale), 0.4);
+	gtk_scale_button_set_value(GTK_SCALE_BUTTON(pargument->volume_scale), 0.1);
 	gtk_container_add(GTK_CONTAINER(window), vboxv);
 	gtk_widget_show_all(window);
 

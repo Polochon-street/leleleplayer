@@ -65,6 +65,8 @@ struct arguments {
 	GtkAdjustment *adjust;
 	GtkWidget *volume_scale;
 	GtkWidget *video_window;
+	GCond queue_cond;
+	GMutex queue_mutex;
 };
 
 struct pref_arguments {
@@ -174,7 +176,13 @@ void previous_buttonf(GtkWidget *, struct arguments *);
 * -the playbin, in order to set its state to NULL, which is necessary when quitting: current_song.playbin
 */
 void destroy(GtkWidget *, struct arguments *);
+/**
+* Description: Configuration window triggered by the callback « preferences_callback »
+* Arguments: char *folder: The music library location string
+* Arguments: GtkWidget *parent: the parent window, used in order to create a GtkDialog
+*/
 void config_folder_changed(char *, GtkWidget *);
+void add_file_to_playlist(GtkMenuItem *, struct arguments *);
 void open_audio_file(GtkMenuItem *, struct arguments *);
 void preferences_callback(GtkMenuItem *, struct pref_arguments *);
 void analyze_thread(struct pref_folder_arguments *);

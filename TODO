@@ -17,7 +17,7 @@
 #mediainfo/spectrogram display: display mediainfo and avoid the visualizer showing in another window if the expander has not been first expanded if L1195 is commented
 #↑ windows support
 #Check memory leaks
-Complete menu (open/close/quit)
+#Complete menu (open/close/quit)
 add « add to playlist/remove from playlist » 
 Add rapid scan
 Timer for sleeping
@@ -29,3 +29,4 @@ nuage de points selon les genre
 add right click/add to playlist
 Installer for linux/windows with cpack
 add more flags for analyze
+Complete menu: edition->visualizer->*list*

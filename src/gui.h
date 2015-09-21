@@ -75,6 +75,7 @@ struct pref_arguments {
 		gchar *folder;
         GtkListStore *store_library;
 		GtkWidget *library_entry;
+		GSettings *preferences;
 };
 
 struct pref_folder_arguments {

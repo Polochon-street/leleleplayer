@@ -301,6 +301,7 @@ void preferences_callback(GtkMenuItem *preferences, struct pref_arguments *argum
 	gtk_label_set_markup(GTK_LABEL(label), "<span weight=\"bold\">Select library location:</span>");
 	browse_button = gtk_button_new_with_label("Browse...");
 	library_entry = gtk_entry_new();
+	gtk_entry_set_text(GTK_ENTRY(library_entry), (gchar*)g_variant_get_data(g_settings_get_value(argument->preferences, "library")));
 	vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
 	hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
 	dialog = gtk_dialog_new_with_buttons("Preferences", GTK_WINDOW(argument->window), flags, "Cancel", GTK_RESPONSE_REJECT, "Save", GTK_RESPONSE_ACCEPT, NULL);
@@ -325,6 +326,7 @@ void preferences_callback(GtkMenuItem *preferences, struct pref_arguments *argum
 	res = gtk_dialog_run(GTK_DIALOG(dialog));
 
 	if(argument->folder != NULL && res == GTK_RESPONSE_ACCEPT) {
+		g_settings_set_value(argument->preferences, "library", g_variant_new_string(argument->folder));
 		config_folder_changed(argument->folder, dialog);
 		display_library(GTK_TREE_VIEW(argument->treeview), argument->store_library);
 	} 
@@ -796,6 +798,8 @@ int main(int argc, char **argv) {
 		*playbox, *volumebox, *randombox, *repeat_button, *random_button, *lelele_button, *labelbox, *next_button, *previous_button, 
 		*menubar, *file, *filemenu, *open, *add_file, *close, *edit, *editmenu, *preferences,
 		*libnotebook, *mediainfo_expander, *mediainfo_box, *mediainfo_labelbox, *area;
+	GSettingsSchema *schema;
+	GSettingsSchemaSource *schema_source;
 	
 	GtkTreeModel *model_playlist;
 	GtkTreeModel *model_library;
@@ -964,6 +968,9 @@ int main(int argc, char **argv) {
 	mediainfo_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
 	gtk_widget_set_size_request(area, -1, 50);
 	menubar = gtk_menu_bar_new();
+	schema_source = g_settings_schema_source_new_from_directory("..", NULL, FALSE, NULL);
+	schema = g_settings_schema_source_lookup(schema_source, "org.leleleplayer.preferences", FALSE);
+	pref_arguments.preferences = g_settings_new_full(schema, NULL, NULL);
 
 	file = gtk_menu_item_new_with_label("File");
 	edit = gtk_menu_item_new_with_label("Edit");

@@ -45,6 +45,7 @@ struct arguments {
 	int bartag;
 	int playlist_count;
 	gulong progressbar_update_signal_id;
+	gulong playlist_update_signal_id;
 	GList *history;
 	GtkWidget *treeview_library;
 	GtkWidget *treeview_artist;
@@ -67,6 +68,7 @@ struct arguments {
 	GtkWidget *video_window;
 	GCond queue_cond;
 	GMutex queue_mutex;
+	GtkWidget *libnotebook;
 };
 
 struct pref_arguments {
@@ -184,6 +186,7 @@ void destroy(GtkWidget *, struct arguments *);
 */
 void config_folder_changed(char *, GtkWidget *);
 void add_file_to_playlist(GtkMenuItem *, struct arguments *);
+void view_popup_menu(GtkWidget *, GdkEventButton *, struct arguments *);
 void open_audio_file(GtkMenuItem *, struct arguments *);
 void preferences_callback(GtkMenuItem *, struct pref_arguments *);
 void analyze_thread(struct pref_folder_arguments *);
@@ -195,6 +198,9 @@ void refresh_ui_mediainfo(GstBus *, GstMessage *, struct arguments *);
 void ui_playlist_changed(GtkTreeModel *, GtkTreePath *, GtkTreeIter *, GtkNotebook *);
 void toggle_lelele(GtkWidget *button, struct arguments *);
 void toggle_random(GtkWidget *button, struct arguments *);
+void changed_page_notebook(GtkNotebook *, GtkWidget *, guint, gpointer data);
+void library_popup_menu(GtkWidget *, GdkEventButton *, struct arguments *);
+void add_library_selection_to_playlist(GtkWidget *, struct arguments *);
 int bufferize(struct song, struct arguments *);
 float distance(struct d4vector, struct d4vector);
 void pause_song(struct arguments *);
@@ -209,6 +215,7 @@ void display_library(GtkTreeView *, GtkListStore *);
 void playlist_queue(GtkTreeIter *, GtkTreeModel *, GtkTreeView *, struct arguments *);
 void get_playlist_song(GtkTreeView *, struct song *, struct arguments *);
 void clean_playlist(GtkTreeView *, struct arguments *);
+gboolean lib_right_click(GtkWidget *, GdkEventButton *, struct arguments *);
 gboolean filter_vis_features(GstPluginFeature *, gpointer);
 gboolean get_next_playlist_song(GtkTreeView *, struct arguments *);
 gboolean get_random_playlist_song(GtkTreeView *, struct arguments *);
@@ -221,4 +228,4 @@ gboolean ui_init(struct arguments *);
 gint sort_iter_compare_func(GtkTreeModel *, GtkTreeIter *, GtkTreeIter *, gpointer);
 gint sort_artist_album_tracks(GtkTreeModel *, GtkTreeIter *, GtkTreeIter *, gpointer);
 gint sort_force(GtkTreeModel *, GtkTreeIter *, GtkTreeIter *, gpointer);
-
+gboolean lib_right_click(GtkWidget *, GdkEventButton *, struct arguments *);

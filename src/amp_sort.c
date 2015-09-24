@@ -5,7 +5,7 @@
 #define INT_SUP 2000
 #define max( a, b ) ( ((a) > (b)) ? (a) : (b) )
 
-float amp_sort(struct song song) {
+float amp_sort(struct song song, int debug) {
 	int i, d, e, g;
 	int histogram_count;
 	float histogram[SIZE];

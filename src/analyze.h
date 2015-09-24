@@ -3,7 +3,6 @@
 #include <gst/gst.h>
 
 size_t size;
-int debug;
 int cli;
 
 struct d4vector {
@@ -45,10 +44,10 @@ struct song {
 	char *genre;
 };
 
-float amp_sort(struct song);
-struct d2vector envelope_sort(struct song);
+float amp_sort(struct song, int debug);
+struct d2vector envelope_sort(struct song, int debug);
 int audio_decode(const char *file, struct song *);
-float lelele_analyze(char *filename, struct song *); 
-float freq_sort(struct song);
+float lelele_analyze(char *filename, struct song *, int debug, int analyze); 
+float freq_sort(struct song, int debug);
 int gui(int argc, char **argv);
 void lelele_free_song(struct song *);

@@ -23,7 +23,7 @@ void lelele_free_song(struct song *song) {
 	}
 }
 
-float lelele_analyze (char *filename, struct song *current_song) {
+float lelele_analyze(char *filename, struct song *current_song, int debug, int analyze) { // add debug flag, and only decode flag
 	float resnum;
 	struct d2vector envelope_result;
 
@@ -31,17 +31,39 @@ float lelele_analyze (char *filename, struct song *current_song) {
 		printf("\nAnalyzing: %s\n\n", filename);
 
 	if(audio_decode(filename, current_song) == 0) { // Decode audio track
-		envelope_result = envelope_sort(*current_song); // Global envelope sort
-		current_song->force_vector.x = envelope_result.x; // Tempo sort
-		current_song->force_vector.y = amp_sort(*current_song); // Amplitude sort
-		current_song->force_vector.z = freq_sort(*current_song); // Freq sort 
-		current_song->force_vector.t = envelope_result.y;
-		
+		if(analyze) {
+			envelope_result = envelope_sort(*current_song, debug); // Global envelope sort
+			current_song->force_vector.x = envelope_result.x; // Tempo sort
+			current_song->force_vector.y = amp_sort(*current_song, debug); // Amplitude sort
+			current_song->force_vector.z = freq_sort(*current_song, debug); // Freq sort 
+			current_song->force_vector.t = envelope_result.y; // Attack sort
 
-		resnum = MAX(current_song->force_vector.x, 0) + current_song->force_vector.y + current_song->force_vector.z + MAX(current_song->force_vector.t, 0); 
-		return resnum;
+			resnum = MAX(current_song->force_vector.x, 0) + current_song->force_vector.y + current_song->force_vector.z + MAX(current_song->force_vector.t, 0); 
+
+			if(debug)
+				printf("\n-> Final Result: %f\n", resnum);
+
+			if(resnum > 0) {
+				if(debug)
+					printf("Loud\n");
+				return 0;
+			}
+			if(resnum < 0) {
+				if(debug)
+					printf("Calm\n");
+				return 1;
+			}
+			else {
+				printf("Couldn't conclude\n");
+				return 2;
+			}
+		}
+		else
+			return 2;
 	}
-	else
-		return 0;
+	else {
+		printf("Couldn't decode song\n");
+		return 3;
+	}
 }
 

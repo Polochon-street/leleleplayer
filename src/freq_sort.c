@@ -10,7 +10,7 @@
 #define AIGU_INF 17
 #define AIGU_SUP 104
 
-float freq_sort(struct song song) {
+float freq_sort(struct song song, int debug) {
 	float hann_window[WIN_SIZE];
 	int Samples;
 	FFTSample *spectre_moy;

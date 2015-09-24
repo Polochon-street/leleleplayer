@@ -4,7 +4,7 @@
 #define WIN_BITS 10
 #define WIN_SIZE (1 << WIN_BITS)
 
-struct d2vector envelope_sort(struct song song) {
+struct d2vector envelope_sort(struct song song, int debug) {
 	struct d2vector result;
 	FFTSample *d_freq;
 	FFTSample *x;

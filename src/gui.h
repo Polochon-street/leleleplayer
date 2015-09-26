@@ -216,6 +216,7 @@ void playlist_queue(GtkTreeIter *, GtkTreeModel *, GtkTreeView *, struct argumen
 void get_playlist_song(GtkTreeView *, struct song *, struct arguments *);
 void clean_playlist(GtkTreeView *, struct arguments *);
 gboolean lib_right_click(GtkWidget *, GdkEventButton *, struct arguments *);
+gboolean artist_right_click(GtkWidget *, GdkEventButton *, struct arguments *);
 gboolean filter_vis_features(GstPluginFeature *, gpointer);
 gboolean get_next_playlist_song(GtkTreeView *, struct arguments *);
 gboolean get_random_playlist_song(GtkTreeView *, struct arguments *);

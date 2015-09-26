@@ -53,7 +53,7 @@ gboolean add_artist_to_playlist(gchar *artist, struct arguments *argument) {
 			
    		if((!strcmp(tempartist, artist)))
 			playlist_queue(&lib_iter, model_library, GTK_TREE_VIEW(argument->treeview_playlist), argument);
-		valid = gtk_tree_model_iter_next (model_library,
+		valid = gtk_tree_model_iter_next(model_library,
 		&lib_iter);
 	}
 }

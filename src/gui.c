@@ -569,12 +569,20 @@ void message_application(GstBus *bus, GstMessage *msg, struct arguments *argumen
 		if(!argument->repeat) {
 			lelele_free_song(&argument->current_song); 
 			if(get_next_playlist_song(GTK_TREE_VIEW(argument->treeview_playlist), argument)) {
-				queue_song(argument);
+				GtkTreeModel *model_playlist;
+	
+				model_playlist = gtk_tree_view_get_model(GTK_TREE_VIEW(argument->treeview_playlist));
+				gtk_tree_model_get(model_playlist, &(argument->iter_playlist), AFILE, &argument->current_song.filename, 
+				TRACKNUMBER, &argument->current_song.tracknumber, TRACK, &argument->current_song.title, 
+				ALBUM, &argument->current_song.album, ARTIST, &argument->current_song.artist, 
+				FORCE, &argument->current_song.force, FORCE_TEMPO, &argument->current_song.force_vector.x, 
+				FORCE_AMP, &argument->current_song.force_vector.y, FORCE_FREQ, &argument->current_song.force_vector.z, 
+				FORCE_ATK, &argument->current_song.force_vector.t, -1);
 				g_mutex_lock(&argument->queue_mutex);
-				g_cond_signal(&argument->queue_cond);
-				g_mutex_unlock(&argument->queue_mutex);
 			}
 		}
+		g_cond_signal(&argument->queue_cond);
+		g_mutex_unlock(&argument->queue_mutex);
 	}
 }
 
@@ -790,6 +798,10 @@ void add_library_selection_to_playlist(GtkWidget *menuitem, struct arguments *ar
 		}
 		gtk_label_set_markup(GTK_LABEL(label), "<span foreground=\"red\">Playlist</span>");
 	}
+}
+
+void playlist_popup_menu(GtkWidget *treeview, GdkEventButton *event, struct arguments *argument) {
+
 }
 
 void library_popup_menu(GtkWidget *treeview, GdkEventButton *event, struct arguments *argument) {
@@ -1056,6 +1068,7 @@ int main(int argc, char **argv) {
 	pargument->history = NULL;
 	pargument->current_song.sample_array = NULL;
 	pargument->bartag = 0;
+	//g_mutex_unlock(&pargument->queue_mutex);
 
 	gtk_init(&argc, &argv);	
 	gst_init(&argc, &argv);
@@ -1069,7 +1082,8 @@ int main(int argc, char **argv) {
 		g_error("Not all elements could be created.\n");
 	bus = gst_element_get_bus(pargument->current_song.playbin);
 	gst_bus_add_signal_watch(bus);
-	if((gtk_sink = gst_element_factory_make("gtkglsink", NULL))) {
+
+/*	if((gtk_sink = gst_element_factory_make("gtkglsink", NULL))) {
 		GstElement *video_sink;
 
 		g_object_get(gtk_sink, "widget", &area, NULL);
@@ -1084,6 +1098,10 @@ int main(int argc, char **argv) {
 
 		g_object_set(pargument->current_song.playbin, "video-sink", gtk_sink, NULL);	
 	} 
+
+	GstElement *sink = gst_element_factory_make("ximagesink", "sink");
+	g_object_set(gtk_sink, "video-sink", sink, NULL);
+
 
 	GstElement *vis_plugin;
 	GstElementFactory *selected_factory = NULL;
@@ -1115,7 +1133,7 @@ int main(int argc, char **argv) {
 	flags |= (1 << 3);
 	g_object_set(pargument->current_song.playbin, "flags", flags, NULL);
 	g_object_set(pargument->current_song.playbin, "vis-plugin", vis_plugin, NULL);
-	g_object_set(pargument->current_song.playbin, "force-aspect-ratio", FALSE, NULL);
+	g_object_set(pargument->current_song.playbin, "force-aspect-ratio", FALSE, NULL);*/
 
 
 	library_panel = gtk_scrolled_window_new(NULL, NULL);
@@ -1193,7 +1211,7 @@ int main(int argc, char **argv) {
 	mediainfo_expander = gtk_expander_new("Visualizer/Mediainfo");
 	mediainfo_labelbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
 	mediainfo_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
-	gtk_widget_set_size_request(area, -1, 50);
+	//gtk_widget_set_size_request(area, -1, 50);
 	menubar = gtk_menu_bar_new();
 	schema_source = g_settings_schema_source_new_from_directory("..", NULL, FALSE, NULL);
 	schema = g_settings_schema_source_lookup(schema_source, "org.leleleplayer.preferences", FALSE);
@@ -1286,7 +1304,7 @@ int main(int argc, char **argv) {
 		gtk_button_box_set_child_non_homogeneous(GTK_BUTTON_BOX(volumebox), pargument->volume_scale, TRUE);
 	gtk_box_pack_start(GTK_BOX(vboxv), mediainfo_expander, FALSE, FALSE, 1);
 	gtk_container_add(GTK_CONTAINER(mediainfo_expander), mediainfo_box);
-		gtk_box_pack_start(GTK_BOX(mediainfo_box), area, TRUE, TRUE, 1);
+		//gtk_box_pack_start(GTK_BOX(mediainfo_box), area, TRUE, TRUE, 1);
 		gtk_box_pack_start(GTK_BOX(mediainfo_box), mediainfo_labelbox, FALSE, FALSE, 1);
 			gtk_box_pack_start(GTK_BOX(mediainfo_labelbox), gtk_label_new("More information:"), FALSE, FALSE, 1);
 			gtk_box_pack_start(GTK_BOX(mediainfo_labelbox), pargument->genre_label,FALSE, FALSE, 1);

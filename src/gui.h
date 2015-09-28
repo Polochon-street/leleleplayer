@@ -200,6 +200,8 @@ void toggle_lelele(GtkWidget *button, struct arguments *);
 void toggle_random(GtkWidget *button, struct arguments *);
 void changed_page_notebook(GtkNotebook *, GtkWidget *, guint, gpointer data);
 void library_popup_menu(GtkWidget *, GdkEventButton *, struct arguments *);
+void artist_popup_menu(GtkWidget *, GdkEventButton *, struct arguments *);
+void playlist_popup_menu(GtkWidget *, GdkEventButton *, struct arguments *);
 void add_library_selection_to_playlist(GtkWidget *, struct arguments *);
 int bufferize(struct song, struct arguments *);
 float distance(struct d4vector, struct d4vector);

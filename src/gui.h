@@ -185,6 +185,15 @@ void destroy(GtkWidget *, struct arguments *);
 * Arguments: GtkWidget *parent: the parent window, used in order to create a GtkDialog
 */
 void config_folder_changed(char *, GtkWidget *);
+/**
+* Description: Callback function called when the « file->add file to playlist » button is clicked
+* Arguments: GtkMenuItem *add_file: the button, used for getting the toplevel window for gtk_file_chooser_dialog_new()
+* Arguments: struct arguments *argument: the global argument struct containing:
+* -treeview_playlist, the playlist treeview, used to get the playlist model
+* -iter_playlist: the playlist iter, in order to add the created iter to the playlist treeview (and add the first to the history)
+* -store_playlist: The playlist GtkTreeStore, used to set the struct song variables
+* -playlist_count: the playlist count to increment for each song
+*/
 void add_file_to_playlist(GtkMenuItem *, struct arguments *);
 void view_popup_menu(GtkWidget *, GdkEventButton *, struct arguments *);
 void open_audio_file(GtkMenuItem *, struct arguments *);
@@ -200,7 +209,9 @@ void toggle_lelele(GtkWidget *button, struct arguments *);
 void toggle_random(GtkWidget *button, struct arguments *);
 void changed_page_notebook(GtkNotebook *, GtkWidget *, guint, gpointer data);
 void library_popup_menu(GtkWidget *, GdkEventButton *, struct arguments *);
+void remove_playlist_selection_from_playlist(GtkWidget *, struct arguments *);
 void artist_popup_menu(GtkWidget *, GdkEventButton *, struct arguments *);
+void playlist_del_button(GtkWidget *, GdkEventKey *, struct arguments *);
 void playlist_popup_menu(GtkWidget *, GdkEventButton *, struct arguments *);
 void add_library_selection_to_playlist(GtkWidget *, struct arguments *);
 int bufferize(struct song, struct arguments *);
@@ -219,6 +230,7 @@ void get_playlist_song(GtkTreeView *, struct song *, struct arguments *);
 void clean_playlist(GtkTreeView *, struct arguments *);
 gboolean lib_right_click(GtkWidget *, GdkEventButton *, struct arguments *);
 gboolean artist_right_click(GtkWidget *, GdkEventButton *, struct arguments *);
+gboolean playlist_right_click(GtkWidget *, GdkEventButton *, struct arguments *);
 gboolean filter_vis_features(GstPluginFeature *, gpointer);
 gboolean get_next_playlist_song(GtkTreeView *, struct arguments *);
 gboolean get_random_playlist_song(GtkTreeView *, struct arguments *);

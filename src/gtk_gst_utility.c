@@ -239,16 +239,23 @@ void clean_playlist(GtkTreeView *treeview_playlist, struct arguments *argument) 
 
 void continue_track(GstElement *playbin, struct arguments *argument) {
 	GstStructure *structure;	
-	
-	structure = gst_structure_new_empty("next_song");
+	gchar *uri;	
 
+	structure = gst_structure_new_empty("next_song");
+	
+	g_mutex_lock(&argument->queue_mutex);
 	GstMessage *msg = gst_message_new_application(GST_OBJECT(playbin), structure);
 
-	g_mutex_lock(&argument->queue_mutex);
 	gst_element_post_message(argument->current_song.playbin, msg);
-
 	g_cond_wait(&argument->queue_cond, &argument->queue_mutex);
 	g_mutex_unlock(&argument->queue_mutex);
+
+	uri = g_filename_to_uri(argument->current_song.filename, NULL, NULL);
+	g_object_set(argument->current_song.playbin, "uri", uri, NULL);
+
+	g_free(uri); 
+
+	// TODO: Wait until message_application ends!
 }
 
 void queue_song(struct arguments *argument) {
@@ -265,7 +272,7 @@ void queue_song(struct arguments *argument) {
 
 	uri = g_filename_to_uri(argument->current_song.filename, NULL, NULL);
 	g_object_set(argument->current_song.playbin, "uri", uri, NULL);
-	
+
 	g_free(uri); 
 }
 

@@ -475,6 +475,7 @@ void refresh_ui(GstBus *bus, GstMessage *msg, struct arguments *argument) {
 		while(gtk_tree_model_iter_next(model_playlist, &(temp_iter)));
 		gtk_button_set_image(GTK_BUTTON(argument->playpause_button), gtk_image_new_from_icon_name("media-playback-pause-symbolic", GTK_ICON_SIZE_BUTTON));
 		gtk_list_store_set(argument->store_playlist, &(argument->iter_playlist), PLAYING, "▶", -1);
+		gtk_tree_selection_unselect_all(selection);
 		gtk_tree_selection_select_iter(selection, &(argument->iter_playlist));
 		gtk_tree_view_scroll_to_cell(GTK_TREE_VIEW(argument->treeview_playlist), path, column, 1, 0.3, 1);
 	
@@ -800,8 +801,65 @@ void add_library_selection_to_playlist(GtkWidget *menuitem, struct arguments *ar
 	}
 }
 
-void playlist_popup_menu(GtkWidget *treeview, GdkEventButton *event, struct arguments *argument) {
+void remove_playlist_selection_from_playlist(GtkWidget *menuitem, struct arguments *argument) {
+	GtkTreeModel *model;
+	GtkTreeIter iter;
+	GtkTreePath *path;
+	GtkTreeSelection *selection;
+	GList *path_list;
+	gchar *path_string;
+	gchar *tempstring;
+	gchar *current_path_string;
+	gboolean deleted = FALSE;
+	GtkTreeModel *model_playlist;
+	int i = 0;
 
+	model_playlist = gtk_tree_view_get_model(GTK_TREE_VIEW(argument->treeview_playlist));
+	selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(argument->treeview_playlist));
+	current_path_string = gtk_tree_model_get_string_from_iter(model_playlist, &argument->iter_playlist);
+
+	if((path_list = gtk_tree_selection_get_selected_rows(selection, &model))) {
+		while(path_list) {
+			tempstring = gtk_tree_path_to_string((GtkTreePath*)path_list->data);
+			path_string = g_strdup_printf("%d", strtol(tempstring, NULL, 10) - i);
+			gtk_tree_model_get_iter_from_string(model_playlist, &iter, path_string);
+			if(!g_strcmp0(current_path_string, path_string))
+				deleted = TRUE;
+			g_signal_handler_block(model_playlist, argument->playlist_update_signal_id);
+			gtk_list_store_remove(argument->store_playlist, &iter);
+			g_signal_handler_unblock(model_playlist, argument->playlist_update_signal_id);
+			g_free(path_string);
+			g_free(tempstring);
+			++i;
+			path_list = path_list->next;	
+		}
+		if(deleted) {
+			argument->iter_playlist = iter;
+			start_song(argument);
+		}
+	}
+}
+
+void playlist_del_button(GtkWidget *treeview, GdkEventKey *event, struct arguments *argument) {
+	if(event->type == GDK_KEY_PRESS && event->keyval == 0xffff)
+		remove_playlist_selection_from_playlist(NULL, argument);
+}
+
+void playlist_popup_menu(GtkWidget *treeview, GdkEventButton *event, struct arguments *argument) {
+	GtkWidget *menu, *item_remove_from_playlist;
+
+    menu = gtk_menu_new();
+
+    item_remove_from_playlist = gtk_menu_item_new_with_label("Remove this track(s) from playlist");
+
+    g_signal_connect(item_remove_from_playlist, "activate", (GCallback)remove_playlist_selection_from_playlist, argument);
+
+    gtk_menu_shell_append(GTK_MENU_SHELL(menu), item_remove_from_playlist);
+
+    gtk_widget_show_all(menu);
+    gtk_menu_popup(GTK_MENU(menu), NULL, NULL, NULL, NULL,
+                   (event != NULL) ? event->button : 0,
+                   gdk_event_get_time((GdkEvent*)event));
 }
 
 void library_popup_menu(GtkWidget *treeview, GdkEventButton *event, struct arguments *argument) {
@@ -843,7 +901,29 @@ void artist_popup_menu(GtkWidget *treeview, GdkEventButton *event, struct argume
     gtk_menu_popup(GTK_MENU(menu), NULL, NULL, NULL, NULL,
                    (event != NULL) ? event->button : 0,
                    gdk_event_get_time((GdkEvent*)event));
+}
 
+gboolean playlist_right_click(GtkWidget *treeview, GdkEventButton *event, struct arguments *argument) {
+	if(event->type == GDK_BUTTON_PRESS && event->button == 3) {
+		GtkTreeSelection *selection;
+
+		selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(treeview));
+	
+		if(gtk_tree_selection_count_selected_rows(selection) <= 1) {
+			GtkTreePath *path;
+		
+			if(gtk_tree_view_get_path_at_pos(GTK_TREE_VIEW(treeview), (gint)event->x,
+				(gint)event->y, &path, NULL, NULL, NULL)) {
+				gtk_tree_selection_unselect_all(selection);
+				gtk_tree_selection_select_path(selection, path);
+				gtk_tree_path_free(path);
+			}
+		}
+		playlist_popup_menu(treeview, event, argument);
+		return TRUE;
+	}
+	else
+		return FALSE;
 }
 
 gboolean artist_right_click(GtkWidget *treeview, GdkEventButton *event, struct arguments *argument) {
@@ -1161,6 +1241,8 @@ int main(int argc, char **argv) {
 	gtk_tree_view_set_headers_clickable(GTK_TREE_VIEW(treeview_playlist), FALSE);
 	pargument->treeview_playlist = treeview_playlist;
 	model_playlist = gtk_tree_view_get_model(GTK_TREE_VIEW(treeview_playlist));
+	selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(treeview_playlist));
+	gtk_tree_selection_set_mode(selection, GTK_SELECTION_MULTIPLE);
 
 	pargument->store_artist = gtk_tree_store_new(NUM_COLS_ARTIST, G_TYPE_STRING);
 	treeview_artist = gtk_tree_view_new_with_model(GTK_TREE_MODEL(pargument->store_artist));
@@ -1260,6 +1342,8 @@ int main(int argc, char **argv) {
 	g_signal_connect(G_OBJECT(treeview_library), "row-activated", G_CALLBACK(lib_row_activated), pargument);
 	g_signal_connect(G_OBJECT(treeview_library), "button-press-event", G_CALLBACK(lib_right_click), pargument);
 	g_signal_connect(G_OBJECT(treeview_artist), "button-press-event", G_CALLBACK(artist_right_click), pargument);
+	g_signal_connect(G_OBJECT(treeview_playlist), "button-press-event", G_CALLBACK(playlist_right_click), pargument);
+	g_signal_connect(G_OBJECT(treeview_playlist), "key-press-event", G_CALLBACK(playlist_del_button), pargument);
 	g_signal_connect(G_OBJECT(treeview_playlist), "row-activated", G_CALLBACK(playlist_row_activated), pargument);
 	g_signal_connect(G_OBJECT(treeview_artist), "row-activated", G_CALLBACK(artist_row_activated), pargument);
 	pargument->playlist_update_signal_id = g_signal_connect(G_OBJECT(model_playlist), "row-inserted", G_CALLBACK(ui_playlist_changed), pargument->libnotebook);

@@ -186,25 +186,37 @@ void analyze_thread(struct pref_folder_arguments *argument) {
 	struct song song;
 	char *msg_thread;
 	char *line = argument->line;
+	gchar tempstring[PATH_MAX];
 	FILE *list = argument->list;
 	FILE *library = argument->library;
+	FILE *library_read = fopen("library.txt", "r");
 	//FILE *test = fopen("test.txt", "w");
 	GAsyncQueue *msg_queue = argument->msg_queue;
 	int resnum;
+	gboolean found = FALSE;
 
 	song.sample_array = NULL;
 	song.title = song.artist = song.album = song.tracknumber = NULL;
 	while(fgets(line, PATH_MAX, list) != NULL) {
 		line[strcspn(line, "\n")] = '\0';
-		if((resnum = lelele_analyze(line, &song, 0, 1)) < 3) {
-	//		fprintf(test, "%f %f %f\n", song.force_vector.x, song.force_vector.y, song.force_vector.z);
-			fprintf(library, "%s\n%s\n%s\n%s\n%s\n%d\n%f\n%f\n%f\n%f\n", line, song.tracknumber, song.title, song.album, song.artist, resnum, song.force_vector.x,
-				song.force_vector.y, song.force_vector.z, song.force_vector.t);
-			msg_thread = g_malloc(strlen(line)*sizeof(char) + 1);
-			strncpy(msg_thread, line, strlen(line) + 1);
-			g_async_queue_push(msg_queue, msg_thread);
-			lelele_free_song(&song);
+		rewind(library_read);
+		found = FALSE;
+		while(fgets(tempstring, PATH_MAX, library_read)) {
+			if(strstr(tempstring, line)) {	
+				found = TRUE;
+			}
 		}
+		if(found == FALSE) {
+			if((resnum = lelele_analyze(line, &song, 0, 1)) < 3) {
+	//		fprintf(test, "%f %f %f\n", song.force_vector.x, song.force_vector.y, song.force_vector.z);
+				fprintf(library, "%s\n%s\n%s\n%s\n%s\n%d\n%f\n%f\n%f\n%f\n", line, song.tracknumber, song.title, song.album, song.artist, resnum, song.force_vector.x,
+					song.force_vector.y, song.force_vector.z, song.force_vector.t);
+					lelele_free_song(&song);
+			}
+		}
+		msg_thread = g_malloc(strlen(line)*sizeof(char) + 1);
+		strncpy(msg_thread, line, strlen(line) + 1);
+		g_async_queue_push(msg_queue, msg_thread);
 	}
 	msg_thread = g_malloc(4);
 	g_stpcpy(msg_thread, "end");
@@ -225,7 +237,7 @@ void config_folder_changed(char *folder, GtkWidget *parent) {
 		g_warning("Couldn't write config file");
 		return;
 	}
-	if(!(library = fopen("library.txt", "w"))) {
+	if(!(library = fopen("library.txt", "a+"))) {
 		g_warning("Couldn't write library file");
 		return;
 	}
@@ -305,7 +317,7 @@ void folder_chooser(GtkWidget *button, struct pref_arguments *argument) {
 }
 	
 void preferences_callback(GtkMenuItem *preferences, struct pref_arguments *argument) {
-	GtkWidget *dialog, *label, *area, *vbox, *hbox, *library_entry, *browse_button, *window_temp;
+	GtkWidget *dialog, *label, *area, *vbox, *hbox, *library_entry, *browse_button, *window_temp, *complete_box;
 	GtkDialogFlags flags = GTK_DIALOG_MODAL | GTK_DIALOG_DESTROY_WITH_PARENT;	
 	gint res;
 
@@ -314,10 +326,12 @@ void preferences_callback(GtkMenuItem *preferences, struct pref_arguments *argum
 	browse_button = gtk_button_new_with_label("Browse...");
 	library_entry = gtk_entry_new();
 	argument->folder = (gchar*)g_variant_get_data(g_settings_get_value(argument->preferences, "library"));
+	gtk_entry_set_text((GtkEntry*)library_entry, argument->folder);
 	vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
 	hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
 	dialog = gtk_dialog_new_with_buttons("Preferences", GTK_WINDOW(argument->window), flags, "Cancel", GTK_RESPONSE_REJECT, "Save", GTK_RESPONSE_ACCEPT, NULL);
 	area = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
+	complete_box = gtk_check_button_new_with_label("LeleleScan (complete but longer) (not functionnal now)");
 
 	g_signal_connect(G_OBJECT(browse_button), "clicked", G_CALLBACK(folder_chooser), argument);
 	argument->library_entry = library_entry;
@@ -331,6 +345,7 @@ void preferences_callback(GtkMenuItem *preferences, struct pref_arguments *argum
 	gtk_box_pack_start(GTK_BOX(vbox), hbox, FALSE, FALSE, 0);
 		gtk_box_pack_start(GTK_BOX(hbox), library_entry, TRUE, TRUE, 0);
 		gtk_box_pack_start(GTK_BOX(hbox), browse_button, FALSE, FALSE, 0);
+	gtk_box_pack_start(GTK_BOX(vbox), complete_box, FALSE, FALSE, 0);
 	gtk_container_add(GTK_CONTAINER(area), vbox);
 
 	gtk_widget_set_size_request(dialog, 400, 120);
@@ -338,6 +353,7 @@ void preferences_callback(GtkMenuItem *preferences, struct pref_arguments *argum
 	res = gtk_dialog_run(GTK_DIALOG(dialog));
 
 	if(argument->folder != NULL && res == GTK_RESPONSE_ACCEPT) {
+		argument->folder = gtk_entry_get_text(GTK_ENTRY(library_entry));
 		g_settings_set_value(argument->preferences, "library", g_variant_new_string(argument->folder));
 		config_folder_changed(argument->folder, dialog);
 		display_library(GTK_TREE_VIEW(argument->treeview), argument->store_library);

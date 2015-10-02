@@ -46,6 +46,7 @@ struct arguments {
 	int playlist_count;
 	gulong progressbar_update_signal_id;
 	gulong playlist_update_signal_id;
+	gulong time_spin_update_signal_id;
 	GList *history;
 	GtkWidget *treeview_library;
 	GtkWidget *treeview_artist;
@@ -66,15 +67,18 @@ struct arguments {
 	GtkAdjustment *adjust;
 	GtkWidget *volume_scale;
 	GtkWidget *video_window;
+	GTimer *sleep_timer;
+	GtkWidget *time_spin;
 	GCond queue_cond;
 	GMutex queue_mutex;
 	GtkWidget *libnotebook;
+	gdouble timer_delay;
 };
 
 struct pref_arguments {
         GtkWidget *window;
         GtkWidget *treeview;
-		gchar *folder;
+		const gchar *folder;
         GtkListStore *store_library;
 		GtkWidget *library_entry;
 		GSettings *preferences;
@@ -184,7 +188,7 @@ void destroy(GtkWidget *, struct arguments *);
 * Arguments: char *folder: The music library location string
 * Arguments: GtkWidget *parent: the parent window, used in order to create a GtkDialog
 */
-void config_folder_changed(char *, GtkWidget *);
+void config_folder_changed(const gchar *, GtkWidget *);
 /**
 * Description: Callback function called when the « file->add file to playlist » button is clicked
 * Arguments: GtkMenuItem *add_file: the button, used for getting the toplevel window for gtk_file_chooser_dialog_new()
@@ -222,7 +226,7 @@ void resume_song(struct arguments *);
 void play_song(struct arguments *);
 void queue_song(struct arguments *);
 void free_song(struct song *);
-void explore(GDir *dir, char *folder, FILE *list);
+void explore(GDir *dir, const gchar *folder, FILE *list);
 void folder_chooser(GtkWidget *, struct pref_arguments *);
 void display_library(GtkTreeView *, GtkListStore *);
 void playlist_queue(GtkTreeIter *, GtkTreeModel *, GtkTreeView *, struct arguments *);
@@ -243,4 +247,7 @@ gboolean ui_init(struct arguments *);
 gint sort_iter_compare_func(GtkTreeModel *, GtkTreeIter *, GtkTreeIter *, gpointer);
 gint sort_artist_album_tracks(GtkTreeModel *, GtkTreeIter *, GtkTreeIter *, gpointer);
 gint sort_force(GtkTreeModel *, GtkTreeIter *, GtkTreeIter *, gpointer);
+gint time_spin_output(GtkSpinButton *, struct arguments *);
+gint time_spin_input(GtkSpinButton *, gdouble *, struct arguments *);
+void time_spin_changed(GtkSpinButton *, struct arguments *);
 gboolean lib_right_click(GtkWidget *, GdkEventButton *, struct arguments *);

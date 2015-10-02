@@ -19,8 +19,8 @@
 #Check memory leaks
 #Complete menu (open/close/quit)
 #add « add to playlist/remove from playlist » 
-Add rapid scan
-Timer for sleeping
+#Add rapid scan
+Timer for sleeping -> hour/second? Begin when clicked. code reset_ui() func
 Text in dialog box
 correct loading dialog box
 add album view
@@ -33,3 +33,4 @@ Complete menu: edition->visualizer->*list*
 enhance detection
 « album » view
 Change playlist_queue(), without all the arguments
+add rapid scan without detection

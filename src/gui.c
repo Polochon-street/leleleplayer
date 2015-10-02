@@ -224,7 +224,7 @@ void analyze_thread(struct pref_folder_arguments *argument) {
 	//fclose(test);
 }
 
-void config_folder_changed(char *folder, GtkWidget *parent) {
+void config_folder_changed(const gchar *folder, GtkWidget *parent) {
 	GtkWidget *progressbar, *progressdialog, *area;
 	progressbar = gtk_progress_bar_new();
 	progressdialog = gtk_dialog_new();
@@ -598,6 +598,7 @@ void message_application(GstBus *bus, GstMessage *msg, struct arguments *argumen
 				g_mutex_lock(&argument->queue_mutex);
 			}
 		}
+	
 		g_cond_signal(&argument->queue_cond);
 		g_mutex_unlock(&argument->queue_mutex);
 	}
@@ -610,6 +611,23 @@ void ui_playlist_changed(GtkTreeModel *playlist_model, GtkTreePath *path, GtkTre
 gboolean refresh_progressbar(gpointer pargument) {
 	struct arguments *argument = (struct arguments*)pargument;
 	GstFormat fmt = GST_FORMAT_TIME;
+
+	if(argument->sleep_timer) {
+		gdouble elapsed = g_timer_elapsed(argument->sleep_timer, NULL)/60.;
+		GtkAdjustment *adjustment;
+
+		if(argument->timer_delay - elapsed <= 0.)
+			/* ui_stop() */
+			destroy(gtk_widget_get_toplevel(argument->progressbar), argument);
+		else {
+			g_signal_handler_block(argument->time_spin, argument->time_spin_update_signal_id);
+			adjustment = gtk_spin_button_get_adjustment(GTK_SPIN_BUTTON(argument->time_spin));
+
+			gtk_adjustment_set_value(adjustment, argument->timer_delay - elapsed);
+			g_signal_handler_unblock(argument->time_spin, argument->time_spin_update_signal_id);
+			time_spin_output(GTK_SPIN_BUTTON(argument->time_spin), argument);
+		}
+	}
 
 	if(argument->current_song.state < GST_STATE_PAUSED) {
 		return TRUE;
@@ -990,6 +1008,73 @@ gboolean lib_right_click(GtkWidget *treeview, GdkEventButton *event, struct argu
     return FALSE; /* we did not handle this */
 }
 
+void time_spin_changed(GtkSpinButton *spin_button, struct arguments *argument) {
+	time_spin_input(spin_button, &argument->timer_delay, argument);
+}
+
+gint time_spin_input(GtkSpinButton *spin_button, gdouble *new_val, struct arguments *argument) {
+	const gchar *text;
+	gchar **str;
+	gboolean found = FALSE;
+  	gint hours;
+	gint minutes;
+	gchar *endh;
+	gchar *endm;
+
+	text = gtk_entry_get_text(GTK_ENTRY(spin_button));
+	str = g_strsplit (text, ":", 2);
+
+	if(g_strv_length (str) == 2) {
+		hours = strtol(str[0], &endh, 10);
+		minutes = strtol(str[1], &endm, 10);
+		if (!*endh && !*endm &&
+		0 <= hours && hours < 24 &&
+		 0 <= minutes && minutes < 60) {
+			*new_val = hours * 60 + minutes;
+			found = TRUE;
+		}
+	}
+
+	g_strfreev(str);
+
+	if(!found) {
+		*new_val = 0.0;
+		return GTK_INPUT_ERROR;
+	}
+  	return TRUE;
+}
+
+gint time_spin_output(GtkSpinButton *spin_button, struct arguments *argument) {
+	GtkAdjustment *adjustment;
+	gchar *buf;
+	gdouble hours;
+	gdouble minutes;
+
+	adjustment = gtk_spin_button_get_adjustment (spin_button);
+
+	hours = gtk_adjustment_get_value (adjustment) / 60.0;
+	minutes = (hours - floor (hours)) * 60.0;
+	buf = g_strdup_printf ("%02.0f:%02.0f", floor (hours), floor (minutes + 0.5));
+	if(strcmp (buf, gtk_entry_get_text (GTK_ENTRY (spin_button))))
+    	gtk_entry_set_text (GTK_ENTRY (spin_button), buf);
+
+  	g_free (buf);
+
+	return TRUE;
+}
+
+void time_checkbox_toggled(GtkToggleButton *togglebutton, struct arguments *argument) {
+	gboolean mode = gtk_toggle_button_get_active(togglebutton);
+
+	if(mode == TRUE && (argument->timer_delay != 0.)) {
+		argument->sleep_timer = g_timer_new();
+	}
+	else if(argument->sleep_timer) {	
+		g_timer_destroy(argument->sleep_timer);
+		argument->sleep_timer = NULL;
+	}
+}
+
 void setup_tree_view_renderer_play_lib(GtkWidget *treeview) {
 	GtkCellRenderer *renderer;
 	GtkTreeViewColumn *column;
@@ -1128,7 +1213,8 @@ int main(int argc, char **argv) {
 	GtkWidget *window, *treeview_library, *treeview_playlist, *treeview_artist, *library_panel, *artist_panel, *playlist_panel, *vboxv,
 		*playbox, *volumebox, *randombox, *repeat_button, *random_button, *lelele_button, *labelbox, *next_button, *previous_button, 
 		*menubar, *file, *filemenu, *open, *add_file, *close, *edit, *editmenu, *preferences,
-		*mediainfo_expander, *mediainfo_box, *mediainfo_labelbox, *area;
+		*mediainfo_expander, *mediainfo_box, *mediainfo_labelbox, *area, *time_spin, *time_box, *time_checkbox;
+	GtkAdjustment *time_adjust;
 	GSettingsSchema *schema;
 	GSettingsSchemaSource *schema_source;
 	
@@ -1151,6 +1237,7 @@ int main(int argc, char **argv) {
 	#endif
 
 	pargument->lelelerandom = 0;
+	pargument->timer_delay = 0;
 	pargument->random = 0;
 	pargument->repeat = 0;
 	pargument->first = 1;
@@ -1164,7 +1251,8 @@ int main(int argc, char **argv) {
 	pargument->history = NULL;
 	pargument->current_song.sample_array = NULL;
 	pargument->bartag = 0;
-	//g_mutex_unlock(&pargument->queue_mutex);
+	pargument->sleep_timer = NULL;
+	g_mutex_unlock(&pargument->queue_mutex);
 
 	gtk_init(&argc, &argv);	
 	gst_init(&argc, &argv);
@@ -1296,6 +1384,7 @@ int main(int argc, char **argv) {
 	gtk_scale_set_draw_value((GtkScale*)pargument->progressbar, FALSE);
 	gtk_widget_set_sensitive(pargument->progressbar, FALSE);
 	vboxv = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
+	time_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
 	labelbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
 	pargument->title_label = gtk_label_new("");
 	pargument->album_label = gtk_label_new("");
@@ -1314,6 +1403,12 @@ int main(int argc, char **argv) {
 	schema_source = g_settings_schema_source_new_from_directory("..", NULL, FALSE, NULL);
 	schema = g_settings_schema_source_lookup(schema_source, "org.leleleplayer.preferences", FALSE);
 	pref_arguments.preferences = g_settings_new_full(schema, NULL, NULL);
+	time_adjust = gtk_adjustment_new(0, 0, 1410, 30, 60, 0);
+	pargument->time_spin = gtk_spin_button_new(time_adjust, 1, 1);
+	gtk_widget_set_tooltip_text(pargument->time_spin, "Ends the playing after a given time");
+	gtk_spin_button_set_wrap(GTK_SPIN_BUTTON(pargument->time_spin), TRUE);
+	time_checkbox = gtk_check_button_new_with_label("Enable sleep timer until ");
+	gtk_widget_set_tooltip_text(time_checkbox, "Ends the playing after a given time");
 
 	file = gtk_menu_item_new_with_label("File");
 	edit = gtk_menu_item_new_with_label("Edit");
@@ -1362,6 +1457,10 @@ int main(int argc, char **argv) {
 	g_signal_connect(G_OBJECT(treeview_playlist), "key-press-event", G_CALLBACK(playlist_del_button), pargument);
 	g_signal_connect(G_OBJECT(treeview_playlist), "row-activated", G_CALLBACK(playlist_row_activated), pargument);
 	g_signal_connect(G_OBJECT(treeview_artist), "row-activated", G_CALLBACK(artist_row_activated), pargument);
+	g_signal_connect(G_OBJECT(time_checkbox), "toggled", G_CALLBACK(time_checkbox_toggled), pargument);
+	g_signal_connect(G_OBJECT(pargument->time_spin), "input", G_CALLBACK(time_spin_input), pargument);
+	g_signal_connect(G_OBJECT(pargument->time_spin), "output", G_CALLBACK(time_spin_output), pargument);
+	pargument->time_spin_update_signal_id = g_signal_connect(G_OBJECT(pargument->time_spin), "value-changed", G_CALLBACK(time_spin_changed), pargument);
 	pargument->playlist_update_signal_id = g_signal_connect(G_OBJECT(model_playlist), "row-inserted", G_CALLBACK(ui_playlist_changed), pargument->libnotebook);
 	g_signal_connect(G_OBJECT(pargument->libnotebook), "switch-page", G_CALLBACK(changed_page_notebook), NULL);
 	pargument->progressbar_update_signal_id = g_signal_connect(G_OBJECT(pargument->progressbar), 
@@ -1373,6 +1472,7 @@ int main(int argc, char **argv) {
 	gtk_container_add(GTK_CONTAINER(artist_panel), treeview_artist);
 
 	gtk_box_set_homogeneous(GTK_BOX(vboxv), FALSE);
+	gtk_box_set_homogeneous(GTK_BOX(time_box), FALSE);
 	
 	/* Add objects to the box */
 	gtk_box_pack_start(GTK_BOX(vboxv), menubar, FALSE, FALSE, 1);
@@ -1416,6 +1516,9 @@ int main(int argc, char **argv) {
 		gtk_notebook_append_page(GTK_NOTEBOOK(pargument->libnotebook), library_panel, gtk_label_new("Library"));
 		gtk_notebook_append_page(GTK_NOTEBOOK(pargument->libnotebook), artist_panel, gtk_label_new("Artists"));
 		gtk_notebook_append_page(GTK_NOTEBOOK(pargument->libnotebook), playlist_panel, gtk_label_new("Playlist"));
+	gtk_box_pack_start(GTK_BOX(vboxv), time_box, FALSE, FALSE, 1);
+		gtk_box_pack_end(GTK_BOX(time_box), pargument->time_spin, FALSE, FALSE, 5);
+		gtk_box_pack_end(GTK_BOX(time_box), time_checkbox, FALSE, FALSE, 5);
 
 	gtk_scale_button_set_value(GTK_SCALE_BUTTON(pargument->volume_scale), 0.1);
 	gtk_container_add(GTK_CONTAINER(window), vboxv);

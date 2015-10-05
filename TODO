@@ -21,7 +21,8 @@
 #add « add to playlist/remove from playlist » 
 #Add rapid scan
 Timer for sleeping -> hour/second? Begin when clicked. code reset_ui() func
-Text in dialog box
+Text/icon in dialog box
+AUR package
 correct loading dialog box
 add album view
 split gui into more files

@@ -19,7 +19,7 @@ float distance(struct d4vector v1, struct d4vector v2) {
 	return distance;
 }
 
-void explore(GDir *dir, char *folder, FILE *list) {
+void explore(GDir *dir, const gchar *folder, FILE *list) {
 	const gchar *file;
 	gchar *temppath;
 

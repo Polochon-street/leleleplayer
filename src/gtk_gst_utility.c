@@ -19,7 +19,7 @@ float distance(struct d4vector v1, struct d4vector v2) {
 	return distance;
 }
 
-void explore(GDir *dir, char *folder, FILE *list) {
+void explore(GDir *dir, const gchar *folder, FILE *list) {
 	const gchar *file;
 	gchar *temppath;
 
@@ -242,7 +242,6 @@ void continue_track(GstElement *playbin, struct arguments *argument) {
 	gchar *uri;	
 
 	structure = gst_structure_new_empty("next_song");
-	
 	g_mutex_lock(&argument->queue_mutex);
 	GstMessage *msg = gst_message_new_application(GST_OBJECT(playbin), structure);
 
@@ -252,7 +251,6 @@ void continue_track(GstElement *playbin, struct arguments *argument) {
 
 	uri = g_filename_to_uri(argument->current_song.filename, NULL, NULL);
 	g_object_set(argument->current_song.playbin, "uri", uri, NULL);
-
 	g_free(uri); 
 
 	// TODO: Wait until message_application ends!

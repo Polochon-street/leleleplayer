@@ -232,6 +232,7 @@ void display_library(GtkTreeView *, GtkListStore *);
 void playlist_queue(GtkTreeIter *, GtkTreeModel *, GtkTreeView *, struct arguments *);
 void get_playlist_song(GtkTreeView *, struct song *, struct arguments *);
 void clean_playlist(GtkTreeView *, struct arguments *);
+void reset_ui(struct arguments *);
 gboolean lib_right_click(GtkWidget *, GdkEventButton *, struct arguments *);
 gboolean artist_right_click(GtkWidget *, GdkEventButton *, struct arguments *);
 gboolean playlist_right_click(GtkWidget *, GdkEventButton *, struct arguments *);

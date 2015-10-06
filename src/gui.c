@@ -469,6 +469,32 @@ void open_audio_file(GtkMenuItem *close, struct arguments *argument) {
 	gtk_widget_destroy(dialog);
 }
 
+void reset_ui(struct arguments *argument) {
+	GtkTreeSelection *selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(argument->treeview_playlist));
+
+	gtk_button_set_image(GTK_BUTTON(argument->playpause_button), gtk_image_new_from_icon_name("media-playback-start-symbolic", GTK_ICON_SIZE_BUTTON));
+	gtk_list_store_set(argument->store_playlist, &(argument->iter_playlist), PLAYING, "", -1);
+	gst_element_set_state(argument->current_song.playbin, GST_STATE_NULL);
+
+	gtk_widget_set_sensitive(argument->progressbar, FALSE);
+	g_signal_handler_block(argument->progressbar, argument->progressbar_update_signal_id);
+	gtk_adjustment_configure(argument->adjust, 0, 0, argument->current_song.duration/GST_SECOND, 
+		1, 1, 1);
+	g_signal_handler_unblock(argument->progressbar, argument->progressbar_update_signal_id);
+
+	gtk_tree_selection_unselect_all(selection);
+
+	gtk_label_set_text(GTK_LABEL(argument->title_label), "");
+	gtk_label_set_text(GTK_LABEL(argument->album_label), "");
+	gtk_label_set_markup(GTK_LABEL(argument->album_label), "<span foreground=\"grey\">No song currently playing</span>");
+	gtk_label_set_text(GTK_LABEL(argument->artist_label), ""); 
+	gtk_label_set_text(GTK_LABEL(argument->genre_label), "Genre:");
+	gtk_label_set_text(GTK_LABEL(argument->samplerate_label), "Sample rate:");
+	gtk_label_set_text(GTK_LABEL(argument->bitrate_label), "Bitrate:");
+	gtk_label_set_text(GTK_LABEL(argument->channels_label), "Channels:");
+
+}
+
 void refresh_ui(GstBus *bus, GstMessage *msg, struct arguments *argument) {
 	GtkTreeSelection *selection;
 	GtkTreePath *path;
@@ -613,16 +639,19 @@ gboolean refresh_progressbar(gpointer pargument) {
 	GstFormat fmt = GST_FORMAT_TIME;
 
 	if(argument->sleep_timer) {
-		gdouble elapsed = g_timer_elapsed(argument->sleep_timer, NULL)/60.;
-		GtkAdjustment *adjustment;
-
-		if(argument->timer_delay - elapsed <= 0.)
+			gdouble elapsed = g_timer_elapsed(argument->sleep_timer, NULL);
+	
+			GtkAdjustment *adjustment;
+		if(argument->timer_delay - elapsed < 0.) {
 			/* ui_stop() */
-			destroy(gtk_widget_get_toplevel(argument->progressbar), argument);
+			reset_ui(argument);
+			g_timer_destroy(argument->sleep_timer);
+			argument->sleep_timer = NULL;
+		}
+			//destroy(gtk_widget_get_toplevel(argument->progressbar), argument);
 		else {
 			g_signal_handler_block(argument->time_spin, argument->time_spin_update_signal_id);
 			adjustment = gtk_spin_button_get_adjustment(GTK_SPIN_BUTTON(argument->time_spin));
-
 			gtk_adjustment_set_value(adjustment, argument->timer_delay - elapsed);
 			g_signal_handler_unblock(argument->time_spin, argument->time_spin_update_signal_id);
 			time_spin_output(GTK_SPIN_BUTTON(argument->time_spin), argument);
@@ -1018,19 +1047,23 @@ gint time_spin_input(GtkSpinButton *spin_button, gdouble *new_val, struct argume
 	gboolean found = FALSE;
   	gint hours;
 	gint minutes;
+	gint seconds;
 	gchar *endh;
 	gchar *endm;
+	gchar *ends;
 
 	text = gtk_entry_get_text(GTK_ENTRY(spin_button));
-	str = g_strsplit (text, ":", 2);
+	str = g_strsplit (text, ":", 3);
 
-	if(g_strv_length (str) == 2) {
+	if(g_strv_length (str) == 3) {
 		hours = strtol(str[0], &endh, 10);
 		minutes = strtol(str[1], &endm, 10);
-		if (!*endh && !*endm &&
+		seconds = strtol(str[2], &ends, 10);
+		if(!*endh && !*endm && !*ends &&
 		0 <= hours && hours < 24 &&
-		 0 <= minutes && minutes < 60) {
-			*new_val = hours * 60 + minutes;
+		 0 <= minutes && minutes < 60 &&
+		  0 <= seconds && seconds < 60) {
+			*new_val = hours * 3600 + minutes*60 + seconds;
 			found = TRUE;
 		}
 	}
@@ -1049,12 +1082,14 @@ gint time_spin_output(GtkSpinButton *spin_button, struct arguments *argument) {
 	gchar *buf;
 	gdouble hours;
 	gdouble minutes;
+	gdouble seconds;
 
-	adjustment = gtk_spin_button_get_adjustment (spin_button);
+	adjustment = gtk_spin_button_get_adjustment(spin_button);
 
-	hours = gtk_adjustment_get_value (adjustment) / 60.0;
-	minutes = (hours - floor (hours)) * 60.0;
-	buf = g_strdup_printf ("%02.0f:%02.0f", floor (hours), floor (minutes + 0.5));
+	hours = gtk_adjustment_get_value(adjustment) / 3600.0;
+	minutes = (hours - floor(hours)) * 60.0;
+	seconds = (minutes - floor(minutes)) * 60.0;
+	buf = g_strdup_printf ("%02.0f:%02.0f:%02.0f", floor(hours), floor(minutes), floor(seconds + 0.5));
 	if(strcmp (buf, gtk_entry_get_text (GTK_ENTRY (spin_button))))
     	gtk_entry_set_text (GTK_ENTRY (spin_button), buf);
 
@@ -1403,7 +1438,7 @@ int main(int argc, char **argv) {
 	schema_source = g_settings_schema_source_new_from_directory("..", NULL, FALSE, NULL);
 	schema = g_settings_schema_source_lookup(schema_source, "org.leleleplayer.preferences", FALSE);
 	pref_arguments.preferences = g_settings_new_full(schema, NULL, NULL);
-	time_adjust = gtk_adjustment_new(0, 0, 1410, 30, 60, 0);
+	time_adjust = gtk_adjustment_new(0, 0, 86399, 30, 60, 0);
 	pargument->time_spin = gtk_spin_button_new(time_adjust, 1, 1);
 	gtk_widget_set_tooltip_text(pargument->time_spin, "Ends the playing after a given time");
 	gtk_spin_button_set_wrap(GTK_SPIN_BUTTON(pargument->time_spin), TRUE);
@@ -1517,7 +1552,7 @@ int main(int argc, char **argv) {
 		gtk_notebook_append_page(GTK_NOTEBOOK(pargument->libnotebook), artist_panel, gtk_label_new("Artists"));
 		gtk_notebook_append_page(GTK_NOTEBOOK(pargument->libnotebook), playlist_panel, gtk_label_new("Playlist"));
 	gtk_box_pack_start(GTK_BOX(vboxv), time_box, FALSE, FALSE, 1);
-		gtk_box_pack_end(GTK_BOX(time_box), pargument->time_spin, FALSE, FALSE, 5);
+		gtk_box_pack_end(GTK_BOX(time_box), pargument->time_spin, TRUE, TRUE, 5);
 		gtk_box_pack_end(GTK_BOX(time_box), time_checkbox, FALSE, FALSE, 5);
 
 	gtk_scale_button_set_value(GTK_SCALE_BUTTON(pargument->volume_scale), 0.1);

@@ -294,7 +294,7 @@ void start_song(struct arguments *argument) {
 	g_object_set(argument->current_song.playbin, "uri", uri, NULL);
 	gst_element_set_state(argument->current_song.playbin, GST_STATE_PLAYING);
 	if(argument->bartag)
-			g_source_remove(argument->bartag);
+		g_source_remove(argument->bartag);
 	argument->bartag = g_timeout_add_seconds(1, refresh_progressbar, argument);
 
 	g_free(uri);

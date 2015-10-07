@@ -87,7 +87,6 @@ void playlist_row_activated(GtkTreeView *treeview, GtkTreePath *path, GtkTreeVie
 	GtkTreeModel *model_playlist = gtk_tree_view_get_model(treeview);
 
 	if(gtk_tree_model_get_iter(model_playlist, &(argument->iter_playlist), path)) {
-	
 		start_song(argument);
 	}
 }
@@ -476,6 +475,10 @@ void reset_ui(struct arguments *argument) {
 	gtk_list_store_set(argument->store_playlist, &(argument->iter_playlist), PLAYING, "", -1);
 	gst_element_set_state(argument->current_song.playbin, GST_STATE_NULL);
 
+	if(argument->bartag)
+		g_source_remove(argument->bartag);
+	argument->bartag = 0;
+
 	gtk_widget_set_sensitive(argument->progressbar, FALSE);
 	g_signal_handler_block(argument->progressbar, argument->progressbar_update_signal_id);
 	gtk_adjustment_configure(argument->adjust, 0, 0, argument->current_song.duration/GST_SECOND, 
@@ -639,14 +642,15 @@ gboolean refresh_progressbar(gpointer pargument) {
 	GstFormat fmt = GST_FORMAT_TIME;
 
 	if(argument->sleep_timer) {
-			gdouble elapsed = g_timer_elapsed(argument->sleep_timer, NULL);
+		gdouble elapsed = g_timer_elapsed(argument->sleep_timer, NULL);
 	
-			GtkAdjustment *adjustment;
-		if(argument->timer_delay - elapsed < 0.) {
+		GtkAdjustment *adjustment;
+		if(argument->timer_delay - elapsed < -1.) {
 			/* ui_stop() */
-			reset_ui(argument);
+			reset_ui(argument);	
 			g_timer_destroy(argument->sleep_timer);
 			argument->sleep_timer = NULL;
+			gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(argument->time_checkbox), FALSE);
 		}
 			//destroy(gtk_widget_get_toplevel(argument->progressbar), argument);
 		else {
@@ -1287,7 +1291,7 @@ int main(int argc, char **argv) {
 	pargument->current_song.sample_array = NULL;
 	pargument->bartag = 0;
 	pargument->sleep_timer = NULL;
-	g_mutex_unlock(&pargument->queue_mutex);
+	//g_mutex_unlock(&pargument->queue_mutex);
 
 	gtk_init(&argc, &argv);	
 	gst_init(&argc, &argv);
@@ -1444,6 +1448,7 @@ int main(int argc, char **argv) {
 	gtk_spin_button_set_wrap(GTK_SPIN_BUTTON(pargument->time_spin), TRUE);
 	time_checkbox = gtk_check_button_new_with_label("Enable sleep timer until ");
 	gtk_widget_set_tooltip_text(time_checkbox, "Ends the playing after a given time");
+	pargument->time_checkbox = time_checkbox;
 
 	file = gtk_menu_item_new_with_label("File");
 	edit = gtk_menu_item_new_with_label("Edit");

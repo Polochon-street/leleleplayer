@@ -72,6 +72,7 @@ struct arguments {
 	GCond queue_cond;
 	GMutex queue_mutex;
 	GtkWidget *libnotebook;
+	GtkWidget *time_checkbox;
 	gdouble timer_delay;
 };
 
@@ -190,16 +191,24 @@ void destroy(GtkWidget *, struct arguments *);
 */
 void config_folder_changed(const gchar *, GtkWidget *);
 /**
-* Description: Callback function called when the « file->add file to playlist » button is clicked
+* Description: Callback function called when the « file->add file to playlist » button is clicked: adds an audio file to the playlist
 * Arguments: GtkMenuItem *add_file: the button, used for getting the toplevel window for gtk_file_chooser_dialog_new()
 * Arguments: struct arguments *argument: the global argument struct containing:
 * -treeview_playlist, the playlist treeview, used to get the playlist model
 * -iter_playlist: the playlist iter, in order to add the created iter to the playlist treeview (and add the first to the history)
-* -store_playlist: The playlist GtkTreeStore, used to set the struct song variables
+* -store_playlist: the playlist GtkTreeStore, used to set the struct song variables
 * -playlist_count: the playlist count to increment for each song
 */
-void add_file_to_playlist(GtkMenuItem *, struct arguments *);
-void view_popup_menu(GtkWidget *, GdkEventButton *, struct arguments *);
+void add_file_to_playlist(GtkMenuItem *open, struct arguments *);
+/**
+* Description: Callback function called when the « file->Open... » button is clicked: plays an audio file 
+* Arguments: GtkMenuItem *open: the button, used for getting the toplevel window for gtk_file_chooser_dialog_new()
+* Arguments: struct arguments *argument: the global argument struct containing: 
+* -treeview_playlist, the playlist treeview, used to get the playlist model
+* -iter_playlist: the playlist iter, in order to add the created iter to the playlist treeview, and add it to the history
+* -store_playlist: the playlist GtkTreeStore, used to set the struct song variables
+* -playlist_count: the playlist count to increment
+*/
 void open_audio_file(GtkMenuItem *, struct arguments *);
 void preferences_callback(GtkMenuItem *, struct pref_arguments *);
 void analyze_thread(struct pref_folder_arguments *);

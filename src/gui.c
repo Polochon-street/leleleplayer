@@ -228,6 +228,7 @@ void config_folder_changed(const gchar *folder, GtkWidget *parent) {
 	progressbar = gtk_progress_bar_new();
 	progressdialog = gtk_dialog_new();
 	gtk_window_set_transient_for(GTK_WINDOW(progressdialog), GTK_WINDOW(parent));
+	gtk_window_set_icon_from_file(GTK_WINDOW(progressdialog), "../images/lelele.svg", NULL);
 	area = gtk_dialog_get_content_area(GTK_DIALOG(progressdialog));
 	GDir *dir = g_dir_open (folder, 0, NULL);
 	FILE *list;
@@ -301,7 +302,7 @@ void folder_chooser(GtkWidget *button, struct pref_arguments *argument) {
 
 	dialog = gtk_file_chooser_dialog_new("Choose library folder", GTK_WINDOW(argument->window),
 		action, "Cancel", GTK_RESPONSE_CANCEL, "Open", GTK_RESPONSE_ACCEPT, NULL);
-
+	gtk_window_set_icon_from_file(GTK_WINDOW(dialog), "../images/lelele.svg", NULL);
 	res = gtk_dialog_run(GTK_DIALOG(dialog));
 
 	if(res == GTK_RESPONSE_ACCEPT) {
@@ -329,6 +330,7 @@ void preferences_callback(GtkMenuItem *preferences, struct pref_arguments *argum
 	vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
 	hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
 	dialog = gtk_dialog_new_with_buttons("Preferences", GTK_WINDOW(argument->window), flags, "Cancel", GTK_RESPONSE_REJECT, "Save", GTK_RESPONSE_ACCEPT, NULL);
+	gtk_window_set_icon_from_file(GTK_WINDOW(dialog), "../images/lelele.svg", NULL);
 	area = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
 	complete_box = gtk_check_button_new_with_label("LeleleScan (complete but longer) (not functionnal now)");
 
@@ -376,6 +378,7 @@ void add_file_to_playlist(GtkMenuItem *add_file, struct arguments *argument) {
 
 	dialog = gtk_file_chooser_dialog_new("Open audio file(s)", GTK_WINDOW(gtk_widget_get_toplevel(GTK_WIDGET(add_file))),
 	action, "Cancel", GTK_RESPONSE_CANCEL, "Open", GTK_RESPONSE_ACCEPT, NULL);
+	gtk_window_set_icon_from_file(GTK_WINDOW(dialog), "../images/lelele.svg", NULL);
 	GtkFileChooser *chooser = GTK_FILE_CHOOSER(dialog);
 
 	gtk_file_chooser_set_select_multiple(chooser, TRUE);
@@ -416,7 +419,7 @@ void add_file_to_playlist(GtkMenuItem *add_file, struct arguments *argument) {
 	gtk_widget_destroy(dialog);
 }
 
-void open_audio_file(GtkMenuItem *close, struct arguments *argument) {
+void open_audio_file(GtkMenuItem *open, struct arguments *argument) {
 	struct song song;
 	int resnum;
 	GtkWidget *dialog;
@@ -426,7 +429,7 @@ void open_audio_file(GtkMenuItem *close, struct arguments *argument) {
 	GtkTreeModel *model_playlist;
 	model_playlist = gtk_tree_view_get_model(GTK_TREE_VIEW(argument->treeview_playlist));
 
-	dialog = gtk_file_chooser_dialog_new("Open audio file", GTK_WINDOW(gtk_widget_get_toplevel(GTK_WIDGET(close))),
+	dialog = gtk_file_chooser_dialog_new("Open audio file", GTK_WINDOW(gtk_widget_get_toplevel(GTK_WIDGET(open))),
 	action, "Cancel", GTK_RESPONSE_CANCEL, "Open", GTK_RESPONSE_ACCEPT, NULL);
 
 	res = gtk_dialog_run(GTK_DIALOG(dialog));
@@ -459,7 +462,6 @@ void open_audio_file(GtkMenuItem *close, struct arguments *argument) {
 			argument->playlist_count++;
 
 			argument->iter_playlist = iter_playlist;
-			argument->history = g_list_prepend(argument->history, gtk_tree_model_get_string_from_iter(model_playlist, &argument->iter_playlist));
 			lelele_free_song(&song);
 			start_song(argument);
 		}
@@ -1560,7 +1562,7 @@ int main(int argc, char **argv) {
 		gtk_box_pack_end(GTK_BOX(time_box), pargument->time_spin, TRUE, TRUE, 5);
 		gtk_box_pack_end(GTK_BOX(time_box), time_checkbox, FALSE, FALSE, 5);
 
-	gtk_scale_button_set_value(GTK_SCALE_BUTTON(pargument->volume_scale), 0.1);
+//	gtk_scale_button_set_value(GTK_SCALE_BUTTON(pargument->volume_scale), 0.1); /* EXPLODES on windows */
 	gtk_container_add(GTK_CONTAINER(window), vboxv);
 	gtk_widget_show_all(window);
 

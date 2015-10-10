@@ -22,8 +22,8 @@
 #Add rapid scan
 #Timer for sleeping 
 #Text/icon in dialog box
-AUR package
-correct loading dialog box
+#AUR package
+correct loading dialog box (mutex)
 Windows directsound
 add album view
 Windows package
@@ -38,3 +38,4 @@ enhance detection
 Change playlist_queue(), without all the arguments
 add rapid scan without detection
 UI file
+correct file path (like icons/library.txt) in order to be portable

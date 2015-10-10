@@ -20,15 +20,15 @@ ADD_LIBRARY(lelele src/amp_sort.c src/decode.c src/envelope.c src/freq_sort.c sr
 target_link_libraries(lelele ${MULTIMEDIA_LIBRARIES})
 
 add_executable(analyze src/gui_dummy.c)
-add_executable(player src/gui.c src/gtk_gst_utility.c) #win32
-target_link_libraries(player ${GTK_LIBRARIES})
+add_executable(leleleplayer src/gui.c src/gtk_gst_utility.c) #win32
+target_link_libraries(leleleplayer ${GTK_LIBRARIES})
 
-foreach(EXE analyze player)
+foreach(EXE analyze leleleplayer)
 	target_link_libraries(${EXE} lelele m)
 endforeach ()
 
-set_property(TARGET lelele analyze player PROPERTY C_STANDARD 99)
+set_property(TARGET lelele analyze leleleplayer PROPERTY C_STANDARD 99)
 
-install(TARGETS player DESTINATION bin)
+install(TARGETS leleleplayer DESTINATION bin)
 install(FILES "images/lelele.svg" "images/lelelerandom.svg" DESTINATION /usr/share/leleleplayer/icons/)
 install(FILES "org.leleleplayer.gschema.xml" DESTINATION /usr/share/glib-2.0/schemas/)

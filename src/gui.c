@@ -188,12 +188,18 @@ void analyze_thread(struct pref_folder_arguments *argument) {
 	gchar tempstring[PATH_MAX];
 	FILE *list = argument->list;
 	FILE *library = argument->library;
-	FILE *library_read = fopen("library.txt", "r");
+	char lib_path[] = ".local/share/leleleplayer/";
+	char lib_file[] = "library.txt";
+	gchar *libdir;
+	gchar *libfile;
+	libdir = g_strconcat(g_get_home_dir(), lib_path, NULL);
+	libfile = g_strconcat(libdir, lib_file, NULL);
+	FILE *library_read;
+	library_read = fopen(libfile, "r");
 	//FILE *test = fopen("test.txt", "w");
 	GAsyncQueue *msg_queue = argument->msg_queue;
 	int resnum;
 	gboolean found = FALSE;
-
 	song.sample_array = NULL;
 	song.title = song.artist = song.album = song.tracknumber = NULL;
 	while(fgets(line, PATH_MAX, list) != NULL) {
@@ -225,22 +231,35 @@ void analyze_thread(struct pref_folder_arguments *argument) {
 
 void config_folder_changed(const gchar *folder, GtkWidget *parent) {
 	GtkWidget *progressbar, *progressdialog, *area;
+	char lib_path[] = ".local/share/leleleplayer/";
+	char lib_file[] = "library.txt";
+	char list_file[] = "list.txt";
+	gchar *libdir;
+	gchar *libfile;
+	gchar *listfile;
+	libdir = g_strconcat(g_get_home_dir(), lib_path, NULL);
+	libfile = g_strconcat(libdir, lib_file, NULL);
+	listfile = g_strconcat(libdir, list_file, NULL);
 	progressbar = gtk_progress_bar_new();
 	progressdialog = gtk_dialog_new();
 	gtk_window_set_transient_for(GTK_WINDOW(progressdialog), GTK_WINDOW(parent));
-	gtk_window_set_icon_from_file(GTK_WINDOW(progressdialog), "../images/lelele.svg", NULL);
+	if(g_file_test("../images/lelele.svg", G_FILE_TEST_EXISTS))
+		gtk_window_set_icon_from_file(GTK_WINDOW(progressdialog), "../images/lelele.svg", NULL);
+	else
+		gtk_window_set_icon_from_file(GTK_WINDOW(progressdialog), "/usr/share/leleleplayer/icons/lelele.svg", NULL);
 	area = gtk_dialog_get_content_area(GTK_DIALOG(progressdialog));
 	GDir *dir = g_dir_open (folder, 0, NULL);
 	FILE *list;
 	FILE *library;
-	if(!(list = fopen("list.txt", "w+"))) {
+	if(!(list = fopen(listfile, "w+"))) {
 		g_warning("Couldn't write config file");
 		return;
 	}
-	if(!(library = fopen("library.txt", "a+"))) {
+	if(!(library = fopen(libfile, "a+"))) {
 		g_warning("Couldn't write library file");
 		return;
 	}
+	printf("%s\n", libfile);
 	explore(dir, folder, list);
 	int nblines = 0;
 	char line[PATH_MAX];
@@ -291,7 +310,7 @@ void config_folder_changed(const gchar *folder, GtkWidget *parent) {
 	g_free(msg);
 	g_async_queue_unref(msg_queue);
 	fclose(list);
-	g_remove("list.txt");
+	g_remove(listfile);
 	fclose(library);
 }
 
@@ -302,7 +321,12 @@ void folder_chooser(GtkWidget *button, struct pref_arguments *argument) {
 
 	dialog = gtk_file_chooser_dialog_new("Choose library folder", GTK_WINDOW(argument->window),
 		action, "Cancel", GTK_RESPONSE_CANCEL, "Open", GTK_RESPONSE_ACCEPT, NULL);
-	gtk_window_set_icon_from_file(GTK_WINDOW(dialog), "../images/lelele.svg", NULL);
+
+	if(g_file_test("../images/lelele.svg", G_FILE_TEST_EXISTS))
+		gtk_window_set_icon_from_file(GTK_WINDOW(dialog), "../images/lelele.svg", NULL);
+	else
+		gtk_window_set_icon_from_file(GTK_WINDOW(dialog), "/usr/share/leleleplayer/icons/lelele.svg", NULL);
+
 	res = gtk_dialog_run(GTK_DIALOG(dialog));
 
 	if(res == GTK_RESPONSE_ACCEPT) {
@@ -333,7 +357,11 @@ void preferences_callback(GtkMenuItem *preferences, struct pref_arguments *argum
 	hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
 	labelbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
 	dialog = gtk_dialog_new_with_buttons("Preferences", GTK_WINDOW(argument->window), flags, "Cancel", GTK_RESPONSE_REJECT, "Save", GTK_RESPONSE_ACCEPT, NULL);
-	gtk_window_set_icon_from_file(GTK_WINDOW(dialog), "../images/lelele.svg", NULL);
+	if(g_file_test("../images/lelele.svg", G_FILE_TEST_EXISTS))
+		gtk_window_set_icon_from_file(GTK_WINDOW(dialog), "../images/lelele.svg", NULL);
+	else
+		gtk_window_set_icon_from_file(GTK_WINDOW(dialog), "/usr/share/leleleplayer/icons/lelele.svg", NULL);
+
 	area = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
 	complete_box = gtk_check_button_new_with_label("LeleleScan (complete but longer) (not functionnal now)");
 	gtk_window_set_default_size(GTK_WINDOW(dialog), 500, 100);
@@ -385,7 +413,11 @@ void add_file_to_playlist(GtkMenuItem *add_file, struct arguments *argument) {
 
 	dialog = gtk_file_chooser_dialog_new("Open audio file(s)", GTK_WINDOW(gtk_widget_get_toplevel(GTK_WIDGET(add_file))),
 	action, "Cancel", GTK_RESPONSE_CANCEL, "Open", GTK_RESPONSE_ACCEPT, NULL);
-	gtk_window_set_icon_from_file(GTK_WINDOW(dialog), "../images/lelele.svg", NULL);
+	if(g_file_test("../images/lelele.svg", G_FILE_TEST_EXISTS))
+		gtk_window_set_icon_from_file(GTK_WINDOW(dialog), "../images/lelele.svg", NULL);
+	else
+		gtk_window_set_icon_from_file(GTK_WINDOW(dialog), "/usr/share/leleleplayer/icons/lelele.svg", NULL);
+
 	GtkFileChooser *chooser = GTK_FILE_CHOOSER(dialog);
 
 	gtk_file_chooser_set_select_multiple(chooser, TRUE);
@@ -1195,10 +1227,18 @@ void display_library(GtkTreeView *treeview, GtkListStore *store) {
 	float tempforce_freqf;
 	char tempforce_atk[PATH_MAX];
 	float tempforce_atkf;
+	char lib_path[] = ".local/share/leleleplayer/";
+	char lib_file[] = "library.txt";
+	gchar *libdir;
+	gchar *libfile;
+
+	libdir = g_strconcat(g_get_home_dir(), lib_path, NULL);
+	libfile = g_strconcat(libdir, lib_file, NULL);
 
 	gtk_list_store_clear(store);
 
-	if((library = fopen("library.txt", "r")) != NULL) {
+	g_mkdir_with_parents(libdir, 0755);
+	if((library = fopen(libfile, "r")) != NULL) {
 		while(fgets(tempfile, PATH_MAX, library) != NULL) {
 			tempfile[strcspn(tempfile, "\n")] = '\0';
 
@@ -1251,6 +1291,8 @@ void display_library(GtkTreeView *treeview, GtkListStore *store) {
 		}
 		fclose(library);
 	}
+	g_free(libdir);
+	g_free(libfile);
 }
 
 int main(int argc, char **argv) {
@@ -1417,7 +1459,11 @@ int main(int argc, char **argv) {
 	repeat_button = gtk_toggle_button_new();
 	gtk_button_set_image(GTK_BUTTON(repeat_button), gtk_image_new_from_icon_name("media-playlist-repeat-symbolic", GTK_ICON_SIZE_BUTTON));
 	lelele_button = gtk_toggle_button_new();
-	gtk_button_set_image(GTK_BUTTON(lelele_button), gtk_image_new_from_file("../images/lelelerandom.svg"));
+	if(g_file_test("../images/lelelerandom.svg", G_FILE_TEST_EXISTS))
+		gtk_button_set_image(GTK_BUTTON(lelele_button), gtk_image_new_from_file("../images/lelelerandom.svg"));
+	else
+		gtk_button_set_image(GTK_BUTTON(lelele_button), gtk_image_new_from_file("/usr/share/leleleplayer/icons/lelelerandom.svg"));
+
 	gtk_widget_set_tooltip_text(lelele_button, "Random smoothly over songs");
 	next_button = gtk_button_new();
 	gtk_button_set_image(GTK_BUTTON(next_button), gtk_image_new_from_icon_name("media-skip-forward-symbolic", GTK_ICON_SIZE_BUTTON));
@@ -1425,7 +1471,10 @@ int main(int argc, char **argv) {
 	gtk_button_set_image(GTK_BUTTON(previous_button), gtk_image_new_from_icon_name("media-skip-backward-symbolic", GTK_ICON_SIZE_BUTTON));
 	pargument->playpause_button = gtk_button_new();
 	gtk_button_set_image(GTK_BUTTON(pargument->playpause_button), gtk_image_new_from_icon_name("media-playback-start-symbolic", GTK_ICON_SIZE_BUTTON));
-	gtk_window_set_icon_from_file(GTK_WINDOW(window), "../images/lelele.svg", NULL);
+	if(g_file_test("../images/lelele.svg", G_FILE_TEST_EXISTS))
+		gtk_window_set_icon_from_file(GTK_WINDOW(window), "../images/lelele.svg", NULL);
+	else
+		gtk_window_set_icon_from_file(GTK_WINDOW(window), "/usr/share/leleleplayer/icons/lelele.svg", NULL);
 	pargument->adjust = (GtkAdjustment*)gtk_adjustment_new(0, 0, 100, 1, 1, 1);
 	pargument->progressbar = gtk_scale_new(GTK_ORIENTATION_HORIZONTAL, pargument->adjust);
 	pargument->volume_scale = gtk_scale_button_new(GTK_ICON_SIZE_BUTTON, 0, 1, 0.1, volume);
@@ -1448,7 +1497,10 @@ int main(int argc, char **argv) {
 	mediainfo_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
 	//gtk_widget_set_size_request(area, -1, 50);
 	menubar = gtk_menu_bar_new();
-	schema_source = g_settings_schema_source_new_from_directory("..", NULL, FALSE, NULL);
+	if(schema_source = g_settings_schema_source_new_from_directory("..", NULL, FALSE, NULL))
+		;
+	else
+		schema_source = g_settings_schema_source_new_from_directory("/usr/share/glib-2.0/schemas/", NULL, FALSE, NULL);
 	schema = g_settings_schema_source_lookup(schema_source, "org.leleleplayer.preferences", FALSE);
 	pref_arguments.preferences = g_settings_new_full(schema, NULL, NULL);
 	time_adjust = gtk_adjustment_new(0, 0, 86399, 30, 60, 0);
@@ -1569,7 +1621,7 @@ int main(int argc, char **argv) {
 		gtk_box_pack_end(GTK_BOX(time_box), pargument->time_spin, TRUE, TRUE, 5);
 		gtk_box_pack_end(GTK_BOX(time_box), time_checkbox, FALSE, FALSE, 5);
 
-//	gtk_scale_button_set_value(GTK_SCALE_BUTTON(pargument->volume_scale), 0.1); /* EXPLODES on windows */
+	gtk_scale_button_set_value(GTK_SCALE_BUTTON(pargument->volume_scale), 0.1); /* EXPLODES on windows */
 	gtk_container_add(GTK_CONTAINER(window), vboxv);
 	gtk_widget_show_all(window);
 

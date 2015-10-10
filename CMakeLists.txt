@@ -28,7 +28,6 @@ foreach(EXE analyze leleleplayer)
 endforeach ()
 
 set_property(TARGET lelele analyze leleleplayer PROPERTY C_STANDARD 99)
-
 install(TARGETS leleleplayer DESTINATION bin)
 install(FILES "images/lelele.svg" "images/lelelerandom.svg" DESTINATION /usr/share/leleleplayer/icons/)
 install(FILES "org.leleleplayer.gschema.xml" DESTINATION /usr/share/glib-2.0/schemas/)

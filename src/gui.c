@@ -229,7 +229,7 @@ void analyze_thread(struct pref_folder_arguments *argument) {
 	//fclose(test);
 }
 
-void config_folder_changed(const gchar *folder, GtkWidget *parent) {
+void config_folder_changed(const gchar *folder, GtkWidget *parent, gboolean erase) {
 	GtkWidget *progressbar, *progressdialog, *area;
 	char lib_path[] = ".local/share/leleleplayer/";
 	char lib_file[] = "library.txt";
@@ -255,10 +255,20 @@ void config_folder_changed(const gchar *folder, GtkWidget *parent) {
 		g_warning("Couldn't write config file");
 		return;
 	}
-	if(!(library = fopen(libfile, "a+"))) {
-		g_warning("Couldn't write library file");
-		return;
+	if(erase) {
+		if(!(library = fopen(libfile, "w"))) {
+			g_warning("Couldn't write library file");
+			return;
+		}
 	}
+	else {
+		if(!(library = fopen(libfile, "a+"))) {
+			g_warning("Couldn't write library file");
+			return;
+		}
+	}
+
+
 	explore(dir, folder, list);
 	int nblines = 0;
 	char line[PATH_MAX];
@@ -343,6 +353,7 @@ void preferences_callback(GtkMenuItem *preferences, struct pref_arguments *argum
 	GtkWidget *dialog, *label_library, *label_browse, *area, *vbox, *hbox, *labelbox, *library_entry, *browse_button, *window_temp, *complete_box;
 	GtkDialogFlags flags = GTK_DIALOG_MODAL | GTK_DIALOG_DESTROY_WITH_PARENT;	
 	gint res;
+	const gchar *old_folder;
 
 	label_library = gtk_label_new("");
 	label_browse = gtk_label_new("");
@@ -385,12 +396,16 @@ void preferences_callback(GtkMenuItem *preferences, struct pref_arguments *argum
 
 	gtk_widget_set_size_request(dialog, 400, 120);
 	gtk_widget_show_all(dialog);
+	old_folder = argument->folder;
 	res = gtk_dialog_run(GTK_DIALOG(dialog));
 
 	if(argument->folder != NULL && res == GTK_RESPONSE_ACCEPT) {
 		argument->folder = gtk_entry_get_text(GTK_ENTRY(library_entry));
 		g_settings_set_value(argument->preferences, "library", g_variant_new_string(argument->folder));
-		config_folder_changed(argument->folder, dialog);
+		if(strcmp(old_folder, argument->folder))
+			config_folder_changed(argument->folder, dialog, TRUE);
+		else
+			config_folder_changed(argument->folder, dialog, FALSE);
 		display_library(GTK_TREE_VIEW(argument->treeview), argument->store_library);
 	} 
 	gtk_widget_destroy(dialog); 

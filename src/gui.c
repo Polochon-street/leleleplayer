@@ -259,7 +259,6 @@ void config_folder_changed(const gchar *folder, GtkWidget *parent) {
 		g_warning("Couldn't write library file");
 		return;
 	}
-	printf("%s\n", libfile);
 	explore(dir, folder, list);
 	int nblines = 0;
 	char line[PATH_MAX];

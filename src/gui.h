@@ -189,7 +189,7 @@ void destroy(GtkWidget *, struct arguments *);
 * Arguments: char *folder: The music library location string
 * Arguments: GtkWidget *parent: the parent window, used in order to create a GtkDialog
 */
-void config_folder_changed(const gchar *, GtkWidget *);
+void config_folder_changed(const gchar *, GtkWidget *, gboolean erase);
 /**
 * Description: Callback function called when the « file->add file to playlist » button is clicked: adds an audio file to the playlist
 * Arguments: GtkMenuItem *add_file: the button, used for getting the toplevel window for gtk_file_chooser_dialog_new()
@@ -198,6 +198,7 @@ void config_folder_changed(const gchar *, GtkWidget *);
 * -iter_playlist: the playlist iter, in order to add the created iter to the playlist treeview (and add the first to the history)
 * -store_playlist: the playlist GtkTreeStore, used to set the struct song variables
 * -playlist_count: the playlist count to increment for each song
+* Arguments: gboolean erase: boolean in order ton know if the library folder has changed and must be erased or not
 */
 void add_file_to_playlist(GtkMenuItem *open, struct arguments *);
 /**

@@ -20,11 +20,13 @@
 #Complete menu (open/close/quit)
 #add « add to playlist/remove from playlist » 
 #Add rapid scan
-Timer for sleeping -> hour/second? Begin when clicked. code reset_ui() func
-Text/icon in dialog box
+#Timer for sleeping 
+#Text/icon in dialog box
 AUR package
 correct loading dialog box
+Windows directsound
 add album view
+Windows package
 split gui into more files
 nuage de points selon les genre
 add right click/add to playlist
@@ -35,3 +37,4 @@ enhance detection
 « album » view
 Change playlist_queue(), without all the arguments
 add rapid scan without detection
+UI file

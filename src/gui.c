@@ -332,7 +332,6 @@ void config_folder_changed(const gchar *folder, GtkWidget *parent, gboolean eras
 	g_thread_new("analyze", (GThreadFunc)analyze_thread, &argument);
 
 	gtk_dialog_run(GTK_DIALOG(progressdialog));
-	printf("coucou\n");
 	gtk_widget_destroy(progressdialog);
 	g_free(msg);
 	g_async_queue_unref(msg_queue);

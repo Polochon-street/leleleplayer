@@ -1356,7 +1356,7 @@ int main(int argc, char **argv) {
 	pargument->current_song.sample_array = NULL;
 	pargument->bartag = 0;
 	pargument->sleep_timer = NULL;
-	//g_mutex_unlock(&pargument->queue_mutex);
+	g_mutex_init(&pargument->queue_mutex);
 
 	gtk_init(&argc, &argv);	
 	gst_init(&argc, &argv);

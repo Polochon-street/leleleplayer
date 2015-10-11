@@ -86,7 +86,11 @@ struct pref_arguments {
 };
 
 struct pref_folder_arguments {
+	gboolean terminate;
 	GAsyncQueue *msg_queue;
+	GtkWidget *progressbar, *progressdialog;
+	int nblines;
+	int count;
 	char *line;
 	FILE *list;
 	FILE *library;
@@ -213,6 +217,7 @@ void add_file_to_playlist(GtkMenuItem *open, struct arguments *);
 void open_audio_file(GtkMenuItem *, struct arguments *);
 void preferences_callback(GtkMenuItem *, struct pref_arguments *);
 void analyze_thread(struct pref_folder_arguments *);
+void refresh_config_progressbar(struct pref_folder_arguments *argument);
 void state_changed(GstBus *, GstMessage *, struct arguments *);
 void slider_changed(GtkRange *, struct arguments *);
 void volume_scale_changed(GtkScaleButton*, struct arguments *);

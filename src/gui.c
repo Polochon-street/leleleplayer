@@ -181,6 +181,27 @@ void previous_buttonf(GtkWidget *button, struct arguments *argument) {
 	}
 }
 
+void refresh_config_progressbar(struct pref_folder_arguments *argument) {	
+	GAsyncQueue *msg_queue = argument->msg_queue;
+	gchar *msg = NULL;
+	int nblines = argument->nblines;
+	int count = argument->count;
+
+	do {
+		if((msg != NULL) && strcmp(msg, "end")) {
+			gtk_progress_bar_set_text(GTK_PROGRESS_BAR(argument->progressbar), msg);
+			count++;
+			gtk_progress_bar_set_fraction(GTK_PROGRESS_BAR(argument->progressbar), (float)count/(float)nblines);
+			g_free(msg);
+			msg = NULL;
+		}
+  	} while(((msg = g_async_queue_try_pop(msg_queue)) != NULL));
+	
+	if(argument->terminate == TRUE) {
+		gtk_dialog_response(GTK_DIALOG(argument->progressdialog), GTK_RESPONSE_NONE);
+	}
+}
+
 void analyze_thread(struct pref_folder_arguments *argument) {
 	struct song song;
 	char *msg_thread;
@@ -199,9 +220,12 @@ void analyze_thread(struct pref_folder_arguments *argument) {
 	//FILE *test = fopen("test.txt", "w");
 	GAsyncQueue *msg_queue = argument->msg_queue;
 	int resnum;
+	argument->count = 0;
 	gboolean found = FALSE;
 	song.sample_array = NULL;
 	song.title = song.artist = song.album = song.tracknumber = NULL;
+	argument->terminate = FALSE;
+
 	while(fgets(line, PATH_MAX, list) != NULL) {
 		line[strcspn(line, "\n")] = '\0';
 		rewind(library_read);
@@ -222,10 +246,11 @@ void analyze_thread(struct pref_folder_arguments *argument) {
 		msg_thread = g_malloc(strlen(line)*sizeof(char) + 1);
 		strncpy(msg_thread, line, strlen(line) + 1);
 		g_async_queue_push(msg_queue, msg_thread);
+		argument->count++;
+		g_idle_add((GSourceFunc)refresh_config_progressbar, argument);
 	}
-	msg_thread = g_malloc(4);
-	g_stpcpy(msg_thread, "end");
-	g_async_queue_push(msg_queue, msg_thread);
+	argument->terminate = TRUE;
+	g_idle_add((GSourceFunc)refresh_config_progressbar, argument);
 	//fclose(test);
 }
 
@@ -267,8 +292,7 @@ void config_folder_changed(const gchar *folder, GtkWidget *parent, gboolean eras
 			return;
 		}
 	}
-
-
+	
 	explore(dir, folder, list);
 	int nblines = 0;
 	char line[PATH_MAX];
@@ -276,12 +300,15 @@ void config_folder_changed(const gchar *folder, GtkWidget *parent, gboolean eras
 	GAsyncQueue *msg_queue = g_async_queue_new();
 	char *msg;
 	struct pref_folder_arguments argument;
+	argument.progressbar = progressbar;
+	argument.progressdialog = progressdialog;
 
 	fseek(list, 0, SEEK_SET);
 
 	while(fgets(line, PATH_MAX, list) != NULL)
 		nblines++;
 
+	argument.nblines = nblines;
 	fseek(list, 0, SEEK_SET);
 
 	g_signal_connect(G_OBJECT(progressdialog), "delete-event", G_CALLBACK(ignore_destroy), NULL);
@@ -304,17 +331,8 @@ void config_folder_changed(const gchar *folder, GtkWidget *parent, gboolean eras
 	
 	g_thread_new("analyze", (GThreadFunc)analyze_thread, &argument);
 
-	do {
-		if((msg != NULL) && strcmp(msg, "end")) {
-			gtk_progress_bar_set_text(GTK_PROGRESS_BAR(progressbar), msg);
-			count++;
-			gtk_progress_bar_set_fraction(GTK_PROGRESS_BAR(progressbar), (float)count/(float)nblines);
-			g_free(msg);
-			msg = NULL;
-		}
-  		gtk_main_iteration ();
-	} while(((msg = g_async_queue_try_pop(msg_queue)) == NULL) || strcmp(msg, "end")); 
-
+	gtk_dialog_run(GTK_DIALOG(progressdialog));
+	printf("coucou\n");
 	gtk_widget_destroy(progressdialog);
 	g_free(msg);
 	g_async_queue_unref(msg_queue);

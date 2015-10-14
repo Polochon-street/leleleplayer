@@ -11,39 +11,43 @@ Handy when you don't want to bother yourself with creating a complete playlist.
 
 * clone repository on github
 ```bash
-git clone https://github.com/Polochon-street/leleleplayer.git
+$ git clone https://github.com/Polochon-street/leleleplayer.git
 ```
 * go to LPlayer root directory
 ```bash
-cd leleleplayer 
+$ cd leleleplayer 
 ```
 * Create and enter the build directory
 ```bash
-mkdir build && cd build
+$ mkdir build && cd build
 ```
 * Generate the Makefile
 ```bash
-cmake .. -DCMAKE_BUILD_TYPE=Release
+$ cmake .. -DCMAKE_BUILD_TYPE=Release
 ```
 * Compile the player & the analyze binaries
 ```bash
-make
+$ make
+```
+* Install the player
+```bash
+# make install
 ```
 * Launch the player
 ```bash
-./player
+$ leleleplayer
 ```
 
 ## Usage of the analyze binary
 
 * Check whether a song is calm or loud
 ```bash
-./analyze /path/to/song
+$ ./analyze /path/to/song
 ```
 Returns 1 if the song is calm, 0 otherwise
 * Check if a song is calm or loud, with debug information (see below for details)
 ```bash
-./analyze -d /path/to/song
+$ ./analyze -d /path/to/song
 ```
 
 ## How does the analysis process work?

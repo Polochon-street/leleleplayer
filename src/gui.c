@@ -209,15 +209,7 @@ void analyze_thread(struct pref_folder_arguments *argument) {
 	gchar tempstring[PATH_MAX];
 	FILE *list = argument->list;
 	FILE *library = argument->library;
-	char lib_path[] = ".local/share/leleleplayer/";
-	char lib_file[] = "library.txt";
-	gchar *libdir;
-	gchar *libfile;
-	libdir = g_strconcat(g_get_home_dir(), lib_path, NULL);
-	libfile = g_strconcat(libdir, lib_file, NULL);
-	FILE *library_read;
-	library_read = fopen(libfile, "r");
-	//FILE *test = fopen("test.txt", "w");
+	FILE *library_read = fopen(argument->lib_path, "r");
 	GAsyncQueue *msg_queue = argument->msg_queue;
 	int resnum;
 	argument->count = 0;
@@ -254,17 +246,8 @@ void analyze_thread(struct pref_folder_arguments *argument) {
 	//fclose(test);
 }
 
-void config_folder_changed(const gchar *folder, GtkWidget *parent, gboolean erase) {
+void config_folder_changed(const gchar *folder, gchar *library_path, GtkWidget *parent, gboolean erase) {
 	GtkWidget *progressbar, *progressdialog, *area;
-	char lib_path[] = ".local/share/leleleplayer/";
-	char lib_file[] = "library.txt";
-	char list_file[] = "list.txt";
-	gchar *libdir;
-	gchar *libfile;
-	gchar *listfile;
-	libdir = g_strconcat(g_get_home_dir(), lib_path, NULL);
-	libfile = g_strconcat(libdir, lib_file, NULL);
-	listfile = g_strconcat(libdir, list_file, NULL);
 	progressbar = gtk_progress_bar_new();
 	progressdialog = gtk_dialog_new();
 	gtk_window_set_transient_for(GTK_WINDOW(progressdialog), GTK_WINDOW(parent));
@@ -274,20 +257,26 @@ void config_folder_changed(const gchar *folder, GtkWidget *parent, gboolean eras
 		gtk_window_set_icon_from_file(GTK_WINDOW(progressdialog), "/usr/share/leleleplayer/icons/lelele.svg", NULL);
 	area = gtk_dialog_get_content_area(GTK_DIALOG(progressdialog));
 	GDir *dir = g_dir_open (folder, 0, NULL);
+	int listfd;
 	FILE *list;
 	FILE *library;
-	if(!(list = fopen(listfile, "w+"))) {
+	char coucou[] = "blaXXXXXX";
+
+	if((listfd = g_mkstemp(coucou)) == -1) {
 		g_warning("Couldn't write config file");
 		return;
 	}
+
+	list = fdopen(listfd, "w+");
+	
 	if(erase) {
-		if(!(library = fopen(libfile, "w"))) {
+		if(!(library = fopen(library_path, "w"))) {
 			g_warning("Couldn't write library file");
 			return;
 		}
 	}
 	else {
-		if(!(library = fopen(libfile, "a+"))) {
+		if(!(library = fopen(library_path, "a+"))) {
 			g_warning("Couldn't write library file");
 			return;
 		}
@@ -302,6 +291,7 @@ void config_folder_changed(const gchar *folder, GtkWidget *parent, gboolean eras
 	struct pref_folder_arguments argument;
 	argument.progressbar = progressbar;
 	argument.progressdialog = progressdialog;
+	argument.lib_path = library_path;
 
 	fseek(list, 0, SEEK_SET);
 
@@ -335,8 +325,8 @@ void config_folder_changed(const gchar *folder, GtkWidget *parent, gboolean eras
 	gtk_widget_destroy(progressdialog);
 	g_free(msg);
 	g_async_queue_unref(msg_queue);
+	g_close(listfd, NULL);
 	fclose(list);
-	g_remove(listfile);
 	fclose(library);
 }
 
@@ -419,11 +409,13 @@ void preferences_callback(GtkMenuItem *preferences, struct pref_arguments *argum
 	if(argument->folder != NULL && res == GTK_RESPONSE_ACCEPT) {
 		argument->folder = gtk_entry_get_text(GTK_ENTRY(library_entry));
 		g_settings_set_value(argument->preferences, "library", g_variant_new_string(argument->folder));
-		if(strcmp(old_folder, argument->folder))
-			config_folder_changed(argument->folder, dialog, TRUE);
-		else
-			config_folder_changed(argument->folder, dialog, FALSE);
-		display_library(GTK_TREE_VIEW(argument->treeview), argument->store_library);
+		if(strcmp(old_folder, argument->folder)) {
+			config_folder_changed(argument->folder, argument->lib_path, dialog, TRUE);
+		}
+		else {
+			config_folder_changed(argument->folder, argument->lib_path, dialog, FALSE);
+		}
+		display_library(GTK_TREE_VIEW(argument->treeview), argument->store_library, argument->lib_path);
 	} 
 	gtk_widget_destroy(dialog); 
 
@@ -1240,7 +1232,7 @@ void setup_tree_view_renderer_play_lib(GtkWidget *treeview) {
 	gtk_tree_view_columns_autosize(GTK_TREE_VIEW(treeview));
 }
 
-void display_library(GtkTreeView *treeview, GtkListStore *store) {
+void display_library(GtkTreeView *treeview, GtkListStore *store, gchar *libfile) {
 	GtkTreeIter iter;
 	FILE *library;
 	char tempfile[PATH_MAX];
@@ -1258,17 +1250,9 @@ void display_library(GtkTreeView *treeview, GtkListStore *store) {
 	float tempforce_freqf;
 	char tempforce_atk[PATH_MAX];
 	float tempforce_atkf;
-	char lib_path[] = ".local/share/leleleplayer/";
-	char lib_file[] = "library.txt";
-	gchar *libdir;
-	gchar *libfile;
-
-	libdir = g_strconcat(g_get_home_dir(), lib_path, NULL);
-	libfile = g_strconcat(libdir, lib_file, NULL);
 
 	gtk_list_store_clear(store);
 
-	g_mkdir_with_parents(libdir, 0755);
 	if((library = fopen(libfile, "r")) != NULL) {
 		while(fgets(tempfile, PATH_MAX, library) != NULL) {
 			tempfile[strcspn(tempfile, "\n")] = '\0';
@@ -1322,8 +1306,6 @@ void display_library(GtkTreeView *treeview, GtkListStore *store) {
 		}
 		fclose(library);
 	}
-	g_free(libdir);
-	g_free(libfile);
 }
 
 int main(int argc, char **argv) {
@@ -1378,6 +1360,21 @@ int main(int argc, char **argv) {
 	gtk_init(&argc, &argv);	
 	gst_init(&argc, &argv);
 	
+	char lib_path[] = ".local/share/leleleplayer/";
+	char lib_file[] = "library.txt";
+	gchar *libdir;
+	gchar *libfile;
+
+	libdir = g_strconcat(g_get_home_dir(), lib_path, NULL);
+	libfile = g_strconcat(libdir, lib_file, NULL);
+
+	if(g_mkdir_with_parents(libdir, 0755) != -1)
+		pargument->lib_path = libfile;
+	else
+		pargument->lib_path = lib_file;	
+
+	g_free(libdir);
+
 	window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
 	gtk_window_set_title(GTK_WINDOW(window), "lelele player");
 	gtk_widget_set_size_request(window, 900, 700);
@@ -1454,7 +1451,7 @@ int main(int argc, char **argv) {
 	gtk_tree_sortable_set_sort_func(sortable, ARTIST, sort_artist_album_tracks, NULL, NULL);
 	setup_tree_view_renderer_play_lib(treeview_library);	
 	pargument->treeview_library = treeview_library;
-	display_library(GTK_TREE_VIEW(treeview_library), pargument->store_library);
+	display_library(GTK_TREE_VIEW(treeview_library), pargument->store_library, pargument->lib_path);
 	model_library = gtk_tree_view_get_model(GTK_TREE_VIEW(treeview_library));
 	GtkTreeSelection *selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(treeview_library));
 	gtk_tree_selection_set_mode(selection, GTK_SELECTION_MULTIPLE);
@@ -1534,6 +1531,7 @@ int main(int argc, char **argv) {
 		schema_source = g_settings_schema_source_new_from_directory("/usr/share/glib-2.0/schemas/", NULL, FALSE, NULL);
 	schema = g_settings_schema_source_lookup(schema_source, "org.leleleplayer.preferences", FALSE);
 	pref_arguments.preferences = g_settings_new_full(schema, NULL, NULL);
+	pref_arguments.lib_path = pargument->lib_path;
 	time_adjust = gtk_adjustment_new(0, 0, 86399, 30, 60, 0);
 	pargument->time_spin = gtk_spin_button_new(time_adjust, 1, 1);
 	gtk_widget_set_tooltip_text(pargument->time_spin, "Ends the playing after a given time");

@@ -74,12 +74,14 @@ struct arguments {
 	GtkWidget *libnotebook;
 	GtkWidget *time_checkbox;
 	gdouble timer_delay;
+	gchar *lib_path;
 };
 
 struct pref_arguments {
         GtkWidget *window;
         GtkWidget *treeview;
 		const gchar *folder;
+		gchar *lib_path;
         GtkListStore *store_library;
 		GtkWidget *library_entry;
 		GSettings *preferences;
@@ -92,6 +94,7 @@ struct pref_folder_arguments {
 	int nblines;
 	int count;
 	char *line;
+	gchar *lib_path;
 	FILE *list;
 	FILE *library;
 };
@@ -193,7 +196,7 @@ void destroy(GtkWidget *, struct arguments *);
 * Arguments: char *folder: The music library location string
 * Arguments: GtkWidget *parent: the parent window, used in order to create a GtkDialog
 */
-void config_folder_changed(const gchar *, GtkWidget *, gboolean erase);
+void config_folder_changed(const gchar *, gchar *, GtkWidget *, gboolean erase);
 /**
 * Description: Callback function called when the « file->add file to playlist » button is clicked: adds an audio file to the playlist
 * Arguments: GtkMenuItem *add_file: the button, used for getting the toplevel window for gtk_file_chooser_dialog_new()
@@ -243,7 +246,7 @@ void queue_song(struct arguments *);
 void free_song(struct song *);
 void explore(GDir *dir, const gchar *folder, FILE *list);
 void folder_chooser(GtkWidget *, struct pref_arguments *);
-void display_library(GtkTreeView *, GtkListStore *);
+void display_library(GtkTreeView *, GtkListStore *, gchar *libfile);
 void playlist_queue(GtkTreeIter *, GtkTreeModel *, GtkTreeView *, struct arguments *);
 void get_playlist_song(GtkTreeView *, struct song *, struct arguments *);
 void clean_playlist(GtkTreeView *, struct arguments *);

@@ -220,7 +220,7 @@ void analyze_thread(struct pref_folder_arguments *);
 void refresh_config_progressbar(struct pref_folder_arguments *argument);
 void state_changed(GstBus *, GstMessage *, struct arguments *);
 void slider_changed(GtkRange *, struct arguments *);
-void volume_scale_changed(GtkScaleButton*, struct arguments *);
+void volume_scale_changed(GtkScaleButton*, gdouble, struct arguments *);
 void refresh_ui(GstBus *, GstMessage *, struct arguments *);
 void refresh_ui_mediainfo(GstBus *, GstMessage *, struct arguments *);
 void ui_playlist_changed(GtkTreeModel *, GtkTreePath *, GtkTreeIter *, GtkNotebook *);

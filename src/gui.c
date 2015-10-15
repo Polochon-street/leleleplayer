@@ -757,8 +757,8 @@ void slider_changed(GtkRange *progressbar, struct arguments *argument) {
 		g_warning("Seek failed!\n");
 } 
 
-void volume_scale_changed(GtkScaleButton* volume_scale, struct arguments *argument) {
-	double vol = pow(gtk_scale_button_get_value(volume_scale), 3);
+void volume_scale_changed(GtkScaleButton* volume_scale, gdouble value, struct arguments *argument) {
+	double vol = pow(value, 3);
 	g_object_set(argument->current_song.playbin, "volume", vol, NULL);
 }
 
@@ -1652,7 +1652,7 @@ int main(int argc, char **argv) {
 		gtk_box_pack_end(GTK_BOX(time_box), pargument->time_spin, TRUE, TRUE, 5);
 		gtk_box_pack_end(GTK_BOX(time_box), time_checkbox, FALSE, FALSE, 5);
 
-	gtk_scale_button_set_value(GTK_SCALE_BUTTON(pargument->volume_scale), 0.1); /* EXPLODES on windows */
+	gtk_scale_button_set_value(GTK_SCALE_BUTTON(pargument->volume_scale), 0.1);
 	gtk_container_add(GTK_CONTAINER(window), vboxv);
 	gtk_widget_show_all(window);
 

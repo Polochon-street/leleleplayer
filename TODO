@@ -23,13 +23,15 @@
 #Timer for sleeping 
 #Text/icon in dialog box
 #AUR package
-correct loading dialog box (mutex)
-Windows directsound
+#correct loading dialog box (mutex)
+#Windows directsound
+Add windows config compatibility
 add album view
 Windows package
 split gui into more files
 nuage de points selon les genre
 add right click/add to playlist
+refactor a bit
 Installer for linux/windows with cpack
 add more flags for analyze
 Complete menu: edition->visualizer->*list*

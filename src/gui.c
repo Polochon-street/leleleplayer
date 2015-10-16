@@ -181,14 +181,14 @@ void previous_buttonf(GtkWidget *button, struct arguments *argument) {
 	}
 }
 
-void refresh_config_progressbar(struct pref_folder_arguments *argument) {	
+gboolean refresh_config_progressbar(struct pref_folder_arguments *argument) {	
 	GAsyncQueue *msg_queue = argument->msg_queue;
 	gchar *msg = NULL;
 	int nblines = argument->nblines;
 	int count = argument->count;
 
 	do {
-		if((msg != NULL) && strcmp(msg, "end")) {
+		if((msg != NULL)) {
 			gtk_progress_bar_set_text(GTK_PROGRESS_BAR(argument->progressbar), msg);
 			count++;
 			gtk_progress_bar_set_fraction(GTK_PROGRESS_BAR(argument->progressbar), (float)count/(float)nblines);
@@ -199,7 +199,10 @@ void refresh_config_progressbar(struct pref_folder_arguments *argument) {
 	
 	if(argument->terminate == TRUE) {
 		gtk_dialog_response(GTK_DIALOG(argument->progressdialog), GTK_RESPONSE_NONE);
+		return FALSE;
 	}
+	else
+		return TRUE;
 }
 
 void analyze_thread(struct pref_folder_arguments *argument) {
@@ -217,6 +220,7 @@ void analyze_thread(struct pref_folder_arguments *argument) {
 	song.sample_array = NULL;
 	song.title = song.artist = song.album = song.tracknumber = NULL;
 	argument->terminate = FALSE;
+	g_idle_add((GSourceFunc)refresh_config_progressbar, argument);
 
 	while(fgets(line, PATH_MAX, list) != NULL) {
 		line[strcspn(line, "\n")] = '\0';
@@ -239,10 +243,8 @@ void analyze_thread(struct pref_folder_arguments *argument) {
 		strncpy(msg_thread, line, strlen(line) + 1);
 		g_async_queue_push(msg_queue, msg_thread);
 		argument->count++;
-		g_idle_add((GSourceFunc)refresh_config_progressbar, argument);
 	}
 	argument->terminate = TRUE;
-	g_idle_add((GSourceFunc)refresh_config_progressbar, argument);
 	//fclose(test);
 }
 
@@ -260,9 +262,9 @@ void config_folder_changed(const gchar *folder, gchar *library_path, GtkWidget *
 	int listfd;
 	FILE *list;
 	FILE *library;
-	char coucou[] = "blaXXXXXX";
+	gchar *template;
 
-	if((listfd = g_mkstemp(coucou)) == -1) {
+	if((listfd = g_file_open_tmp("XXXXXX", &template, NULL)) == -1) {
 		g_warning("Couldn't write config file");
 		return;
 	}
@@ -317,16 +319,17 @@ void config_folder_changed(const gchar *folder, gchar *library_path, GtkWidget *
 	argument.line = line;
 	argument.list = list;
 	argument.library = library;
-	msg = NULL;
 	
 	g_thread_new("analyze", (GThreadFunc)analyze_thread, &argument);
 
 	gtk_dialog_run(GTK_DIALOG(progressdialog));
 	gtk_widget_destroy(progressdialog);
-	g_free(msg);
+	/* WARING: can explode here */
 	g_async_queue_unref(msg_queue);
+	msg_queue = NULL;
 	g_close(listfd, NULL);
 	fclose(list);
+	g_remove(template);
 	fclose(library);
 }
 
@@ -416,9 +419,9 @@ void preferences_callback(GtkMenuItem *preferences, struct pref_arguments *argum
 			config_folder_changed(argument->folder, argument->lib_path, dialog, FALSE);
 		}
 		display_library(GTK_TREE_VIEW(argument->treeview), argument->store_library, argument->lib_path);
-	} 
+	}
+	g_settings_apply(argument->preferences);
 	gtk_widget_destroy(dialog); 
-
 	argument->window = window_temp;
 }
 
@@ -1360,13 +1363,12 @@ int main(int argc, char **argv) {
 	gtk_init(&argc, &argv);	
 	gst_init(&argc, &argv);
 	
-	char lib_path[] = ".local/share/leleleplayer/";
 	char lib_file[] = "library.txt";
 	gchar *libdir;
 	gchar *libfile;
 
-	libdir = g_strconcat(g_get_home_dir(), lib_path, NULL);
-	libfile = g_strconcat(libdir, lib_file, NULL);
+	libdir = g_build_filename(g_get_home_dir(), ".local", "share", "leleleplayer", NULL);
+	libfile = g_build_filename(libdir, "library.txt", NULL);
 
 	if(g_mkdir_with_parents(libdir, 0755) != -1)
 		pargument->lib_path = libfile;

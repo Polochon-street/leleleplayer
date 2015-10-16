@@ -24,7 +24,8 @@ struct d2vector envelope_sort(struct song song, int debug) {
 	float period_max1 = 0;
 	float period_max2 = 0;
 	float period_max3 = 0;
-	file_env = fopen("file_env.txt", "w");
+	if(debug)
+		file_env = fopen("file_env.txt", "w");
 
 	d_freq = av_malloc(freq_size*sizeof(FFTSample));
 
@@ -111,7 +112,8 @@ struct d2vector envelope_sort(struct song song, int debug) {
 	av_rdft_end(fft);
 	av_free(d_freq);
 	av_free(x);
-	fclose(file_env); 
+	if(debug)
+		fclose(file_env); 
 
 	return result;
 }

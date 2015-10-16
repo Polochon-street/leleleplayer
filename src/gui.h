@@ -220,7 +220,7 @@ void add_file_to_playlist(GtkMenuItem *open, struct arguments *);
 void open_audio_file(GtkMenuItem *, struct arguments *);
 void preferences_callback(GtkMenuItem *, struct pref_arguments *);
 void analyze_thread(struct pref_folder_arguments *);
-void refresh_config_progressbar(struct pref_folder_arguments *argument);
+gboolean refresh_config_progressbar(struct pref_folder_arguments *argument);
 void state_changed(GstBus *, GstMessage *, struct arguments *);
 void slider_changed(GtkRange *, struct arguments *);
 void volume_scale_changed(GtkScaleButton*, gdouble, struct arguments *);

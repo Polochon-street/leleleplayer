@@ -21,6 +21,11 @@ enum {
 };
 
 enum {
+	COLUMN_ALBUM = 0,
+	NUM_COLS_ALBUM
+};
+
+enum {
 	PLAYING = 0,
 	TRACKNUMBER,
 	TRACK,
@@ -50,6 +55,7 @@ struct arguments {
 	GList *history;
 	GtkWidget *treeview_library;
 	GtkWidget *treeview_artist;
+	GtkWidget *treeview_album;
 	GtkWidget *progressbar;
 	GtkWidget *treeview_playlist;
 	GtkWidget *playpause_button;
@@ -60,6 +66,7 @@ struct arguments {
 	GtkListStore *store_library;
 	GtkListStore *store_playlist;
 	GtkTreeStore *store_artist;
+	GtkTreeStore *store_album;
 	GtkTreeViewColumn *column;
 	GtkWidget *album_label, *title_label, *artist_label;
 	GtkWidget *genre_label, *samplerate_label, *bitrate_label, *channels_label;
@@ -108,6 +115,13 @@ void setup_tree_view_renderer_play_lib(GtkWidget *);
 void setup_tree_view_renderer_artist(GtkWidget *, GtkTreeStore *, GtkTreeModel *);
 /**
 * Description: Sets up the treeview renderer like this: artist->album->songs
+* Arguments: GtkWidget *treeview: the TreeView to set up
+* Arguments: GtkTreeStore *treestore: the treestore associated with the TreeView
+* Arguments: GtkTreeModel *model_library: the model associated with the library treeview (NOT the artist treeview)
+*/
+void setup_tree_view_renderer_artist(GtkWidget *, GtkTreeStore *, GtkTreeModel *);
+/**
+* Description: Sets up the treeview renderer like this: album->songs
 * Arguments: GtkWidget *treeview: the TreeView to set up
 * Arguments: GtkTreeStore *treestore: the treestore associated with the TreeView
 * Arguments: GtkTreeModel *model_library: the model associated with the library treeview (NOT the artist treeview)

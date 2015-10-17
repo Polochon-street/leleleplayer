@@ -148,7 +148,7 @@ void toggle_playpause_button(GtkWidget *button, struct arguments *argument) {
 				lib_row_activated(GTK_TREE_VIEW(argument->treeview_library), path_list->data, NULL, argument);
 			}		
 		}
-		else if(page == 2) {
+		else if(page == 3) {
 			selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(argument->treeview_playlist));
 			if(gtk_tree_selection_get_selected(selection, &model, &iter)) {
 				path = gtk_tree_model_get_path(model, &iter);
@@ -766,6 +766,7 @@ void setup_tree_view_renderer_artist(GtkWidget *treeview, GtkTreeStore *treestor
 	gtk_tree_view_append_column(GTK_TREE_VIEW(treeview), column);
 	g_object_set(renderer, "size", 13*PANGO_SCALE, NULL);
 	GtkTreeIter toplevel, child, lowlevel, tempiter_artist;
+	gboolean same_artists;
 	gchar *tempartist1, *tempartist2;
 	gchar *tempalbum1, *tempalbum2;
 	gchar *temptrack;
@@ -777,6 +778,7 @@ void setup_tree_view_renderer_artist(GtkWidget *treeview, GtkTreeStore *treestor
 		do {
 			gtk_tree_model_get(model_library, &tempiter_artist, ARTIST, &tempartist1, -1);
 			if(g_strcmp0(tempartist1, tempartist2)) {
+				same_artists = FALSE;
 			 	gtk_tree_store_append(treestore, &toplevel, NULL);
   				gtk_tree_store_set(treestore, &toplevel,
                 COLUMN_ARTIST, tempartist1, -1);
@@ -787,8 +789,11 @@ void setup_tree_view_renderer_artist(GtkWidget *treeview, GtkTreeStore *treestor
 
 				gtk_tree_model_get(model_library, &tempiter_artist, ARTIST, &tempartist2, -1);
 			}
+			else
+				same_artists = TRUE;
+
 			gtk_tree_model_get(model_library, &tempiter_artist, ALBUM, &tempalbum1, -1);
-			if(g_strcmp0(tempalbum1, tempalbum2)) {
+			if(same_artists == FALSE || g_strcmp0(tempalbum1, tempalbum2)) {
 				gtk_tree_store_append(treestore, &child, &toplevel);
   				gtk_tree_store_set(treestore, &child,
                 COLUMN_ARTIST, tempalbum1, -1);
@@ -810,6 +815,48 @@ void setup_tree_view_renderer_artist(GtkWidget *treeview, GtkTreeStore *treestor
 			temptrack = temptracknumber = song = NULL;
 			
 		} while(gtk_tree_model_iter_next(model_library, &tempiter_artist));
+	}
+}
+
+void setup_tree_view_renderer_album(GtkWidget *treeview, GtkTreeStore *treestore, GtkTreeModel *model_library) {
+	GtkCellRenderer *renderer;
+	GtkTreeViewColumn *column;
+
+	renderer = gtk_cell_renderer_text_new();
+	column = gtk_tree_view_column_new_with_attributes("Album", renderer, "text", COLUMN_ARTIST, NULL);
+	gtk_tree_view_append_column(GTK_TREE_VIEW(treeview), column);
+	g_object_set(renderer, "size", 13*PANGO_SCALE, NULL);
+	GtkTreeIter toplevel, child, lowlevel, tempiter_album;
+	gchar *tempalbum1, *tempalbum2;
+	gchar *temptrack;
+	gchar *temptracknumber;
+
+	tempalbum1 = tempalbum2 = temptrack = temptracknumber = NULL;
+
+	if(gtk_tree_model_get_iter_first(model_library, &tempiter_album)) {
+		do {
+			gtk_tree_model_get(model_library, &tempiter_album, ALBUM, &tempalbum1, -1);
+			if(g_strcmp0(tempalbum1, tempalbum2)) {
+				gtk_tree_store_append(treestore, &toplevel, NULL);
+  				gtk_tree_store_set(treestore, &toplevel,
+                COLUMN_ARTIST, tempalbum1, -1);
+
+				g_free(tempalbum1);
+				g_free(tempalbum2);
+				tempalbum2 = tempalbum1 = NULL;
+
+				gtk_tree_model_get(model_library, &tempiter_album, ALBUM, &tempalbum2, -1);
+			}
+			gtk_tree_model_get(model_library, &tempiter_album, TRACK, &temptrack, -1);
+			gtk_tree_model_get(model_library, &tempiter_album, TRACKNUMBER, &temptracknumber, -1);
+			gchar *song = g_strconcat(temptracknumber, "  ", temptrack, NULL);
+			gtk_tree_store_append(treestore, &child, &toplevel);
+  			gtk_tree_store_set(treestore, &child, COLUMN_ARTIST, song, -1);
+			g_free(temptrack);
+			g_free(temptracknumber);
+			g_free(song);
+			temptrack = temptracknumber = song = NULL;
+		} while(gtk_tree_model_iter_next(model_library, &tempiter_album));
 	}
 }
 
@@ -1014,7 +1061,7 @@ void library_popup_menu(GtkWidget *treeview, GdkEventButton *event, struct argum
 }
 
 void changed_page_notebook(GtkNotebook *notebook, GtkWidget *page, guint page_num, gpointer data) {
-	if(page_num == 2) { // "Playlist" tab selected 
+	if(page_num == 3) { // "Playlist" tab selected 
 		GtkWidget *label = gtk_notebook_get_tab_label(GTK_NOTEBOOK(notebook), page);
 		gtk_label_set_markup(GTK_LABEL(label), "Playlist");
 	}
@@ -1242,7 +1289,9 @@ void display_library(GtkTreeView *treeview, GtkListStore *store, gchar *libfile)
 	char temptrack[PATH_MAX];
 	char tempalbum[PATH_MAX];
 	char tempartist[PATH_MAX];
-	char temptracknumber[PATH_MAX];
+	char temptracknumber_arr[PATH_MAX];
+	gchar *temptracknumber;
+	int nbr_temptracknumber;
 	char tempforce[PATH_MAX];
 	float tempforcef;
 	char tempforce_env[PATH_MAX];
@@ -1260,7 +1309,7 @@ void display_library(GtkTreeView *treeview, GtkListStore *store, gchar *libfile)
 		while(fgets(tempfile, PATH_MAX, library) != NULL) {
 			tempfile[strcspn(tempfile, "\n")] = '\0';
 
-			if(!fgets(temptracknumber, PATH_MAX, library)
+			if(!fgets(temptracknumber_arr, PATH_MAX, library)
 			|| !fgets(temptrack, PATH_MAX, library)
 			|| !fgets(tempalbum, PATH_MAX, library)
 			|| !fgets(tempartist, PATH_MAX, library)
@@ -1273,6 +1322,7 @@ void display_library(GtkTreeView *treeview, GtkListStore *store, gchar *libfile)
 				return;
 			}
 			
+			temptracknumber = g_strdup_printf("%02d", strtol(temptracknumber_arr, NULL, 10));
 			temptracknumber[strcspn(temptracknumber, "\n")] = '\0';
 
 			temptrack[strcspn(temptrack, "\n")] = '\0';
@@ -1316,7 +1366,7 @@ int main(int argc, char **argv) {
 	struct arguments *pargument = &argument;
 	struct pref_arguments pref_arguments;
 
-	GtkWidget *window, *treeview_library, *treeview_playlist, *treeview_artist, *library_panel, *artist_panel, *playlist_panel, *vboxv,
+	GtkWidget *window, *treeview_library, *treeview_playlist, *treeview_artist, *treeview_album, *library_panel, *artist_panel, *album_panel, *playlist_panel, *vboxv,
 		*playbox, *volumebox, *randombox, *repeat_button, *random_button, *lelele_button, *labelbox, *next_button, *previous_button, 
 		*menubar, *file, *filemenu, *open, *add_file, *close, *edit, *editmenu, *preferences,
 		*mediainfo_expander, *mediainfo_box, *mediainfo_labelbox, *area, *time_spin, *time_box, *time_checkbox;
@@ -1443,6 +1493,7 @@ int main(int argc, char **argv) {
 	library_panel = gtk_scrolled_window_new(NULL, NULL);
 	playlist_panel = gtk_scrolled_window_new(NULL, NULL);
 	artist_panel = gtk_scrolled_window_new(NULL, NULL);
+	album_panel = gtk_scrolled_window_new(NULL, NULL);
 
 	pargument->store_library = gtk_list_store_new(COLUMNS, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_FLOAT, G_TYPE_FLOAT, G_TYPE_FLOAT, G_TYPE_FLOAT, G_TYPE_FLOAT, G_TYPE_STRING, G_TYPE_STRING);
 	sortable = GTK_TREE_SORTABLE(pargument->store_library);
@@ -1476,9 +1527,19 @@ int main(int argc, char **argv) {
 	selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(treeview_artist));
 	gtk_tree_selection_set_mode(selection, GTK_SELECTION_MULTIPLE);
 
+	pargument->store_album = gtk_tree_store_new(NUM_COLS_ALBUM, G_TYPE_STRING);
+	treeview_album = gtk_tree_view_new_with_model(GTK_TREE_MODEL(pargument->store_album));
+	gtk_tree_sortable_set_sort_column_id(sortable, ALBUM, GTK_SORT_ASCENDING);
+	setup_tree_view_renderer_album(treeview_album, pargument->store_album, model_library);
+	pargument->treeview_album = treeview_album;
+	selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(treeview_album));
+	gtk_tree_selection_set_mode(selection, GTK_SELECTION_MULTIPLE);
+
+
 	gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(library_panel), GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
 	gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(playlist_panel), GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
 	gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(artist_panel), GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
+	gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(album_panel), GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
 	playbox = gtk_button_box_new(GTK_ORIENTATION_HORIZONTAL);
 	randombox = gtk_button_box_new(GTK_ORIENTATION_HORIZONTAL);
 	volumebox = gtk_button_box_new(GTK_ORIENTATION_HORIZONTAL);
@@ -1585,10 +1646,12 @@ int main(int argc, char **argv) {
 	g_signal_connect(G_OBJECT(treeview_library), "row-activated", G_CALLBACK(lib_row_activated), pargument);
 	g_signal_connect(G_OBJECT(treeview_library), "button-press-event", G_CALLBACK(lib_right_click), pargument);
 	g_signal_connect(G_OBJECT(treeview_artist), "button-press-event", G_CALLBACK(artist_right_click), pargument);
+	//g_signal_connect(G_OBJECT(treeview_album), "button-press-event", G_CALLBACK(album_right_click), pargument);
 	g_signal_connect(G_OBJECT(treeview_playlist), "button-press-event", G_CALLBACK(playlist_right_click), pargument);
 	g_signal_connect(G_OBJECT(treeview_playlist), "key-press-event", G_CALLBACK(playlist_del_button), pargument);
 	g_signal_connect(G_OBJECT(treeview_playlist), "row-activated", G_CALLBACK(playlist_row_activated), pargument);
 	g_signal_connect(G_OBJECT(treeview_artist), "row-activated", G_CALLBACK(artist_row_activated), pargument);
+	//g_signal_connect(G_OBJECT(treeview_album), "row-activated", G_CALLBACK(album_row_activated), pargument);
 	g_signal_connect(G_OBJECT(time_checkbox), "toggled", G_CALLBACK(time_checkbox_toggled), pargument);
 	g_signal_connect(G_OBJECT(pargument->time_spin), "input", G_CALLBACK(time_spin_input), pargument);
 	g_signal_connect(G_OBJECT(pargument->time_spin), "output", G_CALLBACK(time_spin_output), pargument);
@@ -1602,6 +1665,7 @@ int main(int argc, char **argv) {
 	gtk_container_add(GTK_CONTAINER(library_panel), treeview_library);
 	gtk_container_add(GTK_CONTAINER(playlist_panel), treeview_playlist);
 	gtk_container_add(GTK_CONTAINER(artist_panel), treeview_artist);
+	gtk_container_add(GTK_CONTAINER(album_panel), treeview_album);
 
 	gtk_box_set_homogeneous(GTK_BOX(vboxv), FALSE);
 	gtk_box_set_homogeneous(GTK_BOX(time_box), FALSE);
@@ -1647,6 +1711,7 @@ int main(int argc, char **argv) {
 	gtk_box_pack_start(GTK_BOX(vboxv), pargument->libnotebook, TRUE, TRUE, 1);
 		gtk_notebook_append_page(GTK_NOTEBOOK(pargument->libnotebook), library_panel, gtk_label_new("Library"));
 		gtk_notebook_append_page(GTK_NOTEBOOK(pargument->libnotebook), artist_panel, gtk_label_new("Artists"));
+		gtk_notebook_append_page(GTK_NOTEBOOK(pargument->libnotebook), album_panel, gtk_label_new("Albums"));
 		gtk_notebook_append_page(GTK_NOTEBOOK(pargument->libnotebook), playlist_panel, gtk_label_new("Playlist"));
 	gtk_box_pack_start(GTK_BOX(vboxv), time_box, FALSE, FALSE, 1);
 		gtk_box_pack_end(GTK_BOX(time_box), pargument->time_spin, TRUE, TRUE, 5);

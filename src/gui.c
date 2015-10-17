@@ -701,7 +701,7 @@ void message_application(GstBus *bus, GstMessage *msg, struct arguments *argumen
 }
 
 void ui_playlist_changed(GtkTreeModel *playlist_model, GtkTreePath *path, GtkTreeIter *iter, GtkNotebook *libnotebook) {
-	gtk_notebook_set_current_page(libnotebook, 2);
+	gtk_notebook_set_current_page(libnotebook, 3);
 }
 
 gboolean refresh_progressbar(gpointer pargument) {
@@ -1084,7 +1084,8 @@ void artist_popup_menu(GtkWidget *treeview, GdkEventButton *event, struct argume
                    gdk_event_get_time((GdkEvent*)event));
 }
 
-gboolean playlist_right_click(GtkWidget *treeview, GdkEventButton *event, struct arguments *argument) {
+gboolean treeviews_right_click(GtkWidget *treeview, GdkEventButton *event, struct arguments *argument) {
+	gboolean blank;
 	if(event->type == GDK_BUTTON_PRESS && event->button == 3) {
 		GtkTreeSelection *selection;
 
@@ -1100,59 +1101,19 @@ gboolean playlist_right_click(GtkWidget *treeview, GdkEventButton *event, struct
 				gtk_tree_path_free(path);
 			}
 		}
-		playlist_popup_menu(treeview, event, argument);
+ 		blank = !gtk_tree_view_get_path_at_pos(GTK_TREE_VIEW(treeview), (gint)event->x, (gint)event->y, NULL, NULL, NULL, NULL);
+		if((treeview == argument->treeview_playlist) 
+		&& (blank == FALSE)) {
+			playlist_popup_menu(treeview, event, argument);
+		}
+		else if(treeview == argument->treeview_artist)
+			artist_popup_menu(treeview, event, argument);
+		else if(treeview == argument->treeview_library)
+			library_popup_menu(treeview, event, argument);
 		return TRUE;
 	}
 	else
 		return FALSE;
-}
-
-gboolean artist_right_click(GtkWidget *treeview, GdkEventButton *event, struct arguments *argument) {
-	if(event->type == GDK_BUTTON_PRESS && event->button == 3) {
-		GtkTreeSelection *selection;
-
-		selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(treeview));
-	
-		if(gtk_tree_selection_count_selected_rows(selection) <= 1) {
-			GtkTreePath *path;
-		
-			if(gtk_tree_view_get_path_at_pos(GTK_TREE_VIEW(treeview), (gint)event->x,
-				(gint)event->y, &path, NULL, NULL, NULL)) {
-				gtk_tree_selection_unselect_all(selection);
-				gtk_tree_selection_select_path(selection, path);
-				gtk_tree_path_free(path);
-			}
-		}
-		artist_popup_menu(treeview, event, argument);
-		return TRUE;
-	}
-	else
-		return FALSE;
-}
-
-gboolean lib_right_click(GtkWidget *treeview, GdkEventButton *event, struct arguments *argument) {
-    if(event->type == GDK_BUTTON_PRESS && event->button == 3) {
-        GtkTreeSelection *selection;
-       	 
-		selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(treeview));
-
-  		if(gtk_tree_selection_count_selected_rows(selection) <= 1) {
-			GtkTreePath *path;
-
-           	if(gtk_tree_view_get_path_at_pos(GTK_TREE_VIEW(treeview), 
-			(gint) event->x, (gint) event->y, &path, NULL, NULL, NULL)) {
-            	gtk_tree_selection_unselect_all(selection);
-             	gtk_tree_selection_select_path(selection, path);
-             	gtk_tree_path_free(path);
-			}
-		}
-       /* end of optional bit */
-
-      library_popup_menu(treeview, event, argument);
-
-      return TRUE; /* we handled this */
-    }
-    return FALSE; /* we did not handle this */
 }
 
 void time_spin_changed(GtkSpinButton *spin_button, struct arguments *argument) {
@@ -1322,6 +1283,10 @@ void display_library(GtkTreeView *treeview, GtkListStore *store, gchar *libfile)
 				return;
 			}
 			
+			int i;
+			for(i = 0; g_ascii_isdigit(temptracknumber_arr[i]) == FALSE; ++i) {
+				temptracknumber_arr[i] = '0';
+			}
 			temptracknumber = g_strdup_printf("%02d", strtol(temptracknumber_arr, NULL, 10));
 			temptracknumber[strcspn(temptracknumber, "\n")] = '\0';
 
@@ -1353,9 +1318,10 @@ void display_library(GtkTreeView *treeview, GtkListStore *store, gchar *libfile)
 			}
 			else
 				strcpy(tempforce, "Can't conclude");
-
+			
 			gtk_list_store_append(store, &iter);
 			gtk_list_store_set(store, &iter, PLAYING, "", TRACKNUMBER, temptracknumber, TRACK, temptrack, ALBUM, tempalbum, ARTIST, tempartist, FORCE, tempforcef, FORCE_TEMPO, tempforce_envf, FORCE_AMP, tempforce_ampf, FORCE_FREQ, tempforce_freqf, FORCE_ATK, tempforce_atkf, TEXTFORCE, tempforce, AFILE, tempfile, -1);
+			g_free(temptracknumber);
 		}
 		fclose(library);
 	}
@@ -1644,10 +1610,10 @@ int main(int argc, char **argv) {
 	g_signal_connect(G_OBJECT(add_file), "activate", G_CALLBACK(add_file_to_playlist), pargument);
 	g_signal_connect(G_OBJECT(close), "activate", G_CALLBACK(destroy), pargument);
 	g_signal_connect(G_OBJECT(treeview_library), "row-activated", G_CALLBACK(lib_row_activated), pargument);
-	g_signal_connect(G_OBJECT(treeview_library), "button-press-event", G_CALLBACK(lib_right_click), pargument);
-	g_signal_connect(G_OBJECT(treeview_artist), "button-press-event", G_CALLBACK(artist_right_click), pargument);
-	//g_signal_connect(G_OBJECT(treeview_album), "button-press-event", G_CALLBACK(album_right_click), pargument);
-	g_signal_connect(G_OBJECT(treeview_playlist), "button-press-event", G_CALLBACK(playlist_right_click), pargument);
+	g_signal_connect(G_OBJECT(treeview_library), "button-press-event", G_CALLBACK(treeviews_right_click), pargument);
+	g_signal_connect(G_OBJECT(treeview_artist), "button-press-event", G_CALLBACK(treeviews_right_click), pargument);
+	//g_signal_connect(G_OBJECT(treeview_album), "button-press-event", G_CALLBACK(treeviews_right_click), pargument);
+	g_signal_connect(G_OBJECT(treeview_playlist), "button-press-event", G_CALLBACK(treeviews_right_click), pargument);
 	g_signal_connect(G_OBJECT(treeview_playlist), "key-press-event", G_CALLBACK(playlist_del_button), pargument);
 	g_signal_connect(G_OBJECT(treeview_playlist), "row-activated", G_CALLBACK(playlist_row_activated), pargument);
 	g_signal_connect(G_OBJECT(treeview_artist), "row-activated", G_CALLBACK(artist_row_activated), pargument);

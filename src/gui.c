@@ -20,6 +20,8 @@ void tags_obtained(GstElement *playbin, gint stream, struct arguments *argument)
 }
 
 void artist_row_activated(GtkTreeView *treeview, GtkTreePath *path, GtkTreeViewColumn *column, struct arguments *argument) {
+	GtkTreeSortable *sortable = GTK_TREE_SORTABLE(argument->store_library);
+	gtk_tree_sortable_set_sort_column_id(sortable, TRACKNUMBER, GTK_SORT_ASCENDING);
 	GtkTreeModel *model_artist = gtk_tree_view_get_model(treeview);
 	GtkTreeModel *model_library = gtk_tree_view_get_model(GTK_TREE_VIEW(argument->treeview_library));
 	GtkTreeModel *model_playlist = gtk_tree_view_get_model(GTK_TREE_VIEW(argument->treeview_playlist));
@@ -82,6 +84,52 @@ void artist_row_activated(GtkTreeView *treeview, GtkTreePath *path, GtkTreeViewC
 		start_song(argument);
 	}
 }
+
+void album_row_activated(GtkTreeView *treeview, GtkTreePath *path, GtkTreeViewColumn *column, struct arguments *argument) {
+	GtkTreeSortable *sortable = GTK_TREE_SORTABLE(argument->store_library);
+	gtk_tree_sortable_set_sort_column_id(sortable, TRACKNUMBER, GTK_SORT_ASCENDING);
+	GtkTreeModel *model_album = gtk_tree_view_get_model(treeview);
+	GtkTreeModel *model_library = gtk_tree_view_get_model(GTK_TREE_VIEW(argument->treeview_library));
+	GtkTreeModel *model_playlist = gtk_tree_view_get_model(GTK_TREE_VIEW(argument->treeview_playlist));
+	gchar *songtitle;
+	gchar *songalbum;
+	gchar *temptitle;
+	gchar *tempalbum;
+	GtkTreeIter lib_iter;
+	gboolean valid;
+
+	clean_playlist(GTK_TREE_VIEW(argument->treeview_playlist), argument);
+
+	if(gtk_tree_path_get_depth(path) == 2) {
+		if(!(gtk_tree_model_get_iter(model_album, &(argument->iter_album), path))) {
+			printf("Error getting album iter!\n");
+			return;
+		}
+		gtk_tree_model_get(model_album, &(argument->iter_album), 0, &songtitle, -1);
+		gtk_tree_path_up(path);
+		gtk_tree_model_get_iter(model_album, &(argument->iter_album), path);
+		gtk_tree_model_get(model_album, &(argument->iter_album), 0, &songalbum, -1);
+		songtitle = strstr(songtitle, "  ") + 2;
+
+		add_album_to_playlist(songalbum, NULL, argument);
+	
+		play_playlist_song(songtitle, argument);
+	}
+	else if(gtk_tree_path_get_depth(path) == 1) {
+		if(!(gtk_tree_model_get_iter(model_album, &(argument->iter_album), path))) {
+			printf("Error getting album iter!\n");
+			return;
+		}
+		gtk_tree_model_get(model_album, &(argument->iter_album), 0, &songalbum, -1);
+
+		add_album_to_playlist(songalbum, NULL, argument);
+		
+		gtk_tree_model_get_iter_first(model_playlist, &argument->iter_playlist);
+
+		start_song(argument);
+	}
+}
+
 
 void playlist_row_activated(GtkTreeView *treeview, GtkTreePath *path, GtkTreeViewColumn *column, struct arguments *argument) {
 	GtkTreeModel *model_playlist = gtk_tree_view_get_model(treeview);
@@ -713,13 +761,11 @@ gboolean refresh_progressbar(gpointer pargument) {
 	
 		GtkAdjustment *adjustment;
 		if(argument->timer_delay - elapsed < -1.) {
-			/* ui_stop() */
 			reset_ui(argument);	
 			g_timer_destroy(argument->sleep_timer);
 			argument->sleep_timer = NULL;
 			gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(argument->time_checkbox), FALSE);
 		}
-			//destroy(gtk_widget_get_toplevel(argument->progressbar), argument);
 		else {
 			g_signal_handler_block(argument->time_spin, argument->time_spin_update_signal_id);
 			adjustment = gtk_spin_button_get_adjustment(GTK_SPIN_BUTTON(argument->time_spin));
@@ -860,20 +906,96 @@ void setup_tree_view_renderer_album(GtkWidget *treeview, GtkTreeStore *treestore
 	}
 }
 
-void add_artist_selection_to_playlist(GtkWidget *menuitem, struct arguments *argument) {
+void add_album_selection_to_playlist(GtkWidget *menuitem, struct arguments *argument) {
+	GtkTreeSortable *sortable = GTK_TREE_SORTABLE(argument->store_library);
+	gtk_tree_sortable_set_sort_column_id(sortable, TRACKNUMBER, GTK_SORT_ASCENDING);
 	GtkTreeModel *model;
 	GtkTreeIter iter;
 	GtkTreePath *path;
 	GtkTreeSelection *selection;
 	GList *path_list;
 	gchar *path_string;
-	GtkWidget *page = gtk_notebook_get_nth_page(GTK_NOTEBOOK(argument->libnotebook), 2);
+	GtkWidget *page = gtk_notebook_get_nth_page(GTK_NOTEBOOK(argument->libnotebook), 3);
+	GtkWidget *label = gtk_notebook_get_tab_label(GTK_NOTEBOOK(argument->libnotebook), page);
+
+	GtkTreeModel *model_playlist = gtk_tree_view_get_model(GTK_TREE_VIEW(argument->treeview_playlist));
+
+	selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(argument->treeview_album));
+
+	if((path_list = gtk_tree_selection_get_selected_rows(selection, &model))) {
+		g_signal_handler_block(model_playlist, argument->playlist_update_signal_id);
+		while(path_list) {
+			path = path_list->data;
+			GtkTreeModel *model_album= gtk_tree_view_get_model(GTK_TREE_VIEW(argument->treeview_album));
+
+			GtkTreeModel *model_library = gtk_tree_view_get_model(GTK_TREE_VIEW(argument->treeview_library));
+
+			gchar *songtitle;
+			gchar *songalbum;
+			gchar *songartist;
+			gchar *temptitle;
+			gchar *tempalbum;
+			GtkTreeIter lib_iter;
+			gboolean valid;
+			if(gtk_tree_path_get_depth(path) == 2) {
+				if(!(gtk_tree_model_get_iter(model_album, &(argument->iter_album), path))) {
+					printf("Error getting album iter!\n");
+					return;
+				}
+				gtk_tree_model_get(model_album, &(argument->iter_album), 0, &songtitle, -1);
+				gtk_tree_path_up(path);
+				gtk_tree_model_get_iter(model_album, &(argument->iter_album), path);
+				gtk_tree_model_get(model_album, &(argument->iter_album), 0, &songalbum, -1);
+				songtitle = strstr(songtitle, "  ") + 2;
+				gboolean valid;
+	
+				valid = gtk_tree_model_get_iter_first(model_library, &iter);
+				while(valid) {
+					gtk_tree_model_get(model_library, &iter, ALBUM, &tempalbum, TRACK, &temptitle, -1);
+	
+					if((!strcmp(tempalbum, songalbum)) 
+					&& (!strcmp(temptitle, songtitle))) {
+						playlist_queue(&iter, model_library, GTK_TREE_VIEW(argument->treeview_playlist), argument);
+						break;
+					}
+					valid = gtk_tree_model_iter_next(model_library, &iter);
+				}
+			}
+			else if(gtk_tree_path_get_depth(path) == 1) {
+				if(!(gtk_tree_model_get_iter(model_album, &(argument->iter_album), path))) {
+					printf("Error getting album iter!\n");
+					return;
+				}
+			
+				gtk_tree_model_get_iter(model_album, &(argument->iter_album), path);
+				gtk_tree_model_get(model_album, &(argument->iter_album), 0, &songalbum, -1);
+
+				add_album_to_playlist(songalbum, NULL, argument);
+
+				gtk_tree_model_get_iter_first(model_playlist, &argument->iter_playlist);
+			}
+			path_list = path_list->next;
+		}
+		gtk_label_set_markup(GTK_LABEL(label), "<span foreground=\"red\">Playlist</span>");
+	}
+	g_signal_handler_unblock(model_playlist, argument->playlist_update_signal_id);
+}
+
+void add_artist_selection_to_playlist(GtkWidget *menuitem, struct arguments *argument) {
+	GtkTreeSortable *sortable = GTK_TREE_SORTABLE(argument->store_library);
+	gtk_tree_sortable_set_sort_column_id(sortable, TRACKNUMBER, GTK_SORT_ASCENDING);
+	GtkTreeModel *model;
+	GtkTreeIter iter;
+	GtkTreePath *path;
+	GtkTreeSelection *selection;
+	GList *path_list;
+	gchar *path_string;
+	GtkWidget *page = gtk_notebook_get_nth_page(GTK_NOTEBOOK(argument->libnotebook), 3);
 	GtkWidget *label = gtk_notebook_get_tab_label(GTK_NOTEBOOK(argument->libnotebook), page);
 
 	GtkTreeModel *model_playlist = gtk_tree_view_get_model(GTK_TREE_VIEW(argument->treeview_playlist));
 
 	selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(argument->treeview_artist));
-	gtk_tree_view_get_model((GtkTreeView*)(argument->treeview_library));
 
 	if((path_list = gtk_tree_selection_get_selected_rows(selection, &model))) {
 		g_signal_handler_block(model_playlist, argument->playlist_update_signal_id);
@@ -1067,6 +1189,23 @@ void changed_page_notebook(GtkNotebook *notebook, GtkWidget *page, guint page_nu
 	}
 }
 
+void album_popup_menu(GtkWidget *treeview, GdkEventButton *event, struct arguments *argument) {
+	GtkWidget *menu, *item_add_to_playlist;
+
+    menu = gtk_menu_new();
+
+    item_add_to_playlist = gtk_menu_item_new_with_label("Add track(s) to playlist");
+
+    g_signal_connect(item_add_to_playlist, "activate", (GCallback)add_album_selection_to_playlist, argument);
+
+    gtk_menu_shell_append(GTK_MENU_SHELL(menu), item_add_to_playlist);
+
+    gtk_widget_show_all(menu);
+    gtk_menu_popup(GTK_MENU(menu), NULL, NULL, NULL, NULL,
+                   (event != NULL) ? event->button : 0,
+                   gdk_event_get_time((GdkEvent*)event));
+}
+
 void artist_popup_menu(GtkWidget *treeview, GdkEventButton *event, struct arguments *argument) {
 	GtkWidget *menu, *item_add_to_playlist;
 
@@ -1091,26 +1230,27 @@ gboolean treeviews_right_click(GtkWidget *treeview, GdkEventButton *event, struc
 
 		selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(treeview));
 	
-		if(gtk_tree_selection_count_selected_rows(selection) <= 1) {
-			GtkTreePath *path;
-		
-			if(gtk_tree_view_get_path_at_pos(GTK_TREE_VIEW(treeview), (gint)event->x,
-				(gint)event->y, &path, NULL, NULL, NULL)) {
+		GtkTreePath *path;
+	
+		if(!(blank = !gtk_tree_view_get_path_at_pos(GTK_TREE_VIEW(treeview), (gint)event->x,
+		(gint)event->y, &path, NULL, NULL, NULL))) {
+			if(gtk_tree_selection_count_selected_rows(selection) <= 1) {
 				gtk_tree_selection_unselect_all(selection);
 				gtk_tree_selection_select_path(selection, path);
 				gtk_tree_path_free(path);
 			}
 		}
- 		blank = !gtk_tree_view_get_path_at_pos(GTK_TREE_VIEW(treeview), (gint)event->x, (gint)event->y, NULL, NULL, NULL, NULL);
-		if((treeview == argument->treeview_playlist) 
-		&& (blank == FALSE)) {
-			playlist_popup_menu(treeview, event, argument);
+		if(blank == FALSE) {
+			if(treeview == argument->treeview_playlist)
+				playlist_popup_menu(treeview, event, argument);
+			else if(treeview == argument->treeview_artist)
+				artist_popup_menu(treeview, event, argument);
+			else if(treeview == argument->treeview_library)
+				library_popup_menu(treeview, event, argument);
+			else if(treeview == argument->treeview_album)
+				album_popup_menu(treeview, event, argument);
+			return TRUE;
 		}
-		else if(treeview == argument->treeview_artist)
-			artist_popup_menu(treeview, event, argument);
-		else if(treeview == argument->treeview_library)
-			library_popup_menu(treeview, event, argument);
-		return TRUE;
 	}
 	else
 		return FALSE;
@@ -1612,12 +1752,12 @@ int main(int argc, char **argv) {
 	g_signal_connect(G_OBJECT(treeview_library), "row-activated", G_CALLBACK(lib_row_activated), pargument);
 	g_signal_connect(G_OBJECT(treeview_library), "button-press-event", G_CALLBACK(treeviews_right_click), pargument);
 	g_signal_connect(G_OBJECT(treeview_artist), "button-press-event", G_CALLBACK(treeviews_right_click), pargument);
-	//g_signal_connect(G_OBJECT(treeview_album), "button-press-event", G_CALLBACK(treeviews_right_click), pargument);
+	g_signal_connect(G_OBJECT(treeview_album), "button-press-event", G_CALLBACK(treeviews_right_click), pargument);
 	g_signal_connect(G_OBJECT(treeview_playlist), "button-press-event", G_CALLBACK(treeviews_right_click), pargument);
 	g_signal_connect(G_OBJECT(treeview_playlist), "key-press-event", G_CALLBACK(playlist_del_button), pargument);
 	g_signal_connect(G_OBJECT(treeview_playlist), "row-activated", G_CALLBACK(playlist_row_activated), pargument);
 	g_signal_connect(G_OBJECT(treeview_artist), "row-activated", G_CALLBACK(artist_row_activated), pargument);
-	//g_signal_connect(G_OBJECT(treeview_album), "row-activated", G_CALLBACK(album_row_activated), pargument);
+	g_signal_connect(G_OBJECT(treeview_album), "row-activated", G_CALLBACK(album_row_activated), pargument);
 	g_signal_connect(G_OBJECT(time_checkbox), "toggled", G_CALLBACK(time_checkbox_toggled), pargument);
 	g_signal_connect(G_OBJECT(pargument->time_spin), "input", G_CALLBACK(time_spin_input), pargument);
 	g_signal_connect(G_OBJECT(pargument->time_spin), "output", G_CALLBACK(time_spin_output), pargument);

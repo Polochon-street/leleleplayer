@@ -63,6 +63,7 @@ struct arguments {
 	GtkTreeIter iter_playlist;
 	GtkTreeIter iter_library;
 	GtkTreeIter iter_artist;
+	GtkTreeIter iter_album;
 	GtkListStore *store_library;
 	GtkListStore *store_playlist;
 	GtkTreeStore *store_artist;
@@ -178,6 +179,7 @@ void artist_row_activated(GtkTreeView *, GtkTreePath *, GtkTreeViewColumn *, str
 * -the struct argument itself to pass to start_song(), add_album_to_playlist() and add_artist_to_playlist()
 * -the playlist iter to fill with the first song played: iter_playlist
 */
+void album_row_activated(GtkTreeView *, GtkTreePath *, GtkTreeViewColumn *, struct arguments *);
 void toggle_playpause_button(GtkWidget *, struct arguments *);
 /**
 * Description: Callback function called when the « previous » button is clicked
@@ -246,8 +248,14 @@ void toggle_random(GtkWidget *button, struct arguments *);
 void changed_page_notebook(GtkNotebook *, GtkWidget *, guint, gpointer data);
 void remove_playlist_selection_from_playlist(GtkWidget *, struct arguments *);
 void playlist_del_button(GtkWidget *, GdkEventKey *, struct arguments *);
-void treeviews_popup_menu(GtkWidget *, GdkEventButton *, struct arguments *);
+gboolean treeviews_right_click(GtkWidget *, GdkEventButton *, struct arguments *);
+void artist_popup_menu(GtkWidget *, GdkEventButton *event, struct arguments *);
+void playlist_popup_menu(GtkWidget *, GdkEventButton *event, struct arguments *);
+void library_popup_menu(GtkWidget *, GdkEventButton *event, struct arguments *);
+void album_popup_menu(GtkWidget *, GdkEventButton *event, struct arguments *);
 void add_library_selection_to_playlist(GtkWidget *, struct arguments *);
+void add_artist_selection_to_playlist(GtkWidget *, struct arguments *);
+void add_album_selection_to_playlist(GtkWidget *, struct arguments *);
 int bufferize(struct song, struct arguments *);
 float distance(struct d4vector, struct d4vector);
 void pause_song(struct arguments *);

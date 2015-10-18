@@ -73,10 +73,16 @@ gboolean add_album_to_playlist(gchar *album, gchar *artist, struct arguments *ar
 	while(valid) {
 		gtk_tree_model_get(model_library, &lib_iter, ALBUM, &tempalbum, ARTIST, &tempartist, -1);
 		
-   		if((!strcmp(tempalbum, album))
-		&& (!strcmp(tempartist, artist))) {
-			playlist_queue(&lib_iter, model_library, GTK_TREE_VIEW(argument->treeview_playlist), argument);
+		if(artist != NULL) {
+   			if((!g_strcmp0(tempalbum, album))
+			&& (!g_strcmp0(tempartist, artist))) {
+				playlist_queue(&lib_iter, model_library, GTK_TREE_VIEW(argument->treeview_playlist), argument);
+			}
 		}
+		else
+			if((!g_strcmp0(tempalbum, album)))
+				playlist_queue(&lib_iter, model_library, GTK_TREE_VIEW(argument->treeview_playlist), argument);
+
 		valid = gtk_tree_model_iter_next (model_library,
 		&lib_iter);
 	}

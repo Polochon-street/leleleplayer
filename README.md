@@ -1,6 +1,7 @@
 # leleleplayer
 Leleleplayer is a classic audio player, which comes with a home-made library that computes distance between songs, using it in order to smoothly play similar songs from your audio library.
 Handy when you don't want to bother yourself with creating a complete playlist.
+(Unstable) Windows binaries are available in the [release](https://github.com/Polochon-street/leleleplayer/releases/) tab
 
 ## Dependencies
 * ffmpeg
@@ -13,7 +14,7 @@ Handy when you don't want to bother yourself with creating a complete playlist.
 ```bash
 $ git clone https://github.com/Polochon-street/leleleplayer.git
 ```
-* go to LPlayer root directory
+* go to leleleplayer root directory
 ```bash
 $ cd leleleplayer 
 ```
@@ -31,12 +32,50 @@ $ make
 ```
 * Install the player
 ```bash
-# make install
+# make install && glib-compile-schemas /usr/share/glib-2.0/schemas
 ```
 * Launch the player
 ```bash
 $ leleleplayer
 ```
+
+## Cross-compile for windows 
+* clone repository on github
+```bash
+$ git clone https://github.com/Polochon-street/leleleplayer.git
+```
+* go to leleleplayer root directory
+```bash
+$ cd leleleplayer 
+```
+* Create and enter the build directory
+```bash
+$ mkdir build_windows && cd build_windows
+```
+* You'll now need to have proper directories in your build\_windows directory, containing mingw-obtained dlls: bin/, images/, share/, lib/ <br />
+(If you don't know how to do it, and still want to, contact me)
+* Generate the Makefile
+```bash
+$ cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE=../Windows_toolchain.cmake
+```
+* Compile the player & the analyze binaries
+```bash
+$ make
+```
+* Package the player
+```bash
+$ make package
+```
+* Patch the package
+```bash
+$ cd _CPack_Packages/win64/NSIS
+```
+* Edit project.nsi by adding SetOutPath « "$INSTDIR\bin" » before « CreateShortCut "$SMPROGRAMS\$STARTMENU\_FOLDER\Leleleplayer.lnk" "$INSTDIR\bin\leleleplayer" »
+* Package the player again
+```bash
+$ makensis project.nsi
+```
+* The windows binary is now available in build\_windows/\_CPack\_Packages/win64/NSIS/Leleleplayer-xx-win64.exe
 
 ## Usage of the analyze binary
 

@@ -25,9 +25,12 @@
 #AUR package
 #correct loading dialog box (mutex)
 #Windows directsound
-Add windows config compatibility
-add album view
-Windows package
+#Add windows config compatibility, fix bug at the end of analyze_thread
+#add album view
+#Windows package
+Make library selection at the beginning/choose between a loading dialog and no loading dialog
+Memorize volume
+make library/config file access cleaner
 split gui into more files
 nuage de points selon les genre
 add right click/add to playlist
@@ -41,3 +44,6 @@ Change playlist_queue(), without all the arguments
 add rapid scan without detection
 UI file
 correct file path (like icons/library.txt) in order to be portable
+BUGFIXES (Windows)
+crash at the naturel end of a track
+Cleaner windows package & logo

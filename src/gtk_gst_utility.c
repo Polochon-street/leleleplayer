@@ -26,10 +26,10 @@ void explore(GDir *dir, const gchar *folder, FILE *list) {
 	while((dir != NULL) && (file = g_dir_read_name(dir))) {
 		temppath = g_build_path("/", folder, file, NULL);
 		if( g_file_test(temppath, G_FILE_TEST_IS_REGULAR) && ( g_str_has_suffix(file, "flac") || g_str_has_suffix(file, "mp3") || g_str_has_suffix(file, "ogg") ) ) {
-			g_fprintf(list, "%s\n", g_build_path("/", folder, file, NULL));
+			g_fprintf(list, "%s\n", temppath);
 		}
 		else if(g_file_test(temppath, G_FILE_TEST_IS_DIR))
-			explore(g_dir_open(g_build_path("/", folder, file, NULL), 0, NULL), g_build_path("/", folder, file, NULL), list);
+			explore(g_dir_open(temppath, 0, NULL), temppath, list);
 		g_free(temppath);
 	}
 	if (file == NULL) {

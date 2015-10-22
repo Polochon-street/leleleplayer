@@ -86,25 +86,23 @@ struct arguments {
 };
 
 struct pref_arguments {
-        GtkWidget *window;
-        GtkWidget *treeview;
-		const gchar *folder;
-		gchar *lib_path;
-        GtkListStore *store_library;
-		GtkWidget *library_entry;
-		GSettings *preferences;
-};
-
-struct pref_folder_arguments {
-	gboolean terminate;
-	GAsyncQueue *msg_queue;
-	GtkWidget *progressbar, *progressdialog;
-	int nblines;
+    GtkWidget *window;
+    GtkWidget *treeview;
+    GtkWidget *treeview_artist;
+    GtkWidget *treeview_album;
+	gboolean library_set;
+	const gchar *folder;
 	int count;
-	char *line;
+	int nblines;
 	gchar *lib_path;
-	FILE *list;
-	FILE *library;
+    GtkListStore *store_library;
+    GtkTreeStore *store_album;
+    GtkTreeStore *store_artist;
+	GtkWidget *library_entry, *spinner;
+	GSettings *preferences;
+	gboolean terminate;
+	gboolean erase;
+	GAsyncQueue *msg_queue;
 };
 
 void setup_tree_view_renderer_play_lib(GtkWidget *);
@@ -120,7 +118,7 @@ void setup_tree_view_renderer_artist(GtkWidget *, GtkTreeStore *, GtkTreeModel *
 * Arguments: GtkTreeStore *treestore: the treestore associated with the TreeView
 * Arguments: GtkTreeModel *model_library: the model associated with the library treeview (NOT the artist treeview)
 */
-void setup_tree_view_renderer_artist(GtkWidget *, GtkTreeStore *, GtkTreeModel *);
+void setup_tree_view_renderer_album(GtkWidget *, GtkTreeStore *, GtkTreeModel *);
 /**
 * Description: Sets up the treeview renderer like this: album->songs
 * Arguments: GtkWidget *treeview: the TreeView to set up
@@ -235,8 +233,8 @@ void add_file_to_playlist(GtkMenuItem *open, struct arguments *);
 */
 void open_audio_file(GtkMenuItem *, struct arguments *);
 void preferences_callback(GtkMenuItem *, struct pref_arguments *);
-void analyze_thread(struct pref_folder_arguments *);
-gboolean refresh_config_progressbar(struct pref_folder_arguments *argument);
+void analyze_thread(struct pref_arguments *);
+gboolean refresh_config_progressbar(struct pref_arguments *argument);
 void state_changed(GstBus *, GstMessage *, struct arguments *);
 void slider_changed(GtkRange *, struct arguments *);
 void volume_scale_changed(GtkScaleButton*, gdouble, struct arguments *);
@@ -271,6 +269,8 @@ void playlist_queue(GtkTreeIter *, GtkTreeModel *, GtkTreeView *, struct argumen
 void get_playlist_song(GtkTreeView *, struct song *, struct arguments *);
 void clean_playlist(GtkTreeView *, struct arguments *);
 void reset_ui(struct arguments *);
+void display_album_tab(GtkWidget *, GtkTreeStore *, GtkTreeModel *);
+void display_artist_tab(GtkWidget *, GtkTreeStore *, GtkTreeModel *);
 gboolean lib_right_click(GtkWidget *, GdkEventButton *, struct arguments *);
 gboolean artist_right_click(GtkWidget *, GdkEventButton *, struct arguments *);
 gboolean playlist_right_click(GtkWidget *, GdkEventButton *, struct arguments *);

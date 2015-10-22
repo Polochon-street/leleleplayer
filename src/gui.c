@@ -229,45 +229,100 @@ void previous_buttonf(GtkWidget *button, struct arguments *argument) {
 	}
 }
 
-gboolean refresh_config_progressbar(struct pref_folder_arguments *argument) {	
+gboolean refresh_config_progressbar(struct pref_arguments *argument) {	
 	GAsyncQueue *msg_queue = argument->msg_queue;
-	gchar *msg = NULL;
+	gpointer msg = NULL;
+	GtkTreeIter iter;
 	int nblines = argument->nblines;
 	int count = argument->count;
+	gchar tempforce[17];
+	struct song *song;
+	GtkTreeModel *model_library;
+	gtk_spinner_start(GTK_SPINNER(argument->spinner));
 
 	do {
 		if((msg != NULL)) {
-			gtk_progress_bar_set_text(GTK_PROGRESS_BAR(argument->progressbar), msg);
-			count++;
-			gtk_progress_bar_set_fraction(GTK_PROGRESS_BAR(argument->progressbar), (float)count/(float)nblines);
-			g_free(msg);
-			msg = NULL;
+			song = (struct song*)msg;
+			if(song->resnum == 0)
+				strcpy(tempforce, "Loud");
+			else if(song->resnum == 1) {
+				strcpy(tempforce, "Calm");
+			}
+			else
+				strcpy(tempforce, "Can't conclude"); 
+			
+			model_library = gtk_tree_view_get_model(GTK_TREE_VIEW(argument->treeview));
+			gtk_list_store_append(argument->store_library, &iter);			
+			gtk_list_store_set(argument->store_library, &iter, PLAYING, "", TRACKNUMBER, song->tracknumber, TRACK, song->title, ALBUM, song->album, ARTIST, song->artist,
+			 FORCE, (float)song->resnum, FORCE_TEMPO, song->force_vector.x, FORCE_AMP, song->force_vector.y, FORCE_FREQ, song->force_vector.z, FORCE_ATK, song->force_vector.t, TEXTFORCE, tempforce, AFILE, song->filename, -1);
+			//display_artist_tab(argument->treeview_artist, argument->store_artist, model_library);
+			//display_album_tab(argument->treeview_album, argument->store_album, model_library);
+			lelele_free_song(msg);
+			g_free(song->filename);
+			msg = NULL; 
 		}
   	} while(((msg = g_async_queue_try_pop(msg_queue)) != NULL));
 	
 	if(argument->terminate == TRUE) {
-		gtk_dialog_response(GTK_DIALOG(argument->progressdialog), GTK_RESPONSE_NONE);
+		gtk_spinner_stop(GTK_SPINNER(argument->spinner));
+		argument->library_set = TRUE;
 		return FALSE;
 	}
 	else
 		return TRUE;
 }
 
-void analyze_thread(struct pref_folder_arguments *argument) {
-	struct song song;
-	char *msg_thread;
-	char *line = argument->line;
+void analyze_thread(struct pref_arguments *argument) {
+	GDir *dir = g_dir_open(argument->folder, 0, NULL);
+
+	int listfd;
+	FILE *list;
+	FILE *library;
+	gchar *template;
+
+	if((listfd = g_file_open_tmp("XXXXXX", &template, NULL)) == -1) {
+		g_warning("Couldn't write config file");
+		return;
+	}
+
+	list = fdopen(listfd, "w+");
+
+	if(argument->erase) {
+		if(!(library = fopen(argument->lib_path, "w"))) {
+			g_warning("Couldn't write library file");
+			return;
+		}
+	}
+	else {
+		if(!(library = fopen(argument->lib_path, "a+"))) {
+			g_warning("Couldn't write library file");
+			return;
+		}
+	}
+	
+	explore(dir, argument->folder, list);
+	int nblines = 0;
+	char line[PATH_MAX];
+	GAsyncQueue *msg_queue = g_async_queue_new();
+	argument->msg_queue = msg_queue;
+	char *msg;
+
+	fseek(list, 0, SEEK_SET);
+
+	while(fgets(line, PATH_MAX, list) != NULL)
+		nblines++;
+
+	argument->nblines = nblines;
+	fseek(list, 0, SEEK_SET);
+
+	gpointer msg_thread;
 	gchar tempstring[PATH_MAX];
-	FILE *list = argument->list;
-	FILE *library = argument->library;
 	FILE *library_read = fopen(argument->lib_path, "r");
-	GAsyncQueue *msg_queue = argument->msg_queue;
 	int resnum;
 	argument->count = 0;
 	gboolean found = FALSE;
-	song.sample_array = NULL;
-	song.title = song.artist = song.album = song.tracknumber = NULL;
 	argument->terminate = FALSE;
+
 	g_idle_add((GSourceFunc)refresh_config_progressbar, argument);
 
 	while(fgets(line, PATH_MAX, list) != NULL) {
@@ -280,23 +335,45 @@ void analyze_thread(struct pref_folder_arguments *argument) {
 			}
 		}
 		if(found == FALSE) {
+			struct song song;
+			struct song msg_song;
 			if((resnum = lelele_analyze(line, &song, 0, 1)) < 3) {
 	//		fprintf(test, "%f %f %f\n", song.force_vector.x, song.force_vector.y, song.force_vector.z);
 				fprintf(library, "%s\n%s\n%s\n%s\n%s\n%d\n%f\n%f\n%f\n%f\n", line, song.tracknumber, song.title, song.album, song.artist, resnum, song.force_vector.x,
 					song.force_vector.y, song.force_vector.z, song.force_vector.t);
-					lelele_free_song(&song);
+				msg_song = song;
+				msg_song.tracknumber = g_malloc(strlen(song.tracknumber)+1);
+				msg_song.tracknumber = strcpy(msg_song.tracknumber, song.tracknumber);
+				msg_song.title = g_malloc(strlen(song.title)+1);
+				msg_song.title = strcpy(msg_song.title, song.title);
+				msg_song.album = g_malloc(strlen(song.album)+1);
+				msg_song.album = strcpy(msg_song.album, song.album);	
+				msg_song.artist= g_malloc(strlen(song.artist)+1);
+				msg_song.artist = strcpy(msg_song.artist, song.artist);
+				msg_song.sample_array = NULL;
+				msg_song.resnum = (int)resnum;
+				msg_song.filename = g_malloc(strlen(line)+1);
+				msg_song.filename = strcpy(msg_song.filename, line);
+				g_async_queue_push(msg_queue, (gpointer)&msg_song);
+				lelele_free_song(&song);
+				//fflush(library); 
 			}
 		}
-		msg_thread = g_malloc(strlen(line)*sizeof(char) + 1);
-		strncpy(msg_thread, line, strlen(line) + 1);
-		g_async_queue_push(msg_queue, msg_thread);
 		argument->count++;
 	}
 	argument->terminate = TRUE;
+	g_async_queue_unref(msg_queue);
+	msg_queue = NULL;
+	g_close(listfd, NULL);
+	fclose(list);
+	g_remove(template);
+	fclose(library);
+	fclose(library_read);
 	//fclose(test);
 }
 
 void config_folder_changed(const gchar *folder, gchar *library_path, GtkWidget *parent, gboolean erase) {
+/*
 	GtkWidget *progressbar, *progressdialog, *area;
 	progressbar = gtk_progress_bar_new();
 	progressdialog = gtk_dialog_new();
@@ -342,6 +419,7 @@ void config_folder_changed(const gchar *folder, gchar *library_path, GtkWidget *
 	argument.progressbar = progressbar;
 	argument.progressdialog = progressdialog;
 	argument.lib_path = library_path;
+	argument.folder = folder;
 
 	fseek(list, 0, SEEK_SET);
 
@@ -349,8 +427,7 @@ void config_folder_changed(const gchar *folder, gchar *library_path, GtkWidget *
 		nblines++;
 
 	argument.nblines = nblines;
-	fseek(list, 0, SEEK_SET);
-
+	fseek(list, 0, SEEK_SET)
 	g_signal_connect(G_OBJECT(progressdialog), "delete-event", G_CALLBACK(ignore_destroy), NULL);
 
 	gtk_progress_bar_set_ellipsize(GTK_PROGRESS_BAR(progressbar), PANGO_ELLIPSIZE_END);
@@ -367,18 +444,16 @@ void config_folder_changed(const gchar *folder, gchar *library_path, GtkWidget *
 	argument.line = line;
 	argument.list = list;
 	argument.library = library;
-	
-	g_thread_new("analyze", (GThreadFunc)analyze_thread, &argument);
 
 	gtk_dialog_run(GTK_DIALOG(progressdialog));
-	gtk_widget_destroy(progressdialog);
+	gtk_widget_destroy(progressdialog);*/
 	/* WARING: can explode here */
-	g_async_queue_unref(msg_queue);
+	/*g_async_queue_unref(msg_queue);
 	msg_queue = NULL;
 	g_close(listfd, NULL);
 	fclose(list);
 	g_remove(template);
-	fclose(library);
+	fclose(library);*/
 }
 
 void folder_chooser(GtkWidget *button, struct pref_arguments *argument) {
@@ -461,14 +536,14 @@ void preferences_callback(GtkMenuItem *preferences, struct pref_arguments *argum
 		argument->folder = gtk_entry_get_text(GTK_ENTRY(library_entry));
 		g_settings_set_value(argument->preferences, "library", g_variant_new_string(argument->folder));
 		if(strcmp(old_folder, argument->folder)) {
-			config_folder_changed(argument->folder, argument->lib_path, dialog, TRUE);
+			argument->erase = TRUE;
 		}
 		else {
-			config_folder_changed(argument->folder, argument->lib_path, dialog, FALSE);
+			argument->erase = FALSE;
 		}
-		display_library(GTK_TREE_VIEW(argument->treeview), argument->store_library, argument->lib_path);
+		g_thread_new("analyze", (GThreadFunc)analyze_thread, argument);
+	//	display_library(GTK_TREE_VIEW(argument->treeview), argument->store_library, argument->lib_path);
 	}
-	g_settings_apply(argument->preferences);
 	gtk_widget_destroy(dialog); 
 	argument->window = window_temp;
 }
@@ -803,22 +878,17 @@ void volume_scale_changed(GtkScaleButton* volume_scale, gdouble value, struct ar
 	g_object_set(argument->current_song.playbin, "volume", vol, NULL);
 }
 
-void setup_tree_view_renderer_artist(GtkWidget *treeview, GtkTreeStore *treestore, GtkTreeModel *model_library) {
-	GtkCellRenderer *renderer;
-	GtkTreeViewColumn *column;
+void display_artist_tab(GtkWidget *treeview, GtkTreeStore *treestore, GtkTreeModel *model_library) {
+	gtk_tree_store_clear(treestore);
 
-	renderer = gtk_cell_renderer_text_new();
-	column = gtk_tree_view_column_new_with_attributes("Artist", renderer, "text", COLUMN_ARTIST, NULL);
-	gtk_tree_view_append_column(GTK_TREE_VIEW(treeview), column);
-	g_object_set(renderer, "size", 13*PANGO_SCALE, NULL);
-	GtkTreeIter toplevel, child, lowlevel, tempiter_artist;
+	GtkTreeIter toplevel, child, lowlevel, tempiter_artist, tempiter, tempiter2;
 	gboolean same_artists;
 	gchar *tempartist1, *tempartist2;
 	gchar *tempalbum1, *tempalbum2;
 	gchar *temptrack;
-	gchar *temptracknumber;
-
-	tempartist1 = tempartist2 = tempalbum1 = tempalbum2 = temptrack = temptracknumber = NULL;
+	gchar *temptracknumber1, *temptracknumber2;
+	GtkTreeModel *model_artist = gtk_tree_view_get_model(GTK_TREE_VIEW(treeview));
+	tempartist1 = tempartist2 = tempalbum1 = tempalbum2 = temptrack = temptracknumber1 = temptracknumber2 = NULL;
 
 	if(gtk_tree_model_get_iter_first(model_library, &tempiter_artist)) {
 		do {
@@ -851,33 +921,52 @@ void setup_tree_view_renderer_artist(GtkWidget *treeview, GtkTreeStore *treestor
 				gtk_tree_model_get(model_library, &tempiter_artist, ALBUM, &tempalbum2, -1);
 			}
 			gtk_tree_model_get(model_library, &tempiter_artist, TRACK, &temptrack, -1);
-			gtk_tree_model_get(model_library, &tempiter_artist, TRACKNUMBER, &temptracknumber, -1);
-			gchar *song = g_strconcat(temptracknumber, "  ", temptrack, NULL);
-			gtk_tree_store_append(treestore, &lowlevel, &child);
-  			gtk_tree_store_set(treestore, &lowlevel, COLUMN_ARTIST, song, -1);
+			gtk_tree_model_get(model_library, &tempiter_artist, TRACKNUMBER, &temptracknumber1, -1);
+			gchar *song = g_strconcat(temptracknumber1, "  ", temptrack, NULL);
+
+			if(gtk_tree_model_iter_children(model_artist, &tempiter, &child) == TRUE) {
+				gboolean valid = TRUE;
+				do {
+					gtk_tree_model_get(model_artist, &tempiter, COLUMN_ARTIST, &temptracknumber2, -1);
+					int i;
+					for(i = 0; temptracknumber2[i] != ' '; ++i)
+						;
+					temptracknumber2[i] = '\0';
+					if(atol(temptracknumber1) < atol(temptracknumber2)) {
+						gtk_tree_store_insert_before(treestore, &tempiter2, &child, &tempiter);
+						gtk_tree_store_set(treestore, &tempiter2, COLUMN_ARTIST, song, -1);
+						break;
+					}
+				} while((valid = gtk_tree_model_iter_next(model_artist, &tempiter)));
+				if(valid == FALSE) {
+					gtk_tree_store_append(treestore, &tempiter, &child);
+					gtk_tree_store_set(treestore, &tempiter, COLUMN_ARTIST, song, -1);
+				}
+			}	
+			else {
+				gtk_tree_store_append(treestore, &lowlevel, &child);
+				gtk_tree_store_set(treestore, &lowlevel, COLUMN_ARTIST, song, -1);
+			}
+
 			g_free(temptrack);
-			g_free(temptracknumber);
+			g_free(temptracknumber1);
+			g_free(temptracknumber2);
 			g_free(song);
-			temptrack = temptracknumber = song = NULL;
-			
+			temptrack = temptracknumber1 = temptracknumber2 = song = NULL;
 		} while(gtk_tree_model_iter_next(model_library, &tempiter_artist));
 	}
 }
 
-void setup_tree_view_renderer_album(GtkWidget *treeview, GtkTreeStore *treestore, GtkTreeModel *model_library) {
-	GtkCellRenderer *renderer;
-	GtkTreeViewColumn *column;
+void display_album_tab(GtkWidget *treeview, GtkTreeStore *treestore, GtkTreeModel *model_library) {
+	gtk_tree_store_clear(treestore);
 
-	renderer = gtk_cell_renderer_text_new();
-	column = gtk_tree_view_column_new_with_attributes("Album", renderer, "text", COLUMN_ARTIST, NULL);
-	gtk_tree_view_append_column(GTK_TREE_VIEW(treeview), column);
-	g_object_set(renderer, "size", 13*PANGO_SCALE, NULL);
-	GtkTreeIter toplevel, child, lowlevel, tempiter_album;
+	GtkTreeIter toplevel, child, lowlevel, tempiter_album, tempiter, tempiter2;
 	gchar *tempalbum1, *tempalbum2;
 	gchar *temptrack;
-	gchar *temptracknumber;
+	gchar *temptracknumber1, *temptracknumber2;
 
-	tempalbum1 = tempalbum2 = temptrack = temptracknumber = NULL;
+	GtkTreeModel *model_album = gtk_tree_view_get_model(GTK_TREE_VIEW(treeview));
+	tempalbum1 = tempalbum2 = temptrack = temptracknumber1 = temptracknumber2 = NULL;
 
 	if(gtk_tree_model_get_iter_first(model_library, &tempiter_album)) {
 		do {
@@ -894,16 +983,60 @@ void setup_tree_view_renderer_album(GtkWidget *treeview, GtkTreeStore *treestore
 				gtk_tree_model_get(model_library, &tempiter_album, ALBUM, &tempalbum2, -1);
 			}
 			gtk_tree_model_get(model_library, &tempiter_album, TRACK, &temptrack, -1);
-			gtk_tree_model_get(model_library, &tempiter_album, TRACKNUMBER, &temptracknumber, -1);
-			gchar *song = g_strconcat(temptracknumber, "  ", temptrack, NULL);
-			gtk_tree_store_append(treestore, &child, &toplevel);
-  			gtk_tree_store_set(treestore, &child, COLUMN_ARTIST, song, -1);
+			gtk_tree_model_get(model_library, &tempiter_album, TRACKNUMBER, &temptracknumber1, -1);
+			gchar *song = g_strconcat(temptracknumber1, "  ", temptrack, NULL);
+
+			if(gtk_tree_model_iter_children(model_album, &tempiter, &toplevel) == TRUE) {
+				gboolean valid = TRUE;
+				do {
+					gtk_tree_model_get(model_album, &tempiter, COLUMN_ALBUM, &temptracknumber2, -1);
+					int i;
+					for(i = 0; temptracknumber2[i] != ' '; ++i)
+						;
+					temptracknumber2[i] = '\0';
+					if(atol(temptracknumber1) < atol(temptracknumber2)) {
+						gtk_tree_store_insert_before(treestore, &tempiter2, &toplevel, &tempiter);
+						gtk_tree_store_set(treestore, &tempiter2, COLUMN_ALBUM, song, -1);
+						break;
+					}
+				} while((valid = gtk_tree_model_iter_next(model_album, &tempiter)));
+				if(valid == FALSE) {
+					gtk_tree_store_append(treestore, &tempiter, &toplevel);
+					gtk_tree_store_set(treestore, &tempiter, COLUMN_ALBUM, song, -1);
+				}
+			}	
+			else {
+				gtk_tree_store_append(treestore, &child, &toplevel);
+				gtk_tree_store_set(treestore, &child, COLUMN_ALBUM, song, -1);
+			}
+
 			g_free(temptrack);
-			g_free(temptracknumber);
+			g_free(temptracknumber1);
+			g_free(temptracknumber2);
 			g_free(song);
-			temptrack = temptracknumber = song = NULL;
+			temptrack = temptracknumber1 = temptracknumber2 = song = NULL;
 		} while(gtk_tree_model_iter_next(model_library, &tempiter_album));
 	}
+}
+
+void setup_tree_view_renderer_artist(GtkWidget *treeview, GtkTreeStore *treestore, GtkTreeModel *model_library) {
+	GtkCellRenderer *renderer;
+	GtkTreeViewColumn *column;
+
+	renderer = gtk_cell_renderer_text_new();
+	column = gtk_tree_view_column_new_with_attributes("Artist", renderer, "text", COLUMN_ARTIST, NULL);
+	gtk_tree_view_append_column(GTK_TREE_VIEW(treeview), column);
+	g_object_set(renderer, "size", 13*PANGO_SCALE, NULL);
+}
+
+void setup_tree_view_renderer_album(GtkWidget *treeview, GtkTreeStore *treestore, GtkTreeModel *model_library) {
+	GtkCellRenderer *renderer;
+	GtkTreeViewColumn *column;
+
+	renderer = gtk_cell_renderer_text_new();
+	column = gtk_tree_view_column_new_with_attributes("Album", renderer, "text", COLUMN_ARTIST, NULL);
+	gtk_tree_view_append_column(GTK_TREE_VIEW(treeview), column);
+	g_object_set(renderer, "size", 13*PANGO_SCALE, NULL);
 }
 
 void add_album_selection_to_playlist(GtkWidget *menuitem, struct arguments *argument) {
@@ -1475,10 +1608,11 @@ int main(int argc, char **argv) {
 	GtkWidget *window, *treeview_library, *treeview_playlist, *treeview_artist, *treeview_album, *library_panel, *artist_panel, *album_panel, *playlist_panel, *vboxv,
 		*playbox, *volumebox, *randombox, *repeat_button, *random_button, *lelele_button, *labelbox, *next_button, *previous_button, 
 		*menubar, *file, *filemenu, *open, *add_file, *close, *edit, *editmenu, *preferences,
-		*mediainfo_expander, *mediainfo_box, *mediainfo_labelbox, *area, *time_spin, *time_box, *time_checkbox;
+		*mediainfo_expander, *mediainfo_box, *mediainfo_labelbox, *area, *time_spin, *time_box, *time_checkbox, *analyze_spinner;
 	GtkAdjustment *time_adjust;
 	GSettingsSchema *schema;
 	GSettingsSchemaSource *schema_source;
+	gboolean library_set;
 	
 	GtkTreeModel *model_playlist;
 	GtkTreeModel *model_library;
@@ -1630,6 +1764,7 @@ int main(int argc, char **argv) {
 	gtk_tree_sortable_set_sort_column_id(sortable, ARTIST, GTK_SORT_ASCENDING);
 	setup_tree_view_renderer_artist(treeview_artist, pargument->store_artist, model_library);
 	pargument->treeview_artist = treeview_artist;
+	display_artist_tab(treeview_artist, pargument->store_artist, model_library);
 	selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(treeview_artist));
 	gtk_tree_selection_set_mode(selection, GTK_SELECTION_MULTIPLE);
 
@@ -1638,6 +1773,7 @@ int main(int argc, char **argv) {
 	gtk_tree_sortable_set_sort_column_id(sortable, ALBUM, GTK_SORT_ASCENDING);
 	setup_tree_view_renderer_album(treeview_album, pargument->store_album, model_library);
 	pargument->treeview_album = treeview_album;
+	display_album_tab(treeview_album, pargument->store_album, model_library);
 	selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(treeview_album));
 	gtk_tree_selection_set_mode(selection, GTK_SELECTION_MULTIPLE);
 
@@ -1698,8 +1834,9 @@ int main(int argc, char **argv) {
 		;
 	else
 		schema_source = g_settings_schema_source_new_from_directory("/usr/share/glib-2.0/schemas/", NULL, FALSE, NULL);
-	schema = g_settings_schema_source_lookup(schema_source, "org.leleleplayer.preferences", FALSE);
+	schema = g_settings_schema_source_lookup(schema_source, "org.gnome.leleleplayer.preferences", FALSE);
 	pref_arguments.preferences = g_settings_new_full(schema, NULL, NULL);
+	library_set = (gboolean)g_settings_get_boolean(pref_arguments.preferences, "library-set");
 	pref_arguments.lib_path = pargument->lib_path;
 	time_adjust = gtk_adjustment_new(0, 0, 86399, 30, 60, 0);
 	pargument->time_spin = gtk_spin_button_new(time_adjust, 1, 1);
@@ -1708,6 +1845,7 @@ int main(int argc, char **argv) {
 	time_checkbox = gtk_check_button_new_with_label("Enable sleep timer until ");
 	gtk_widget_set_tooltip_text(time_checkbox, "Ends the playing after a given time");
 	pargument->time_checkbox = time_checkbox;
+	analyze_spinner = gtk_spinner_new();		
 
 	file = gtk_menu_item_new_with_label("File");
 	edit = gtk_menu_item_new_with_label("Edit");
@@ -1730,7 +1868,12 @@ int main(int argc, char **argv) {
 
 	pref_arguments.window = window;
 	pref_arguments.treeview = treeview_library;
+	pref_arguments.treeview_artist = treeview_artist;
+	pref_arguments.treeview_album = treeview_album;
 	pref_arguments.store_library = pargument->store_library;
+	pref_arguments.store_artist = pargument->store_artist;
+	pref_arguments.store_album = pargument->store_album;
+	pref_arguments.spinner = analyze_spinner;
 
 	/* Signal management */
 	g_signal_connect(G_OBJECT(bus), "message::state-changed", G_CALLBACK(state_changed), pargument);
@@ -1820,12 +1963,17 @@ int main(int argc, char **argv) {
 		gtk_notebook_append_page(GTK_NOTEBOOK(pargument->libnotebook), album_panel, gtk_label_new("Albums"));
 		gtk_notebook_append_page(GTK_NOTEBOOK(pargument->libnotebook), playlist_panel, gtk_label_new("Playlist"));
 	gtk_box_pack_start(GTK_BOX(vboxv), time_box, FALSE, FALSE, 1);
+		gtk_box_pack_end(GTK_BOX(time_box), analyze_spinner, FALSE, FALSE, 5);
 		gtk_box_pack_end(GTK_BOX(time_box), pargument->time_spin, TRUE, TRUE, 5);
 		gtk_box_pack_end(GTK_BOX(time_box), time_checkbox, FALSE, FALSE, 5);
 
 	gtk_scale_button_set_value(GTK_SCALE_BUTTON(pargument->volume_scale), 0.1);
 	gtk_container_add(GTK_CONTAINER(window), vboxv);
 	gtk_widget_show_all(window);
+
+	if(library_set == FALSE) {
+		preferences_callback(GTK_MENU_ITEM(preferences), &pref_arguments);
+	}
 
 	gtk_main();
 

@@ -36,6 +36,7 @@ struct song {
 	GstState state;
 	gint64 duration;
 	gint64 current;
+	int resnum;
 	char *filename;
 	char *artist;
 	char *title;

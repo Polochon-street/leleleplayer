@@ -273,19 +273,10 @@ gboolean refresh_config_progressbar(struct pref_arguments *argument) {
 }
 
 void analyze_thread(struct pref_arguments *argument) {
-	GDir *dir = g_dir_open(argument->folder, 0, NULL);
-
-	int listfd;
-	FILE *list;
+	GList *list, *l = NULL;
 	FILE *library;
-	gchar *template;
 
-	if((listfd = g_file_open_tmp("XXXXXX", &template, NULL)) == -1) {
-		g_warning("Couldn't write config file");
-		return;
-	}
-
-	list = fdopen(listfd, "w+");
+	list = g_list_alloc();
 
 	if(argument->erase) {
 		if(!(library = fopen(argument->lib_path, "w"))) {
@@ -299,21 +290,20 @@ void analyze_thread(struct pref_arguments *argument) {
 			return;
 		}
 	}
-	
+	GDir *dir = g_dir_open(argument->folder, 0, NULL);
 	explore(dir, argument->folder, list);
+	list = list->next;
+
 	int nblines = 0;
 	char line[PATH_MAX];
 	GAsyncQueue *msg_queue = g_async_queue_new();
 	argument->msg_queue = msg_queue;
 	char *msg;
 
-	fseek(list, 0, SEEK_SET);
-
-	while(fgets(line, PATH_MAX, list) != NULL)
+	for(l = list; l != NULL; l = l->next) 
 		nblines++;
 
 	argument->nblines = nblines;
-	fseek(list, 0, SEEK_SET);
 
 	gpointer msg_thread;
 	gchar tempstring[PATH_MAX];
@@ -325,21 +315,21 @@ void analyze_thread(struct pref_arguments *argument) {
 
 	g_idle_add((GSourceFunc)refresh_config_progressbar, argument);
 
-	while(fgets(line, PATH_MAX, list) != NULL) {
-		line[strcspn(line, "\n")] = '\0';
+	for(l = list; l != NULL; l = l->next) {
+		((gchar*)l->data)[strcspn((gchar*)l->data, "\n")] = '\0';
 		rewind(library_read);
 		found = FALSE;
 		while(fgets(tempstring, PATH_MAX, library_read)) {
-			if(strstr(tempstring, line)) {	
+			if(strstr(tempstring, l->data)) {	
 				found = TRUE;
 			}
 		}
 		if(found == FALSE) {
 			struct song song;
 			struct song msg_song;
-			if((resnum = lelele_analyze(line, &song, 0, 1)) < 3) {
+			if((resnum = lelele_analyze(l->data, &song, 0, 1)) < 3) {
 	//		fprintf(test, "%f %f %f\n", song.force_vector.x, song.force_vector.y, song.force_vector.z);
-				fprintf(library, "%s\n%s\n%s\n%s\n%s\n%d\n%f\n%f\n%f\n%f\n", line, song.tracknumber, song.title, song.album, song.artist, resnum, song.force_vector.x,
+				fprintf(library, "%s\n%s\n%s\n%s\n%s\n%d\n%f\n%f\n%f\n%f\n", l->data, song.tracknumber, song.title, song.album, song.artist, resnum, song.force_vector.x,
 					song.force_vector.y, song.force_vector.z, song.force_vector.t);
 				msg_song = song;
 				msg_song.tracknumber = g_malloc(strlen(song.tracknumber)+1);
@@ -352,8 +342,8 @@ void analyze_thread(struct pref_arguments *argument) {
 				msg_song.artist = strcpy(msg_song.artist, song.artist);
 				msg_song.sample_array = NULL;
 				msg_song.resnum = (int)resnum;
-				msg_song.filename = g_malloc(strlen(line)+1);
-				msg_song.filename = strcpy(msg_song.filename, line);
+				msg_song.filename = g_malloc(strlen(l->data)+1);
+				msg_song.filename = strcpy(msg_song.filename, l->data);
 				g_async_queue_push(msg_queue, (gpointer)&msg_song);
 				lelele_free_song(&song);
 				//fflush(library); 
@@ -364,9 +354,7 @@ void analyze_thread(struct pref_arguments *argument) {
 	argument->terminate = TRUE;
 	g_async_queue_unref(msg_queue);
 	msg_queue = NULL;
-	g_close(listfd, NULL);
-	fclose(list);
-	g_remove(template);
+	g_list_free_full(list, g_free);
 	fclose(library);
 	fclose(library_read);
 	//fclose(test);
@@ -464,8 +452,9 @@ void folder_chooser(GtkWidget *button, struct pref_arguments *argument) {
 	dialog = gtk_file_chooser_dialog_new("Choose library folder", GTK_WINDOW(argument->window),
 		action, "Cancel", GTK_RESPONSE_CANCEL, "Open", GTK_RESPONSE_ACCEPT, NULL);
 
-	if(g_file_test("../images/lelele.svg", G_FILE_TEST_EXISTS))
+	if(g_file_test("../images/lelele.svg", G_FILE_TEST_EXISTS)) {
 		gtk_window_set_icon_from_file(GTK_WINDOW(dialog), "../images/lelele.svg", NULL);
+	}
 	else
 		gtk_window_set_icon_from_file(GTK_WINDOW(dialog), "/usr/share/leleleplayer/icons/lelele.svg", NULL);
 
@@ -533,7 +522,7 @@ void preferences_callback(GtkMenuItem *preferences, struct pref_arguments *argum
 	res = gtk_dialog_run(GTK_DIALOG(dialog));
 
 	if(argument->folder != NULL && res == GTK_RESPONSE_ACCEPT) {
-		argument->folder = gtk_entry_get_text(GTK_ENTRY(library_entry));
+		argument->folder = g_strdup(gtk_entry_get_text(GTK_ENTRY(library_entry)));
 		g_settings_set_value(argument->preferences, "library", g_variant_new_string(argument->folder));
 		if(strcmp(old_folder, argument->folder)) {
 			argument->erase = TRUE;
@@ -1804,7 +1793,7 @@ int main(int argc, char **argv) {
 	gtk_button_set_image(GTK_BUTTON(previous_button), gtk_image_new_from_icon_name("media-skip-backward-symbolic", GTK_ICON_SIZE_BUTTON));
 	pargument->playpause_button = gtk_button_new();
 	gtk_button_set_image(GTK_BUTTON(pargument->playpause_button), gtk_image_new_from_icon_name("media-playback-start-symbolic", GTK_ICON_SIZE_BUTTON));
-	if(g_file_test("../images/lelele.svg", G_FILE_TEST_EXISTS))
+	if(g_file_test("../images/lelele.svg", G_FILE_TEST_EXISTS)) 
 		gtk_window_set_icon_from_file(GTK_WINDOW(window), "../images/lelele.svg", NULL);
 	else
 		gtk_window_set_icon_from_file(GTK_WINDOW(window), "/usr/share/leleleplayer/icons/lelele.svg", NULL);

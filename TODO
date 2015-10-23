@@ -29,7 +29,8 @@
 #add album view
 #Windows package
 #Make library selection at the beginning/choose between a loading dialog and no loading dialog
-Check explore() function
+#Check explore() function
+Transform 1 -> 01 etc on reading
 Memorize volume
 correct display_album_tab
 make library/config file access cleaner

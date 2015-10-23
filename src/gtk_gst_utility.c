@@ -19,20 +19,21 @@ float distance(struct d4vector v1, struct d4vector v2) {
 	return distance;
 }
 
-void explore(GDir *dir, const gchar *folder, FILE *list) {
+void explore(GDir *dir, const gchar *folder, GList *list) {
 	const gchar *file;
 	gchar *temppath;
 
 	while((dir != NULL) && (file = g_dir_read_name(dir))) {
 		temppath = g_build_path("/", folder, file, NULL);
 		if( g_file_test(temppath, G_FILE_TEST_IS_REGULAR) && ( g_str_has_suffix(file, "flac") || g_str_has_suffix(file, "mp3") || g_str_has_suffix(file, "ogg") ) ) {
-			g_fprintf(list, "%s\n", temppath);
+			list = g_list_append(list, temppath);
 		}
-		else if(g_file_test(temppath, G_FILE_TEST_IS_DIR))
+		else if(g_file_test(temppath, G_FILE_TEST_IS_DIR)) {
 			explore(g_dir_open(temppath, 0, NULL), temppath, list);
-		g_free(temppath);
+			g_free(temppath);
+		}
 	}
-	if (file == NULL) {
+	if(file == NULL) {
 		g_dir_close(dir);
 	}
 }

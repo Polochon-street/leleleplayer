@@ -262,7 +262,7 @@ void resume_song(struct arguments *);
 void play_song(struct arguments *);
 void queue_song(struct arguments *);
 void free_song(struct song *);
-void explore(GDir *dir, const gchar *folder, FILE *list);
+void explore(GDir *dir, const gchar *folder, GList *list);
 void folder_chooser(GtkWidget *, struct pref_arguments *);
 void display_library(GtkTreeView *, GtkListStore *, gchar *libfile);
 void playlist_queue(GtkTreeIter *, GtkTreeModel *, GtkTreeView *, struct arguments *);

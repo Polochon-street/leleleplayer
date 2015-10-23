@@ -531,6 +531,7 @@ void preferences_callback(GtkMenuItem *preferences, struct pref_arguments *argum
 			argument->erase = FALSE;
 		}
 		g_thread_new("analyze", (GThreadFunc)analyze_thread, argument);
+		g_settings_set_boolean(argument->preferences, "library-set", TRUE);
 	//	display_library(GTK_TREE_VIEW(argument->treeview), argument->store_library, argument->lib_path);
 	}
 	gtk_widget_destroy(dialog); 

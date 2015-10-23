@@ -28,10 +28,14 @@
 #Add windows config compatibility, fix bug at the end of analyze_thread
 #add album view
 #Windows package
-Make library selection at the beginning/choose between a loading dialog and no loading dialog
+#Make library selection at the beginning/choose between a loading dialog and no loading dialog
+Check explore() function
 Memorize volume
+correct display_album_tab
 make library/config file access cleaner
+correct display_artist_tab
 split gui into more files
+Check analyze/progressive added files in library consumption 
 nuage de points selon les genre
 add right click/add to playlist
 refactor a bit

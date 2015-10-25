@@ -275,6 +275,8 @@ gboolean refresh_config_progressbar(struct pref_arguments *argument) {
 void analyze_thread(struct pref_arguments *argument) {
 	GList *list, *l = NULL;
 	FILE *library;
+	int i;
+	gchar *temptracknumber;
 
 	list = g_list_alloc();
 
@@ -327,10 +329,20 @@ void analyze_thread(struct pref_arguments *argument) {
 		if(found == FALSE) {
 			struct song song;
 			struct song msg_song;
+			int tempint;
 			if((resnum = lelele_analyze(l->data, &song, 0, 1)) < 3) {
 	//		fprintf(test, "%f %f %f\n", song.force_vector.x, song.force_vector.y, song.force_vector.z);
 				fprintf(library, "%s\n%s\n%s\n%s\n%s\n%d\n%f\n%f\n%f\n%f\n", l->data, song.tracknumber, song.title, song.album, song.artist, resnum, song.force_vector.x,
 					song.force_vector.y, song.force_vector.z, song.force_vector.t);
+				for(i = 0; (song.tracknumber[i] != '\0') && (g_ascii_isdigit(song.tracknumber[i]) == FALSE); ++i) {
+					song.tracknumber[i] = '0';
+				}
+				if(song.tracknumber[i] != '\0') {
+					tempint = strtol(song.tracknumber, NULL, 10);
+					temptracknumber = g_strdup_printf("%02d", tempint);
+					g_free(song.tracknumber);
+					song.tracknumber = temptracknumber;
+				}
 				msg_song = song;
 				msg_song.tracknumber = g_malloc(strlen(song.tracknumber)+1);
 				msg_song.tracknumber = strcpy(msg_song.tracknumber, song.tracknumber);
@@ -1513,9 +1525,7 @@ void display_library(GtkTreeView *treeview, GtkListStore *store, gchar *libfile)
 	char temptrack[PATH_MAX];
 	char tempalbum[PATH_MAX];
 	char tempartist[PATH_MAX];
-	char temptracknumber_arr[PATH_MAX];
-	gchar *temptracknumber;
-	int nbr_temptracknumber;
+	char temptracknumber[PATH_MAX];
 	char tempforce[PATH_MAX];
 	float tempforcef;
 	char tempforce_env[PATH_MAX];
@@ -1533,7 +1543,7 @@ void display_library(GtkTreeView *treeview, GtkListStore *store, gchar *libfile)
 		while(fgets(tempfile, PATH_MAX, library) != NULL) {
 			tempfile[strcspn(tempfile, "\n")] = '\0';
 
-			if(!fgets(temptracknumber_arr, PATH_MAX, library)
+			if(!fgets(temptracknumber, PATH_MAX, library)
 			|| !fgets(temptrack, PATH_MAX, library)
 			|| !fgets(tempalbum, PATH_MAX, library)
 			|| !fgets(tempartist, PATH_MAX, library)
@@ -1546,11 +1556,6 @@ void display_library(GtkTreeView *treeview, GtkListStore *store, gchar *libfile)
 				return;
 			}
 			
-			int i;
-			for(i = 0; g_ascii_isdigit(temptracknumber_arr[i]) == FALSE; ++i) {
-				temptracknumber_arr[i] = '0';
-			}
-			temptracknumber = g_strdup_printf("%02d", strtol(temptracknumber_arr, NULL, 10));
 			temptracknumber[strcspn(temptracknumber, "\n")] = '\0';
 
 			temptrack[strcspn(temptrack, "\n")] = '\0';
@@ -1584,7 +1589,6 @@ void display_library(GtkTreeView *treeview, GtkListStore *store, gchar *libfile)
 			
 			gtk_list_store_append(store, &iter);
 			gtk_list_store_set(store, &iter, PLAYING, "", TRACKNUMBER, temptracknumber, TRACK, temptrack, ALBUM, tempalbum, ARTIST, tempartist, FORCE, tempforcef, FORCE_TEMPO, tempforce_envf, FORCE_AMP, tempforce_ampf, FORCE_FREQ, tempforce_freqf, FORCE_ATK, tempforce_atkf, TEXTFORCE, tempforce, AFILE, tempfile, -1);
-			g_free(temptracknumber);
 		}
 		fclose(library);
 	}

@@ -877,7 +877,9 @@ void slider_changed(GtkRange *progressbar, struct arguments *argument) {
 
 void volume_scale_changed(GtkScaleButton* volume_scale, gdouble value, struct arguments *argument) {
 	double vol = pow(value, 3);
-	g_object_set(argument->current_song.playbin, "volume", vol, NULL);
+	argument->vol = value;
+	g_object_set(argument->current_song.playbin, "volume", argument->vol, NULL);
+	g_settings_set_double(argument->preferences, "volume", value);
 }
 
 void display_artist_tab(GtkWidget *treeview, GtkTreeStore *treestore, GtkTreeModel *model_library) {
@@ -1830,8 +1832,10 @@ int main(int argc, char **argv) {
 		schema_source = g_settings_schema_source_new_from_directory("/usr/share/glib-2.0/schemas/", NULL, FALSE, NULL);
 	schema = g_settings_schema_source_lookup(schema_source, "org.gnome.leleleplayer.preferences", FALSE);
 	pref_arguments.preferences = g_settings_new_full(schema, NULL, NULL);
-	library_set = (gboolean)g_settings_get_boolean(pref_arguments.preferences, "library-set");
+	pargument->preferences = pref_arguments.preferences;
+	library_set = g_settings_get_boolean(pref_arguments.preferences, "library-set");
 	pref_arguments.lib_path = pargument->lib_path;
+	pargument->vol = g_settings_get_double(pref_arguments.preferences, "volume");
 	time_adjust = gtk_adjustment_new(0, 0, 86399, 30, 60, 0);
 	pargument->time_spin = gtk_spin_button_new(time_adjust, 1, 1);
 	gtk_widget_set_tooltip_text(pargument->time_spin, "Ends the playing after a given time");
@@ -1961,7 +1965,7 @@ int main(int argc, char **argv) {
 		gtk_box_pack_end(GTK_BOX(time_box), pargument->time_spin, TRUE, TRUE, 5);
 		gtk_box_pack_end(GTK_BOX(time_box), time_checkbox, FALSE, FALSE, 5);
 
-	gtk_scale_button_set_value(GTK_SCALE_BUTTON(pargument->volume_scale), 0.1);
+	gtk_scale_button_set_value(GTK_SCALE_BUTTON(pargument->volume_scale), pargument->vol);
 	gtk_container_add(GTK_CONTAINER(window), vboxv);
 	gtk_widget_show_all(window);
 

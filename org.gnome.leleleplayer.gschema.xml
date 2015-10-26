@@ -14,5 +14,12 @@
 				True if the library path is set
 			</description>
 		</key>
+		<key name="volume" type="d">
+			<default>0.1</default>
+			<summary>Volume value</summary>
+			<description>
+				Saves the value of the sound volume
+			</description>
+		</key>
 	</schema>
 </schemalist>

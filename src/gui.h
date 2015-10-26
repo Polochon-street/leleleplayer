@@ -82,7 +82,9 @@ struct arguments {
 	GtkWidget *libnotebook;
 	GtkWidget *time_checkbox;
 	gdouble timer_delay;
+	gdouble vol;
 	gchar *lib_path;
+	GSettings *preferences;
 };
 
 struct pref_arguments {

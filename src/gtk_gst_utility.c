@@ -350,6 +350,39 @@ gint sort_iter_compare_func(GtkTreeModel *model, GtkTreeIter *a, GtkTreeIter *b,
 	}
 }
 
+gint sort_album_tracks(GtkTreeModel *model, GtkTreeIter *a, GtkTreeIter *b, gpointer userdata) {
+	gchar *album1, *album2;
+	gchar *track1, *track2;
+	int retval;
+
+	gtk_tree_model_get(model, a, ALBUM, &album1, -1);
+	gtk_tree_model_get(model, b, ALBUM, &album2, -1);
+	gtk_tree_model_get(model, a, TRACKNUMBER, &track1, -1);
+	gtk_tree_model_get(model, b, TRACKNUMBER, &track2, -1);
+
+
+	if(strcmp(album1, album2) > 0) {
+		retval = 1;
+	}
+	else if(strcmp(album1, album2) < 0)
+		retval = -1;
+	else {
+		if(atof(track1) > atof(track2) > 0)
+			retval = 1;
+		else if(atof(track1) < atof(track2))
+			retval = -1;
+		else 
+			retval = 0;
+	}
+
+	g_free(album1);
+	g_free(album2);
+	g_free(track1);
+	g_free(track2);
+	
+	return retval;
+}
+
 gint sort_artist_album_tracks(GtkTreeModel *model, GtkTreeIter *a, GtkTreeIter *b, gpointer userdata) {
 	gchar *artist1, *artist2;
 	gchar *album1, *album2;
@@ -389,6 +422,23 @@ gint sort_artist_album_tracks(GtkTreeModel *model, GtkTreeIter *a, GtkTreeIter *
 	g_free(album2);
 	g_free(track1);
 	g_free(track2);
+	
+	return retval;
+}
+
+gint sort_text(GtkTreeModel *model, GtkTreeIter *a, GtkTreeIter *b, gpointer userdata) {
+	gint retval;
+	gchar *string1, *string2;
+
+	gtk_tree_model_get(model, a, 0, &string1, -1);	
+	gtk_tree_model_get(model, b, 0, &string2, -1);
+	
+	if(strcmp(string1, string2) > 0)
+		retval = 1;
+	else if(strcmp(string1, string2) < 0)
+		retval = -1;
+	else
+		retval = 0;
 	
 	return retval;
 }

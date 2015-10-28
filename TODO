@@ -30,9 +30,9 @@
 #Windows package
 #Make library selection at the beginning/choose between a loading dialog and no loading dialog
 #Check explore() function
-Transform 1 -> 01 etc on reading
-Memorize volume
-correct display_album_tab
+#Transform 1 -> 01 etc on reading
+#Memorize volume
+#correct display_album_tab
 make library/config file access cleaner
 correct display_artist_tab
 split gui into more files
@@ -52,3 +52,4 @@ correct file path (like icons/library.txt) in order to be portable
 BUGFIXES (Windows)
 crash at the naturel end of a track
 Cleaner windows package & logo
+Check memory leaks

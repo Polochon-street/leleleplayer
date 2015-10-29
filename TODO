@@ -32,9 +32,10 @@
 #Check explore() function
 #Transform 1 -> 01 etc on reading
 #Memorize volume
+#correct display_artist_tab
+#make library/config file access cleaner
 #correct display_album_tab
-make library/config file access cleaner
-correct display_artist_tab
+correct reset_ui() lock at the end of the playlist
 split gui into more files
 Check analyze/progressive added files in library consumption 
 nuage de points selon les genre

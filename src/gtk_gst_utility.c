@@ -212,7 +212,7 @@ gboolean get_lelelerandom_playlist_song(GtkTreeView *treeview_playlist, struct a
 
 	model_playlist = gtk_tree_view_get_model(GTK_TREE_VIEW(argument->treeview_playlist));
 	struct d4vector current_force = argument->current_song.force_vector;
-	float treshold = 0.45;
+	float treshold = 0.20;
 	int i = 0;
 	do {
 		treshold += 0.001;
@@ -221,6 +221,8 @@ gboolean get_lelelerandom_playlist_song(GtkTreeView *treeview_playlist, struct a
 		gtk_tree_model_get(model_playlist, &(argument->iter_playlist), FORCE_TEMPO, &argument->current_song.force_vector.x, 
 		FORCE_AMP, &argument->current_song.force_vector.y, FORCE_FREQ, &argument->current_song.force_vector.z, 
 		FORCE_ATK, &argument->current_song.force_vector.t, -1);
+		argument->current_song.force_vector.t = current_force.t = 0;
+		argument->current_song.force_vector.x = current_force.x = 0;
 	} while(distance(current_force, argument->current_song.force_vector) >= treshold);
 	return TRUE;
 }

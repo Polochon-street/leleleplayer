@@ -274,6 +274,7 @@ void reset_ui(struct arguments *);
 void display_album_tab(GtkWidget *, GtkTreeStore *, GtkTreeModel *);
 void display_artist_tab(GtkWidget *, GtkTreeStore *, GtkTreeModel *);
 void add_entry_artist_tab(GtkWidget *treeview, GtkTreeStore *treestore, GtkTreeModel *model_library, GtkTreeIter *);
+void add_entry_album_tab(GtkWidget *treeview, GtkTreeStore *treestore, GtkTreeModel *model_library, GtkTreeIter *);
 gboolean lib_right_click(GtkWidget *, GdkEventButton *, struct arguments *);
 gboolean artist_right_click(GtkWidget *, GdkEventButton *, struct arguments *);
 gboolean playlist_right_click(GtkWidget *, GdkEventButton *, struct arguments *);

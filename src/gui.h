@@ -242,6 +242,7 @@ void slider_changed(GtkRange *, struct arguments *);
 void volume_scale_changed(GtkScaleButton*, gdouble, struct arguments *);
 void refresh_ui(GstBus *, GstMessage *, struct arguments *);
 void refresh_ui_mediainfo(GstBus *, GstMessage *, struct arguments *);
+void end_of_playlist(GstBus *, GstMessage *, struct arguments *);
 void ui_playlist_changed(GtkTreeModel *, GtkTreePath *, GtkTreeIter *, GtkNotebook *);
 void toggle_lelele(GtkWidget *button, struct arguments *);
 void toggle_random(GtkWidget *button, struct arguments *);

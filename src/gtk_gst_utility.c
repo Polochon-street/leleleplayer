@@ -243,7 +243,7 @@ gboolean get_previous_playlist_song(GtkTreeView *treeview_playlist, struct argum
 
 void clean_playlist(GtkTreeView *treeview_playlist, struct arguments *argument) {
 	gtk_list_store_clear(argument->store_playlist);
-	argument->playlist_count = 0;	
+	argument->playlist_count = 0;
 }
 
 void continue_track(GstElement *playbin, struct arguments *argument) {
@@ -258,10 +258,11 @@ void continue_track(GstElement *playbin, struct arguments *argument) {
 	g_cond_wait(&argument->queue_cond, &argument->queue_mutex);
 	g_mutex_unlock(&argument->queue_mutex);
 
-	uri = g_filename_to_uri(argument->current_song.filename, NULL, NULL);
-	g_object_set(argument->current_song.playbin, "uri", uri, NULL);
-	g_free(uri); 
-
+	if(argument->current_song.filename) {
+		uri = g_filename_to_uri(argument->current_song.filename, NULL, NULL);
+		g_object_set(argument->current_song.playbin, "uri", uri, NULL);
+		g_free(uri);
+	}
 	// TODO: Wait until message_application ends!
 }
 

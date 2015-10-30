@@ -670,7 +670,6 @@ void reset_ui(struct arguments *argument) {
 
 	gtk_button_set_image(GTK_BUTTON(argument->playpause_button), gtk_image_new_from_icon_name("media-playback-start-symbolic", GTK_ICON_SIZE_BUTTON));
 	gtk_list_store_set(argument->store_playlist, &(argument->iter_playlist), PLAYING, "", -1);
-	gst_element_set_state(argument->current_song.playbin, GST_STATE_NULL);
 
 	if(argument->bartag)
 		g_source_remove(argument->bartag);
@@ -693,6 +692,10 @@ void reset_ui(struct arguments *argument) {
 	gtk_label_set_text(GTK_LABEL(argument->bitrate_label), "Bitrate:");
 	gtk_label_set_text(GTK_LABEL(argument->channels_label), "Channels:");
 
+}
+
+void end_of_playlist(GstBus *bus, GstMessage *msg, struct arguments *argument) {
+	reset_ui(argument);
 }
 
 void refresh_ui(GstBus *bus, GstMessage *msg, struct arguments *argument) {
@@ -823,8 +826,10 @@ void message_application(GstBus *bus, GstMessage *msg, struct arguments *argumen
 				FORCE_ATK, &argument->current_song.force_vector.t, -1);
 				g_mutex_lock(&argument->queue_mutex);
 			}
-			else
-				reset_ui(argument);			
+			else {
+				argument->current_song.filename = NULL;
+				g_mutex_lock(&argument->queue_mutex);
+			}
 		}
 		g_cond_signal(&argument->queue_cond);
 		g_mutex_unlock(&argument->queue_mutex);
@@ -844,6 +849,7 @@ gboolean refresh_progressbar(gpointer pargument) {
 	
 		GtkAdjustment *adjustment;
 		if(argument->timer_delay - elapsed < -1.) {
+			gst_element_set_state(argument->current_song.playbin, GST_STATE_NULL);
 			reset_ui(argument);	
 			g_timer_destroy(argument->sleep_timer);
 			argument->sleep_timer = NULL;
@@ -1649,6 +1655,10 @@ void display_library(GtkTreeView *treeview, GtkListStore *store, gchar *libfile)
 	}
 }
 
+void dummy(void) {
+	printf("coucou\n");
+}
+
 int main(int argc, char **argv) {
 	struct arguments argument;
 	struct arguments *pargument = &argument;
@@ -1726,7 +1736,7 @@ int main(int argc, char **argv) {
 	bus = gst_element_get_bus(pargument->current_song.playbin);
 	gst_bus_add_signal_watch(bus);
 
-/*	if((gtk_sink = gst_element_factory_make("gtkglsink", NULL))) {
+	/*if((gtk_sink = gst_element_factory_make("gtkglsink", NULL))) {
 		GstElement *video_sink;
 
 		g_object_get(gtk_sink, "widget", &area, NULL);
@@ -1776,7 +1786,7 @@ int main(int argc, char **argv) {
 	flags |= (1 << 3);
 	g_object_set(pargument->current_song.playbin, "flags", flags, NULL);
 	g_object_set(pargument->current_song.playbin, "vis-plugin", vis_plugin, NULL);
-	g_object_set(pargument->current_song.playbin, "force-aspect-ratio", FALSE, NULL);*/
+	g_object_set(pargument->current_song.playbin, "force-aspect-ratio", FALSE, NULL); */
 
 
 	library_panel = gtk_scrolled_window_new(NULL, NULL);
@@ -1936,6 +1946,7 @@ int main(int argc, char **argv) {
 	g_signal_connect(G_OBJECT(bus), "message::state-changed", G_CALLBACK(state_changed), pargument);
 	g_signal_connect(G_OBJECT(pargument->current_song.playbin), "about-to-finish", G_CALLBACK(continue_track), pargument);
 	g_signal_connect(G_OBJECT(bus), "message::stream-start", G_CALLBACK(refresh_ui), pargument);
+	g_signal_connect(G_OBJECT(bus), "message::eos", G_CALLBACK(end_of_playlist), pargument);
 	g_signal_connect(G_OBJECT(bus), "message::application", G_CALLBACK(message_application), pargument);
 	g_signal_connect(G_OBJECT(pargument->current_song.playbin), "audio-tags-changed", G_CALLBACK(tags_obtained), pargument);
 	g_signal_connect(G_OBJECT(pargument->playpause_button), "clicked", G_CALLBACK(toggle_playpause_button), pargument);

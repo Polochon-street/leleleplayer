@@ -246,7 +246,7 @@ void clean_playlist(GtkTreeView *treeview_playlist, struct arguments *argument) 
 	argument->playlist_count = 0;
 }
 
-void continue_track(GstElement *playbin, struct arguments *argument) {
+void continue_track_cb(GstElement *playbin, struct arguments *argument) {
 	GstStructure *structure;	
 	gchar *uri;	
 
@@ -322,7 +322,7 @@ void resume_song(struct arguments *argument) {
 	gst_element_set_state(argument->current_song.playbin, GST_STATE_PLAYING);
 }
 
-void state_changed(GstBus *bus, GstMessage *msg, struct arguments *argument) {
+void state_changed_cb(GstBus *bus, GstMessage *msg, struct arguments *argument) {
 	GstState old_state, new_state, pending_state;
 
 	if(GST_MESSAGE_SRC(msg) == GST_OBJECT(argument->current_song.playbin)) {

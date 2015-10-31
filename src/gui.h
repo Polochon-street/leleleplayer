@@ -294,4 +294,5 @@ gint sort_text(GtkTreeModel *, GtkTreeIter *, GtkTreeIter *, gpointer);
 gint time_spin_output_cb(GtkSpinButton *, struct arguments *);
 gint time_spin_input_cb(GtkSpinButton *, gdouble *, struct arguments *);
 void time_spin_changed_cb(GtkSpinButton *, struct arguments *);
+void toggle_playpause(struct arguments *);
 gboolean lib_right_click(GtkWidget *, GdkEventButton *, struct arguments *);

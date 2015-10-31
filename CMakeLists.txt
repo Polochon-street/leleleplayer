@@ -20,7 +20,7 @@ ADD_LIBRARY(lelele src/amp_sort.c src/decode.c src/envelope.c src/freq_sort.c sr
 target_link_libraries(lelele ${MULTIMEDIA_LIBRARIES})
 
 add_executable(analyze src/gui_dummy.c)
-add_executable(leleleplayer WIN32 src/gui.c src/gtk_gst_utility.c) 
+add_executable(leleleplayer WIN32 src/gui.c src/callbacks.c src/gtk_gst_utility.c) 
 target_link_libraries(leleleplayer ${GTK_LIBRARIES})
 
 foreach(EXE analyze leleleplayer)

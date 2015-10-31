@@ -127,7 +127,7 @@ void setup_tree_view_renderer_album(GtkWidget *, GtkTreeStore *, GtkTreeModel *)
 * Arguments: GtkTreeStore *treestore: the treestore associated with the TreeView
 * Arguments: GtkTreeModel *model_library: the model associated with the library treeview (NOT the artist treeview)
 */
-void continue_track(GstElement *, struct arguments *);
+void continue_track_cb(GstElement *, struct arguments *);
 /**
 * Description: Queue next playlist song, and don't play it immediately: useful for gapless
 * Arguments: struct arguments *argument: the global argument struct containing:
@@ -145,7 +145,7 @@ gboolean refresh_progressbar(gpointer);
 * -the progressbar widget: progressbar
 * -the playbin, in order to get the time elapsed in the song: playbin
 */
-void lib_row_activated(GtkTreeView *, GtkTreePath *, GtkTreeViewColumn *, struct arguments *);
+void lib_row_activated_cb(GtkTreeView *, GtkTreePath *, GtkTreeViewColumn *, struct arguments *);
 /**
 * Description: Callback function called when the user selects (double-click/enter) a song in the library
 * Arguments: GtkTreeView *treeview: the library treeview
@@ -156,7 +156,7 @@ void lib_row_activated(GtkTreeView *, GtkTreePath *, GtkTreeViewColumn *, struct
 * -an history of played songs: history
 * -the struct argument itself to pass to start_song()
 */
-void playlist_row_activated(GtkTreeView *, GtkTreePath *, GtkTreeViewColumn *, struct arguments *);
+void playlist_row_activated_cb(GtkTreeView *, GtkTreePath *, GtkTreeViewColumn *, struct arguments *);
 /**
 * Description: Callback function called when the user selects (double-click/enter) a song in the playlist
 * Arguments: GtkTreeView *treeview: the playlist treeview
@@ -166,7 +166,7 @@ void playlist_row_activated(GtkTreeView *, GtkTreePath *, GtkTreeViewColumn *, s
 * -the playlist iter to fill with the selected iter: iter_playlist
 * -the struct argument itself to pass to start_song()
 */
-void artist_row_activated(GtkTreeView *, GtkTreePath *, GtkTreeViewColumn *, struct arguments *);
+void artist_row_activated_cb(GtkTreeView *, GtkTreePath *, GtkTreeViewColumn *, struct arguments *);
 /** 
 * Description: Callback function called when the user selects (double-click/enter) a song in the « artist » tab
 * Arguments: GtkTreeview *treeview: the artist treeview
@@ -179,8 +179,8 @@ void artist_row_activated(GtkTreeView *, GtkTreePath *, GtkTreeViewColumn *, str
 * -the struct argument itself to pass to start_song(), add_album_to_playlist() and add_artist_to_playlist()
 * -the playlist iter to fill with the first song played: iter_playlist
 */
-void album_row_activated(GtkTreeView *, GtkTreePath *, GtkTreeViewColumn *, struct arguments *);
-void toggle_playpause_button(GtkWidget *, struct arguments *);
+void album_row_activated_cb(GtkTreeView *, GtkTreePath *, GtkTreeViewColumn *, struct arguments *);
+void toggle_playpause_button_cb(GtkWidget *, struct arguments *);
 /**
 * Description: Callback function called when the « previous » button is clicked
 * Arguments: GtkWidget *button: useless
@@ -191,7 +191,7 @@ void toggle_playpause_button(GtkWidget *, struct arguments *);
 * -the current song struct, in order to free it and reallocate it
 * -the struct argument istelf to pass to start_song()
 */
-void next_buttonf(GtkWidget *, struct arguments *);
+void next_buttonf_cb(GtkWidget *, struct arguments *);
 /**
 * Description: Callback function called when the « previous » button is clicked
 * Arguments: GtkWidget *button: useless
@@ -200,19 +200,13 @@ void next_buttonf(GtkWidget *, struct arguments *);
 * -the current song struct, in order to free it and reallocate it
 * -the struct argument itself to pass to start_song() and get_next_playlist_song()
 */
-void previous_buttonf(GtkWidget *, struct arguments *);
+void previous_buttonf_cb(GtkWidget *, struct arguments *);
 /**
 * Description: Callback function called when trying to quit the player
 * Arguments: struct arguments *argument: the global argument struct containing:
 * -the playbin, in order to set its state to NULL, which is necessary when quitting: current_song.playbin
 */
-void destroy(GtkWidget *, struct arguments *);
-/**
-* Description: Configuration window triggered by the callback « preferences_callback »
-* Arguments: char *folder: The music library location string
-* Arguments: GtkWidget *parent: the parent window, used in order to create a GtkDialog
-*/
-void config_folder_changed(const gchar *, gchar *, GtkWidget *, gboolean erase);
+void destroy_cb(GtkWidget *, struct arguments *);
 /**
 * Description: Callback function called when the « file->add file to playlist » button is clicked: adds an audio file to the playlist
 * Arguments: GtkMenuItem *add_file: the button, used for getting the toplevel window for gtk_file_chooser_dialog_new()
@@ -223,7 +217,7 @@ void config_folder_changed(const gchar *, gchar *, GtkWidget *, gboolean erase);
 * -playlist_count: the playlist count to increment for each song
 * Arguments: gboolean erase: boolean in order ton know if the library folder has changed and must be erased or not
 */
-void add_file_to_playlist(GtkMenuItem *open, struct arguments *);
+void add_file_to_playlist_cb(GtkMenuItem *open, struct arguments *);
 /**
 * Description: Callback function called when the « file->Open... » button is clicked: plays an audio file 
 * Arguments: GtkMenuItem *open: the button, used for getting the toplevel window for gtk_file_chooser_dialog_new()
@@ -233,30 +227,33 @@ void add_file_to_playlist(GtkMenuItem *open, struct arguments *);
 * -store_playlist: the playlist GtkTreeStore, used to set the struct song variables
 * -playlist_count: the playlist count to increment
 */
-void open_audio_file(GtkMenuItem *, struct arguments *);
-void preferences_callback(GtkMenuItem *, struct pref_arguments *);
+void open_audio_file_cb(GtkMenuItem *, struct arguments *);
+void preferences_callback_cb(GtkMenuItem *, struct pref_arguments *);
 void analyze_thread(struct pref_arguments *);
 gboolean refresh_config_progressbar(struct pref_arguments *argument);
-void state_changed(GstBus *, GstMessage *, struct arguments *);
-void slider_changed(GtkRange *, struct arguments *);
-void volume_scale_changed(GtkScaleButton*, gdouble, struct arguments *);
-void refresh_ui(GstBus *, GstMessage *, struct arguments *);
+void state_changed_cb(GstBus *, GstMessage *, struct arguments *);
+void slider_changed_cb(GtkRange *, struct arguments *);
+void message_application_cb(GstBus *, GstMessage *, struct arguments *);
+void tags_obtained_cb(GstElement *, gint, struct arguments *);
+void volume_scale_changed_cb(GtkScaleButton*, gdouble, struct arguments *);
+void refresh_ui_cb(GstBus *, GstMessage *, struct arguments *);
 void refresh_ui_mediainfo(GstBus *, GstMessage *, struct arguments *);
-void end_of_playlist(GstBus *, GstMessage *, struct arguments *);
-void ui_playlist_changed(GtkTreeModel *, GtkTreePath *, GtkTreeIter *, GtkNotebook *);
-void toggle_lelele(GtkWidget *button, struct arguments *);
-void toggle_random(GtkWidget *button, struct arguments *);
-void changed_page_notebook(GtkNotebook *, GtkWidget *, guint, gpointer data);
-void remove_playlist_selection_from_playlist(GtkWidget *, struct arguments *);
-void playlist_del_button(GtkWidget *, GdkEventKey *, struct arguments *);
-gboolean treeviews_right_click(GtkWidget *, GdkEventButton *, struct arguments *);
+void end_of_playlist_cb(GstBus *, GstMessage *, struct arguments *);
+void ui_playlist_changed_cb(GtkTreeModel *, GtkTreePath *, GtkTreeIter *, GtkNotebook *);
+void toggle_lelele_cb(GtkWidget *button, struct arguments *);
+void toggle_repeat_cb(GtkWidget *button, struct arguments *);
+void toggle_random_cb(GtkWidget *button, struct arguments *);
+void changed_page_notebook_cb(GtkNotebook *, GtkWidget *, guint, gpointer data);
+void remove_playlist_selection_from_playlist_cb(GtkWidget *, struct arguments *);
+void playlist_del_button_cb(GtkWidget *, GdkEventKey *, struct arguments *);
+gboolean treeviews_right_click_cb(GtkWidget *, GdkEventButton *, struct arguments *);
 void artist_popup_menu(GtkWidget *, GdkEventButton *event, struct arguments *);
 void playlist_popup_menu(GtkWidget *, GdkEventButton *event, struct arguments *);
 void library_popup_menu(GtkWidget *, GdkEventButton *event, struct arguments *);
 void album_popup_menu(GtkWidget *, GdkEventButton *event, struct arguments *);
-void add_library_selection_to_playlist(GtkWidget *, struct arguments *);
-void add_artist_selection_to_playlist(GtkWidget *, struct arguments *);
-void add_album_selection_to_playlist(GtkWidget *, struct arguments *);
+void add_library_selection_to_playlist_cb(GtkWidget *, struct arguments *);
+void add_artist_selection_to_playlist_cb(GtkWidget *, struct arguments *);
+void add_album_selection_to_playlist_cb(GtkWidget *, struct arguments *);
 int bufferize(struct song, struct arguments *);
 float distance(struct d4vector, struct d4vector);
 void pause_song(struct arguments *);
@@ -266,7 +263,7 @@ void play_song(struct arguments *);
 void queue_song(struct arguments *);
 void free_song(struct song *);
 void explore(GDir *dir, const gchar *folder, GList *list);
-void folder_chooser(GtkWidget *, struct pref_arguments *);
+void folder_chooser_cb(GtkWidget *, struct pref_arguments *);
 void display_library(GtkTreeView *, GtkListStore *, gchar *libfile);
 void playlist_queue(GtkTreeIter *, GtkTreeModel *, GtkTreeView *, struct arguments *);
 void get_playlist_song(GtkTreeView *, struct song *, struct arguments *);
@@ -276,6 +273,7 @@ void display_album_tab(GtkWidget *, GtkTreeStore *, GtkTreeModel *);
 void display_artist_tab(GtkWidget *, GtkTreeStore *, GtkTreeModel *);
 void add_entry_artist_tab(GtkWidget *treeview, GtkTreeStore *treestore, GtkTreeModel *model_library, GtkTreeIter *);
 void add_entry_album_tab(GtkWidget *treeview, GtkTreeStore *treestore, GtkTreeModel *model_library, GtkTreeIter *);
+void time_checkbox_toggled_cb(GtkToggleButton *, struct arguments *);
 gboolean lib_right_click(GtkWidget *, GdkEventButton *, struct arguments *);
 gboolean artist_right_click(GtkWidget *, GdkEventButton *, struct arguments *);
 gboolean playlist_right_click(GtkWidget *, GdkEventButton *, struct arguments *);
@@ -293,7 +291,7 @@ gint sort_artist_album_tracks(GtkTreeModel *, GtkTreeIter *, GtkTreeIter *, gpoi
 gint sort_album_tracks(GtkTreeModel *, GtkTreeIter *, GtkTreeIter *, gpointer);
 gint sort_force(GtkTreeModel *, GtkTreeIter *, GtkTreeIter *, gpointer);
 gint sort_text(GtkTreeModel *, GtkTreeIter *, GtkTreeIter *, gpointer);
-gint time_spin_output(GtkSpinButton *, struct arguments *);
-gint time_spin_input(GtkSpinButton *, gdouble *, struct arguments *);
-void time_spin_changed(GtkSpinButton *, struct arguments *);
+gint time_spin_output_cb(GtkSpinButton *, struct arguments *);
+gint time_spin_input_cb(GtkSpinButton *, gdouble *, struct arguments *);
+void time_spin_changed_cb(GtkSpinButton *, struct arguments *);
 gboolean lib_right_click(GtkWidget *, GdkEventButton *, struct arguments *);

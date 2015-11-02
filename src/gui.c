@@ -105,15 +105,15 @@ void analyze_thread(struct pref_arguments *argument) {
 		rewind(library_read);
 		found = FALSE;
 		while(fgets(tempstring, PATH_MAX, library_read)) {
-			if(strstr(tempstring, l->data)) {	
-				found = TRUE;
+			if(strstr(tempstring, l->data)) {
+				found == TRUE;
 			}
 		}
 		if(found == FALSE) {
 			struct song song;
 			struct song msg_song;
 			int tempint;
-			if((resnum = lelele_analyze(l->data, &song, 0, 1)) < 3) {
+			if((resnum = lelele_analyze(l->data, &song, 0, argument->lelele_scan)) < 3) {
 				for(i = 0; (song.tracknumber[i] != '\0') && (g_ascii_isdigit(song.tracknumber[i]) == FALSE); ++i)
 					song.tracknumber[i] = '0';
 				if(song.tracknumber[i] != '\0') {
@@ -874,6 +874,7 @@ int main(int argc, char **argv) {
 	pref_arguments.preferences = g_settings_new_full(schema, NULL, NULL);
 	pargument->preferences = pref_arguments.preferences;
 	library_set = g_settings_get_boolean(pref_arguments.preferences, "library-set");
+	pref_arguments.lelele_scan = g_settings_get_boolean(pref_arguments.preferences, "lelele-scan");
 	pref_arguments.lib_path = pargument->lib_path;
 	pargument->vol = g_settings_get_double(pref_arguments.preferences, "volume");
 	time_adjust = gtk_adjustment_new(0, 0, 86399, 30, 60, 0);

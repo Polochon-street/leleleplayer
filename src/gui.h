@@ -93,6 +93,7 @@ struct pref_arguments {
     GtkWidget *treeview_artist;
     GtkWidget *treeview_album;
 	gboolean library_set;
+	gboolean lelele_scan;
 	const gchar *folder;
 	int count;
 	int nblines;
@@ -243,6 +244,7 @@ void ui_playlist_changed_cb(GtkTreeModel *, GtkTreePath *, GtkTreeIter *, GtkNot
 void toggle_lelele_cb(GtkWidget *button, struct arguments *);
 void toggle_repeat_cb(GtkWidget *button, struct arguments *);
 void toggle_random_cb(GtkWidget *button, struct arguments *);
+void toggle_lelelescan_cb(GtkWidget *button, struct pref_arguments *);
 void changed_page_notebook_cb(GtkNotebook *, GtkWidget *, guint, gpointer data);
 void remove_playlist_selection_from_playlist_cb(GtkWidget *, struct arguments *);
 void playlist_del_button_cb(GtkWidget *, GdkEventKey *, struct arguments *);

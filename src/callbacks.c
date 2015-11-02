@@ -159,6 +159,10 @@ void toggle_random_cb(GtkWidget *button, struct arguments *argument) {
 	argument->random = (argument->random == 1 ? 0 : 1);
 }
 
+void toggle_lelelescan_cb(GtkWidget *button, struct pref_arguments *argument) {
+	argument->lelele_scan = (argument->lelele_scan == 1 ? 0 : 1);
+	g_settings_set_boolean(argument->preferences, "lelele-scan", argument->lelele_scan);
+}
 void toggle_lelele_cb(GtkWidget *button, struct arguments *argument) {
 	argument->lelelerandom = (argument->lelelerandom == 1 ? 0 : 1);
 }
@@ -268,10 +272,13 @@ void preferences_callback_cb(GtkMenuItem *preferences, struct pref_arguments *ar
 
 	area = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
 	complete_box = gtk_check_button_new_with_label("LeleleScan (complete but longer) (not functionnal now)");
+
+	gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(complete_box), argument->lelele_scan);
 	gtk_window_set_default_size(GTK_WINDOW(dialog), 500, 100);
 	gtk_window_set_resizable(GTK_WINDOW(dialog), FALSE);
 
 	g_signal_connect(G_OBJECT(browse_button), "clicked", G_CALLBACK(folder_chooser_cb), argument);
+	g_signal_connect(G_OBJECT(complete_box), "toggled", G_CALLBACK(toggle_lelelescan_cb), argument);
 	argument->library_entry = library_entry;
 	window_temp = argument->window;
 	argument->window = dialog;

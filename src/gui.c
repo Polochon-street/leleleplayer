@@ -47,6 +47,8 @@ gboolean refresh_config_progressbar(struct pref_arguments *argument) {
   	} while(((msg = g_async_queue_try_pop(msg_queue)) != NULL));
 	
 	if(argument->terminate == TRUE) {
+		g_async_queue_unref(msg_queue);
+		msg_queue = NULL;
 		gtk_spinner_stop(GTK_SPINNER(argument->spinner));
 		argument->library_set = TRUE;
 		return FALSE;
@@ -147,8 +149,6 @@ void analyze_thread(struct pref_arguments *argument) {
 		argument->count++;
 	}
 	argument->terminate = TRUE;
-	g_async_queue_unref(msg_queue);
-	msg_queue = NULL;
 	g_list_free_full(list, g_free);
 	fclose(library);
 	fclose(library_read);

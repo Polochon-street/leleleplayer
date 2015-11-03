@@ -14,6 +14,13 @@
 				True if the library path is set
 			</description>
 		</key>
+		<key name="lelele-scan" type="b">
+			<default>true</default>
+			<summary>Analyze the whole library</summary>
+			<description>
+				True if the song scan should analyze the library
+			</description>
+		</key>
 		<key name="volume" type="d">
 			<default>0.1</default>
 			<summary>Volume value</summary>

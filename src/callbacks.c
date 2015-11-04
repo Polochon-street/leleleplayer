@@ -543,7 +543,7 @@ void message_application_cb(GstBus *bus, GstMessage *msg, struct arguments *argu
 	}
 	else if(!strcmp(gst_structure_get_name(structure), "next_song")) {
 		GtkTreeModel *model_playlist;
-
+		g_mutex_lock(&argument->queue_mutex);
 		model_playlist = gtk_tree_view_get_model(GTK_TREE_VIEW(argument->treeview_playlist));
 		
 		argument->history = g_list_prepend(argument->history, gtk_tree_model_get_string_from_iter(model_playlist, &argument->iter_playlist));
@@ -559,15 +559,13 @@ void message_application_cb(GstBus *bus, GstMessage *msg, struct arguments *argu
 				FORCE, &argument->current_song.force, FORCE_TEMPO, &argument->current_song.force_vector.x, 
 				FORCE_AMP, &argument->current_song.force_vector.y, FORCE_FREQ, &argument->current_song.force_vector.z, 
 				FORCE_ATK, &argument->current_song.force_vector.t, -1);
-				g_mutex_lock(&argument->queue_mutex);
 			}
 			else {
 				argument->current_song.filename = NULL;
-				g_mutex_lock(&argument->queue_mutex);
 			}
 		}
-		g_cond_signal(&argument->queue_cond);
 		g_mutex_unlock(&argument->queue_mutex);
+		g_cond_signal(&argument->queue_cond);
 	}
 }
 

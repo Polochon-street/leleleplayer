@@ -253,8 +253,8 @@ void continue_track_cb(GstElement *playbin, struct arguments *argument) {
 	structure = gst_structure_new_empty("next_song");
 	g_mutex_lock(&argument->queue_mutex);
 	GstMessage *msg = gst_message_new_application(GST_OBJECT(playbin), structure);
-
 	gst_element_post_message(argument->current_song.playbin, msg);
+
 	g_cond_wait(&argument->queue_cond, &argument->queue_mutex);
 	g_mutex_unlock(&argument->queue_mutex);
 

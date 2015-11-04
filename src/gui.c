@@ -679,6 +679,7 @@ int main(int argc, char **argv) {
 	pargument->bartag = 0;
 	pargument->sleep_timer = NULL;
 	g_mutex_init(&pargument->queue_mutex);
+	g_cond_init(&pargument->queue_cond);
 
 	gtk_init(&argc, &argv);	
 	gst_init(&argc, &argv);

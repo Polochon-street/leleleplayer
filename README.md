@@ -10,45 +10,11 @@ Handy when you don't want to bother yourself with creating a complete playlist.
 
 ## Installation
 
-### Archlinux users
+### Windows users:
 
-* install AUR package via yaourt
-```bash
-$ yaourt -S leleleplayer-git
-```
-* or download pkgbuild here: https://aur.archlinux.org/packages/leleleplayer-git/
+* Get a release here: https://github.com/Polochon-street/leleleplayer/releases
 
-* clone repository on github
-```bash
-$ git clone https://github.com/Polochon-street/leleleplayer.git
-```
-* go to leleleplayer root directory
-```bash
-$ cd leleleplayer 
-```
-* Create and enter the build directory
-```bash
-$ mkdir build && cd build
-```
-* Generate the Makefile
-```bash
-$ cmake .. -DCMAKE_BUILD_TYPE=Release
-```
-* Compile the player & the analyze binaries
-```bash
-$ make
-```
-* Install the player
-```bash
-# make install && glib-compile-schemas /usr/share/glib-2.0/schemas
-```
-* Launch the player
-```bash
-$ leleleplayer
-```
-
-## Cross-compile for windows 
-* clone repository on github
+* or (the hard way:) clone repository on github
 ```bash
 $ git clone https://github.com/Polochon-street/leleleplayer.git
 ```
@@ -85,6 +51,44 @@ $ makensis project.nsi
 ```
 * The windows binary is now available in build\_windows/\_CPack\_Packages/win64/NSIS/Leleleplayer-xx-win64.exe
 
+### Archlinux users
+
+* install AUR package via yaourt
+```bash
+$ yaourt -S leleleplayer-git
+```
+* or download pkgbuild here: https://aur.archlinux.org/packages/leleleplayer-git/
+
+### Other Linux users 
+
+* clone repository on github
+```bash
+$ git clone https://github.com/Polochon-street/leleleplayer.git
+```
+* go to leleleplayer root directory
+```bash
+$ cd leleleplayer 
+```
+* Create and enter the build directory
+```bash
+$ mkdir build && cd build
+```
+* Generate the Makefile
+```bash
+$ cmake .. -DCMAKE_BUILD_TYPE=Release
+```
+* Compile the player & the analyze binaries
+```bash
+$ make
+```
+* Install the player
+```bash
+# make install && glib-compile-schemas /usr/share/glib-2.0/schemas
+```
+* Launch the player
+```bash
+$ leleleplayer
+```
 ## Usage of the analyze binary
 
 * Check whether a song is calm or loud

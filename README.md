@@ -10,6 +10,14 @@ Handy when you don't want to bother yourself with creating a complete playlist.
 
 ## Installation
 
+### Archlinux users
+
+* install AUR package via yaourt
+```bash
+$ yaourt -S leleleplayer-git
+```
+* or download pkgbuild here: https://aur.archlinux.org/packages/leleleplayer-git/
+
 * clone repository on github
 ```bash
 $ git clone https://github.com/Polochon-street/leleleplayer.git

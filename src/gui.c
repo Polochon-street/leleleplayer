@@ -156,10 +156,20 @@ void analyze_thread(struct pref_arguments *argument) {
 }
 
 void reset_ui(struct arguments *argument) {
+	gboolean valid;
+	GtkTreeIter iter;
+	GtkTreeModel *model_playlist = gtk_tree_view_get_model(GTK_TREE_VIEW(argument->treeview_playlist));
+
 	GtkTreeSelection *selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(argument->treeview_playlist));
 
+	gst_element_set_state(argument->current_song.playbin, GST_STATE_NULL);
 	gtk_button_set_image(GTK_BUTTON(argument->playpause_button), gtk_image_new_from_icon_name("media-playback-start-symbolic", GTK_ICON_SIZE_BUTTON));
-	gtk_list_store_set(argument->store_playlist, &(argument->iter_playlist), PLAYING, "", -1);
+	
+	valid = gtk_tree_model_get_iter_first(model_playlist, &iter);
+	while(valid) {
+		gtk_list_store_set(argument->store_playlist, &iter, PLAYING, "", -1);
+		valid = gtk_tree_model_iter_next(model_playlist, &iter);
+	}
 
 	if(argument->bartag)
 		g_source_remove(argument->bartag);
@@ -181,7 +191,6 @@ void reset_ui(struct arguments *argument) {
 	gtk_label_set_text(GTK_LABEL(argument->samplerate_label), "Sample rate:");
 	gtk_label_set_text(GTK_LABEL(argument->bitrate_label), "Bitrate:");
 	gtk_label_set_text(GTK_LABEL(argument->channels_label), "Channels:");
-
 }
 
 gboolean refresh_progressbar(gpointer pargument) {
@@ -193,7 +202,6 @@ gboolean refresh_progressbar(gpointer pargument) {
 	
 		GtkAdjustment *adjustment;
 		if(argument->timer_delay - elapsed < -1.) {
-			gst_element_set_state(argument->current_song.playbin, GST_STATE_NULL);
 			reset_ui(argument);	
 			g_timer_destroy(argument->sleep_timer);
 			argument->sleep_timer = NULL;
@@ -841,10 +849,10 @@ int main(int argc, char **argv) {
 	gtk_button_set_image(GTK_BUTTON(previous_button), gtk_image_new_from_icon_name("media-skip-backward-symbolic", GTK_ICON_SIZE_BUTTON));
 	pargument->playpause_button = gtk_button_new();
 	gtk_button_set_image(GTK_BUTTON(pargument->playpause_button), gtk_image_new_from_icon_name("media-playback-start-symbolic", GTK_ICON_SIZE_BUTTON));
-	if(g_file_test("../images/lelele.svg", G_FILE_TEST_EXISTS)) 
-		gtk_window_set_icon_from_file(GTK_WINDOW(window), "../images/lelele.svg", NULL);
+	if(g_file_test("../images/lelele.png", G_FILE_TEST_EXISTS)) 
+		gtk_window_set_icon_from_file(GTK_WINDOW(window), "../images/lelele.png", NULL);
 	else
-		gtk_window_set_icon_from_file(GTK_WINDOW(window), "/usr/share/leleleplayer/icons/lelele.svg", NULL);
+		gtk_window_set_icon_from_file(GTK_WINDOW(window), "/usr/share/leleleplayer/icons/lelele.png", NULL);
 	pargument->adjust = (GtkAdjustment*)gtk_adjustment_new(0, 0, 100, 1, 1, 1);
 	pargument->progressbar = gtk_scale_new(GTK_ORIENTATION_HORIZONTAL, pargument->adjust);
 	pargument->volume_scale = gtk_scale_button_new(GTK_ICON_SIZE_BUTTON, 0, 1, 0.1, volume);

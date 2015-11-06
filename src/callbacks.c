@@ -230,11 +230,11 @@ void folder_chooser_cb(GtkWidget *button, struct pref_arguments *argument) {
 	dialog = gtk_file_chooser_dialog_new("Choose library folder", GTK_WINDOW(argument->window),
 		action, "Cancel", GTK_RESPONSE_CANCEL, "Open", GTK_RESPONSE_ACCEPT, NULL);
 
-	if(g_file_test("../images/lelele.svg", G_FILE_TEST_EXISTS)) {
-		gtk_window_set_icon_from_file(GTK_WINDOW(dialog), "../images/lelele.svg", NULL);
+	if(g_file_test("../images/lelele.png", G_FILE_TEST_EXISTS)) {
+		gtk_window_set_icon_from_file(GTK_WINDOW(dialog), "../images/lelele.png", NULL);
 	}
 	else
-		gtk_window_set_icon_from_file(GTK_WINDOW(dialog), "/usr/share/leleleplayer/icons/lelele.svg", NULL);
+		gtk_window_set_icon_from_file(GTK_WINDOW(dialog), "/usr/share/leleleplayer/icons/lelele.png", NULL);
 
 	res = gtk_dialog_run(GTK_DIALOG(dialog));
 
@@ -265,10 +265,10 @@ void preferences_callback_cb(GtkMenuItem *preferences, struct pref_arguments *ar
 	hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
 	labelbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
 	dialog = gtk_dialog_new_with_buttons("Preferences", GTK_WINDOW(argument->window), flags, "Cancel", GTK_RESPONSE_REJECT, "Save", GTK_RESPONSE_ACCEPT, NULL);
-	if(g_file_test("../images/lelele.svg", G_FILE_TEST_EXISTS))
-		gtk_window_set_icon_from_file(GTK_WINDOW(dialog), "../images/lelele.svg", NULL);
+	if(g_file_test("../images/lelele.png", G_FILE_TEST_EXISTS))
+		gtk_window_set_icon_from_file(GTK_WINDOW(dialog), "../images/lelele.png", NULL);
 	else
-		gtk_window_set_icon_from_file(GTK_WINDOW(dialog), "/usr/share/leleleplayer/icons/lelele.svg", NULL);
+		gtk_window_set_icon_from_file(GTK_WINDOW(dialog), "/usr/share/leleleplayer/icons/lelele.png", NULL);
 
 	area = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
 	complete_box = gtk_check_button_new_with_label("LeleleScan (complete but longer) (not functionnal now)");
@@ -333,10 +333,10 @@ void add_file_to_playlist_cb(GtkMenuItem *add_file, struct arguments *argument) 
 
 	dialog = gtk_file_chooser_dialog_new("Open audio file(s)", GTK_WINDOW(gtk_widget_get_toplevel(GTK_WIDGET(add_file))),
 	action, "Cancel", GTK_RESPONSE_CANCEL, "Open", GTK_RESPONSE_ACCEPT, NULL);
-	if(g_file_test("../images/lelele.svg", G_FILE_TEST_EXISTS))
-		gtk_window_set_icon_from_file(GTK_WINDOW(dialog), "../images/lelele.svg", NULL);
+	if(g_file_test("../images/lelele.png", G_FILE_TEST_EXISTS))
+		gtk_window_set_icon_from_file(GTK_WINDOW(dialog), "../images/lelele.png", NULL);
 	else
-		gtk_window_set_icon_from_file(GTK_WINDOW(dialog), "/usr/share/leleleplayer/icons/lelele.svg", NULL);
+		gtk_window_set_icon_from_file(GTK_WINDOW(dialog), "/usr/share/leleleplayer/icons/lelele.png", NULL);
 
 	GtkFileChooser *chooser = GTK_FILE_CHOOSER(dialog);
 
@@ -790,6 +790,7 @@ void remove_playlist_selection_from_playlist_cb(GtkWidget *menuitem, struct argu
 	GtkTreeIter iter;
 	GtkTreePath *path;
 	GtkTreeSelection *selection;
+	gboolean valid;
 	GList *path_list;
 	gchar *path_string;
 	gchar *tempstring;
@@ -797,6 +798,7 @@ void remove_playlist_selection_from_playlist_cb(GtkWidget *menuitem, struct argu
 	gboolean deleted = FALSE;
 	GtkTreeModel *model_playlist;
 	int i = 0;
+	int path_string_i;
 
 	model_playlist = gtk_tree_view_get_model(GTK_TREE_VIEW(argument->treeview_playlist));
 	selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(argument->treeview_playlist));
@@ -805,22 +807,26 @@ void remove_playlist_selection_from_playlist_cb(GtkWidget *menuitem, struct argu
 	if((path_list = gtk_tree_selection_get_selected_rows(selection, &model))) {
 		while(path_list) {
 			tempstring = gtk_tree_path_to_string((GtkTreePath*)path_list->data);
-			path_string = g_strdup_printf("%d", strtol(tempstring, NULL, 10) - i);
+			path_string_i = strtol(tempstring, NULL, 10) - i;
+			path_string = g_strdup_printf("%d", path_string_i);
 			gtk_tree_model_get_iter_from_string(model_playlist, &iter, path_string);
 			if(!g_strcmp0(current_path_string, path_string))
 				deleted = TRUE;
 			g_signal_handler_block(model_playlist, argument->playlist_update_signal_id);
 			gtk_list_store_remove(argument->store_playlist, &iter);
 			g_signal_handler_unblock(model_playlist, argument->playlist_update_signal_id);
+			valid = gtk_tree_model_get_iter_from_string(model_playlist, &iter, path_string);
 			g_free(path_string);
 			g_free(tempstring);
 			++i;
-			path_list = path_list->next;	
+			path_list = path_list->next;
 		}
-		if(deleted) {
+		if(deleted && valid) {
 			argument->iter_playlist = iter;
 			start_song(argument);
 		}
+		if(!valid) 
+			reset_ui(argument);
 	}
 }
 

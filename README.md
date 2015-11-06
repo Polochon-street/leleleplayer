@@ -1,4 +1,4 @@
-# leleleplayer
+# leleleplayer v0.1.2
 Leleleplayer is a classic audio player, which comes with a home-made library that computes distance between songs, using it in order to smoothly play similar songs from your audio library.
 Handy when you don't want to bother yourself with creating a complete playlist.
 (Unstable) Windows binaries are available in the [release](https://github.com/Polochon-street/leleleplayer/releases/) tab

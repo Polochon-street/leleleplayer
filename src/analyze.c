@@ -30,7 +30,7 @@ float lelele_analyze(char *filename, struct song *current_song, int debug, int a
 	if(debug)
 		printf("\nAnalyzing: %s\n\n", filename);
 
-	if(audio_decode(filename, current_song) == 0) { // Decode audio track
+	if(audio_decode(filename, current_song, analyze) == 0) { // Decode audio track
 		if(analyze) {
 			envelope_result = envelope_sort(*current_song, debug); // Global envelope sort
 			current_song->force_vector.x = envelope_result.x; // Tempo sort
@@ -58,8 +58,13 @@ float lelele_analyze(char *filename, struct song *current_song, int debug, int a
 				return 2;
 			}
 		}
-		else
+		else {
+			current_song->force_vector.x = 0;
+			current_song->force_vector.y = 0;
+			current_song->force_vector.z = 0;
+			current_song->force_vector.t = 0;
 			return 2;
+		}
 	}
 	else {
 		printf("Couldn't decode song\n");

@@ -1,6 +1,6 @@
 #include "analyze.h"
 
-int audio_decode(const char *filename, struct song *song) { // decode the track
+int audio_decode(const char *filename, struct song *song, int analyze) { // decode the track
 	AVCodec *codec = NULL;
 	AVCodecContext *c = NULL;
 	AVFormatContext *pFormatCtx;
@@ -104,56 +104,58 @@ int audio_decode(const char *filename, struct song *song) { // decode the track
 	}
 
 	/* End of codec init */
-	while(av_read_frame(pFormatCtx, &avpkt) >= 0) {
-		if(avpkt.stream_index == audioStream) {
-			got_frame = 0; 
-			
-			if(!decoded_frame) {
-				if(!(decoded_frame = av_frame_alloc())) {
-					printf("Could not allocate audio frame\n");
-					exit(1);
+	if(analyze) {
+		while(av_read_frame(pFormatCtx, &avpkt) >= 0) {
+			if(avpkt.stream_index == audioStream) {
+				got_frame = 0; 
+				
+				if(!decoded_frame) {
+					if(!(decoded_frame = av_frame_alloc())) {
+						printf("Could not allocate audio frame\n");
+						exit(1);
+					}
 				}
-			}
-			else 
-				av_frame_unref(decoded_frame);
+				else 
+					av_frame_unref(decoded_frame);
 
-			len = avcodec_decode_audio4(c, decoded_frame, &got_frame, &avpkt);
+				len = avcodec_decode_audio4(c, decoded_frame, &got_frame, &avpkt);
 	
-			if(len < 0)
-				avpkt.size = 0;
+				if(len < 0)
+					avpkt.size = 0;
 
-			av_free_packet(&avpkt);
+				av_free_packet(&avpkt);
 
 			/* interesting part: copying decoded data into a huge array */
 			/* flac has a different behaviour from mp3, hence the planar condition */
-			if(got_frame) {
-				size_t data_size = av_samples_get_buffer_size(NULL, c->channels, decoded_frame->nb_samples, c->sample_fmt, 1); 
+				if(got_frame) {
+					size_t data_size = av_samples_get_buffer_size(NULL, c->channels, decoded_frame->nb_samples, c->sample_fmt, 1); 
 
-				if(index*song->nb_bytes_per_sample + data_size > size) {
-					beginning = realloc(beginning, (size += data_size));
-					song->nSamples += data_size/song->nb_bytes_per_sample;
-				}
-				int8_t *p = beginning+index*song->nb_bytes_per_sample;
-				if(planar == 1) {
-					for(i = 0; i < decoded_frame->nb_samples*song->nb_bytes_per_sample; i += song->nb_bytes_per_sample) { 
-						for(e = 0; e < c->channels; ++e)
-							for(d = 0; d < song->nb_bytes_per_sample; ++d) 
-								*(p++) = ((int8_t*)(decoded_frame->extended_data[e]))[i+d];
+					if(index*song->nb_bytes_per_sample + data_size > size) {
+						beginning = realloc(beginning, (size += data_size));
+						song->nSamples += data_size/song->nb_bytes_per_sample;
 					}
-					index += data_size/song->nb_bytes_per_sample;
-				}
-				else if(planar == 0) {
-					memcpy(index*song->nb_bytes_per_sample + beginning, decoded_frame->extended_data[0], data_size);
-	        		index += data_size/song->nb_bytes_per_sample; 
+					int8_t *p = beginning+index*song->nb_bytes_per_sample;
+					if(planar == 1) {
+						for(i = 0; i < decoded_frame->nb_samples*song->nb_bytes_per_sample; i += song->nb_bytes_per_sample) { 
+							for(e = 0; e < c->channels; ++e)
+								for(d = 0; d < song->nb_bytes_per_sample; ++d) 
+									*(p++) = ((int8_t*)(decoded_frame->extended_data[e]))[i+d];
+						}
+						index += data_size/song->nb_bytes_per_sample;
+					}
+					else if(planar == 0) {
+						memcpy(index*song->nb_bytes_per_sample + beginning, decoded_frame->extended_data[0], data_size);
+	        			index += data_size/song->nb_bytes_per_sample; 
+					}
 				}
 			}
+			else
+				av_free_packet(&avpkt); /* Dropping the damn album cover */
 		}
-		else
-			av_free_packet(&avpkt); /* Dropping the damn album cover */
 	}
 	song->sample_array = beginning;
 
-	/* cleaning memory */
+		/* cleaning memory */
 	avpkt.data = NULL;
 	avpkt.size = 0;
 
@@ -168,4 +170,4 @@ int audio_decode(const char *filename, struct song *song) { // decode the track
 	avformat_close_input(&pFormatCtx);
 
 	return 0;
-} 
+}

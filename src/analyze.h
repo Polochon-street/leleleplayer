@@ -47,7 +47,7 @@ struct song {
 
 float amp_sort(struct song, int debug);
 struct d2vector envelope_sort(struct song, int debug);
-int audio_decode(const char *file, struct song *);
+int audio_decode(const char *file, struct song *, int analyze);
 float lelele_analyze(char *filename, struct song *, int debug, int analyze); 
 float freq_sort(struct song, int debug);
 int gui(int argc, char **argv);

@@ -35,9 +35,10 @@
 #correct display_artist_tab
 #make library/config file access cleaner
 #correct display_album_tab
-correct reset_ui() lock at the end of the playlist
-split gui into more files
-Check analyze/progressive added files in library consumption 
+#correct reset_ui() lock at the end of the playlist
+#split gui into more files
+#Check analyze/progressive added files in library consumption
+make leleleanalyze optional
 nuage de points selon les genre
 add right click/add to playlist
 refactor a bit

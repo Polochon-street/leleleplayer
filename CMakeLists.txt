@@ -59,6 +59,6 @@ include(CPack)
 
 else()
 install(TARGETS leleleplayer DESTINATION bin)
-install(FILES "images/lelele.svg" "images/lelelerandom.svg" DESTINATION share/leleleplayer/icons/)
+install(FILES "images/lelele.png" "images/lelelerandom.svg" DESTINATION share/leleleplayer/icons/)
 install(FILES "org.gnome.leleleplayer.gschema.xml" DESTINATION share/glib-2.0/schemas/)
 endif()

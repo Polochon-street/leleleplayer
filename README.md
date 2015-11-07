@@ -3,7 +3,7 @@ Leleleplayer is a classic audio player, which comes with a home-made library tha
 Handy when you don't want to bother yourself with creating a complete playlist.
 (Unstable) Windows binaries are available in the [release](https://github.com/Polochon-street/leleleplayer/releases/) tab
 
-![Leleleplayer screenshot](http://i.imgur.com/e075wWF.png)
+![Leleleplayer screenshot](http://i.imgur.com/6CPLGVx.png)
 
 ## Dependencies
 * ffmpeg

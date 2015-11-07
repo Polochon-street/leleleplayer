@@ -247,7 +247,7 @@ void toggle_random_cb(GtkWidget *button, struct arguments *);
 void toggle_lelelescan_cb(GtkWidget *button, struct pref_arguments *);
 void changed_page_notebook_cb(GtkNotebook *, GtkWidget *, guint, gpointer data);
 void remove_playlist_selection_from_playlist_cb(GtkWidget *, struct arguments *);
-void playlist_del_button_cb(GtkWidget *, GdkEventKey *, struct arguments *);
+gboolean playlist_del_button_cb(GtkWidget *, GdkEventKey *, struct arguments *);
 gboolean treeviews_right_click_cb(GtkWidget *, GdkEventButton *, struct arguments *);
 void artist_popup_menu(GtkWidget *, GdkEventButton *event, struct arguments *);
 void playlist_popup_menu(GtkWidget *, GdkEventButton *event, struct arguments *);

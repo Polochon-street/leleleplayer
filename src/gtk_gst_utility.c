@@ -44,7 +44,9 @@ gboolean add_artist_to_playlist(gchar *artist, struct arguments *argument) {
 	GtkTreeModel *model_playlist;
 	GtkTreeIter lib_iter;
 	gchar *tempartist;
+	GtkTreeSortable *sortable_library = GTK_TREE_SORTABLE(argument->store_library);
 
+	gtk_tree_sortable_set_sort_column_id(sortable_library, ALBUM, GTK_SORT_ASCENDING);
 	model_playlist = gtk_tree_view_get_model(GTK_TREE_VIEW(argument->treeview_playlist));
 	model_library = gtk_tree_view_get_model(GTK_TREE_VIEW(argument->treeview_library));
 

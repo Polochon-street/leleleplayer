@@ -45,7 +45,6 @@ void artist_row_activated_cb(GtkTreeView *treeview, GtkTreePath *path, GtkTreeVi
 		gtk_tree_model_get_iter(model_artist, &(argument->iter_artist), path);
 		gtk_tree_model_get(model_artist, &(argument->iter_artist), 0, &songartist, -1);
 		songtitle = strstr(songtitle, "  ") + 2;
-
 		add_album_to_playlist(songalbum, songartist, argument);
 	
 		play_playlist_song(songtitle, argument);
@@ -60,7 +59,6 @@ void artist_row_activated_cb(GtkTreeView *treeview, GtkTreePath *path, GtkTreeVi
 		gtk_tree_path_up(path);
 		gtk_tree_model_get_iter(model_artist, &(argument->iter_artist), path);
 		gtk_tree_model_get(model_artist, &(argument->iter_artist), 0, &songartist, -1);
-		
 		add_album_to_playlist(songalbum, songartist, argument);
 
 		gtk_tree_model_get_iter_first(model_playlist, &argument->iter_playlist);
@@ -72,7 +70,6 @@ void artist_row_activated_cb(GtkTreeView *treeview, GtkTreePath *path, GtkTreeVi
 			return;
 		}
 		gtk_tree_model_get(model_artist, &(argument->iter_artist), 0, &songartist, -1);
-
 		add_artist_to_playlist(songartist, argument);
 		
 		gtk_tree_model_get_iter_first(model_playlist, &argument->iter_playlist);
@@ -830,9 +827,21 @@ void remove_playlist_selection_from_playlist_cb(GtkWidget *menuitem, struct argu
 	}
 }
 
-void playlist_del_button_cb(GtkWidget *treeview, GdkEventKey *event, struct arguments *argument) {
-	if(event->type == GDK_KEY_PRESS && event->keyval == 0xffff)
+gboolean playlist_del_button_cb(GtkWidget *treeview, GdkEventKey *event, struct arguments *argument) {
+	guint state = event->state;
+	gboolean ctrl_pressed = (state & GDK_CONTROL_MASK ? TRUE : FALSE);
+
+	if((event->type == GDK_KEY_PRESS) && (event->keyval == GDK_KEY_Delete)
+	&& !ctrl_pressed)
 		remove_playlist_selection_from_playlist_cb(NULL, argument);
+	else if((event->type == GDK_KEY_PRESS) && (event->keyval == GDK_KEY_a)
+	&& ctrl_pressed) {
+		GtkTreeSelection *selection;
+	
+		selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(treeview));
+		gtk_tree_selection_select_all(selection);
+	}
+	return FALSE;
 }
 
 void changed_page_notebook_cb(GtkNotebook *notebook, GtkWidget *page, guint page_num, gpointer data) {

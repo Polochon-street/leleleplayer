@@ -564,77 +564,103 @@ void setup_tree_view_renderer_play_lib(GtkWidget *treeview) {
 
 void display_library(GtkTreeView *treeview, GtkListStore *store, gchar *libfile) {
 	GtkTreeIter iter;
-	FILE *library;
-	char tempfile[PATH_MAX];
-	char temptrack[PATH_MAX];
-	char tempalbum[PATH_MAX];
-	char tempartist[PATH_MAX];
-	char temptracknumber[PATH_MAX];
-	char tempforce[PATH_MAX];
+	xmlDocPtr library;
+	xmlNodePtr cur;
+	xmlNodePtr child;
+	xmlChar *tempfile;
+	xmlChar *temptrack;
+	xmlChar *tempalbum;
+	xmlChar *tempartist;
+	xmlChar *temptracknumber;
+	xmlChar *tempforce;
+	gchar forceresult[15];
 	float tempforcef;
-	char tempforce_env[PATH_MAX];
+	xmlChar *tempforce_env;
 	float tempforce_envf;
-	char tempforce_amp[PATH_MAX];
+	xmlChar *tempforce_amp;
 	float tempforce_ampf;
-	char tempforce_freq[PATH_MAX];
+	xmlChar *tempforce_freq;
 	float tempforce_freqf;
-	char tempforce_atk[PATH_MAX];
+	xmlChar *tempforce_atk;
 	float tempforce_atkf;
 
 	gtk_list_store_clear(store);
 
-	if((library = fopen(libfile, "r")) != NULL) {
-		while(fgets(tempfile, PATH_MAX, library) != NULL) {
-			tempfile[strcspn(tempfile, "\n")] = '\0';
+	library = xmlParseFile(libfile);
 
-			if(!fgets(temptracknumber, PATH_MAX, library)
-			|| !fgets(temptrack, PATH_MAX, library)
-			|| !fgets(tempalbum, PATH_MAX, library)
-			|| !fgets(tempartist, PATH_MAX, library)
-			|| !fgets(tempforce, PATH_MAX, library)
-			|| !fgets(tempforce_env, PATH_MAX, library)
-			|| !fgets(tempforce_amp, PATH_MAX, library)
-			|| !fgets(tempforce_freq, PATH_MAX, library)
-			|| !fgets(tempforce_atk, PATH_MAX, library)) {
-				printf("Wrong config file format\n");
-				return;
-			}
-			
-			temptracknumber[strcspn(temptracknumber, "\n")] = '\0';
-
-			temptrack[strcspn(temptrack, "\n")] = '\0';
-
-			tempalbum[strcspn(tempalbum, "\n")] = '\0';
-
-			tempartist[strcspn(tempartist, "\n")] = '\0';
-
-			tempforce[strcspn(tempforce, "\n")] = '\0';
-			tempforcef = atof(tempforce);
-
-			tempforce_env[strcspn(tempforce_env, "\n")] = '\0';
-			tempforce_envf = atof(tempforce_env);
-
-			tempforce_amp[strcspn(tempforce_amp, "\n")] = '\0';
-			tempforce_ampf = atof(tempforce_amp);
-
-			tempforce_freq[strcspn(tempforce_freq, "\n")] = '\0';
-			tempforce_freqf = atof(tempforce_freq);
-
-			tempforce_atk[strcspn(tempforce_atk, "\n")] = '\0';
-			tempforce_atkf = atof(tempforce_atk);
-
-			if(atof(tempforce) == 0)
-				strcpy(tempforce, "Loud");
-			else if(atof(tempforce) == 1) {
-				strcpy(tempforce, "Calm");
-			}
-			else
-				strcpy(tempforce, "Can't conclude");
-			
-			gtk_list_store_append(store, &iter);
-			gtk_list_store_set(store, &iter, PLAYING, "", TRACKNUMBER, temptracknumber, TRACK, temptrack, ALBUM, tempalbum, ARTIST, tempartist, FORCE, tempforcef, FORCE_TEMPO, tempforce_envf, FORCE_AMP, tempforce_ampf, FORCE_FREQ, tempforce_freqf, FORCE_ATK, tempforce_atkf, TEXTFORCE, tempforce, AFILE, tempfile, -1);
+	if(library != NULL) {
+		cur = xmlDocGetRootElement(library);
+	
+		if(cur == NULL) {
+			printf("Library file is empty\n");
+			xmlFreeDoc(library);
+			return;
 		}
-		fclose(library);
+		
+		if(xmlStrcmp(cur->name, (const xmlChar *)"lelelelibrary")) {
+			printf("Library file of the wrong type, root node != lelelelibrary");
+			xmlFreeDoc(library);
+			return;
+		}
+		cur = cur->xmlChildrenNode;
+		while(cur != NULL) {
+			if((!xmlStrcmp(cur->name, (const xmlChar *)"song"))) {
+				child = cur->xmlChildrenNode;
+				while(child != NULL) {
+					if((!xmlStrcmp(child->name, (const xmlChar *)"title"))) 
+						temptrack = xmlNodeListGetString(library, child->xmlChildrenNode, 1);
+					else if((!xmlStrcmp(child->name, (const xmlChar *)"artist")))
+						tempartist = xmlNodeListGetString(library, child->xmlChildrenNode, 1);
+					else if((!xmlStrcmp(child->name, (const xmlChar *)"album")))
+						tempalbum = xmlNodeListGetString(library, child->xmlChildrenNode, 1);
+					else if((!xmlStrcmp(child->name, (const xmlChar *)"tracknumber")))
+						temptracknumber = xmlNodeListGetString(library, child->xmlChildrenNode, 1);
+					else if((!xmlStrcmp(child->name, (const xmlChar *)"file")))
+						tempfile = xmlNodeListGetString(library, child->xmlChildrenNode, 1);
+					else if((!xmlStrcmp(child->name, (const xmlChar *)"analyze-resnum"))) {
+						tempforce = xmlNodeListGetString(library, child->xmlChildrenNode, 1);
+						tempforcef = atof(tempforce);
+						if(tempforcef == 0)
+							strcpy(forceresult, "Loud");
+						else if(tempforcef == 1) 
+							strcpy(forceresult, "Calm");
+						else
+							strcpy(forceresult, "Can't conclude");
+					}
+					else if((!xmlStrcmp(child->name, (const xmlChar *)"analyze-amplitude"))) {
+						tempforce_amp = xmlNodeListGetString(library, child->xmlChildrenNode, 1);
+						tempforce_ampf = atof(tempforce_amp);
+					}
+					else if((!xmlStrcmp(child->name, (const xmlChar *)"analyze-freq"))) {
+						tempforce_freq = xmlNodeListGetString(library, child->xmlChildrenNode, 1);
+						tempforce_freqf = atof(tempforce_freq);
+					}
+					else if((!xmlStrcmp(child->name, (const xmlChar *)"analyze-tempo"))) {
+						tempforce_env = xmlNodeListGetString(library, child->xmlChildrenNode, 1);
+						tempforce_envf = atof(tempforce_env);
+					}
+					else if((!xmlStrcmp(child->name, (const xmlChar *)"analyze-atk"))) {
+						tempforce_atk = xmlNodeListGetString(library, child->xmlChildrenNode, 1);
+						tempforce_atkf = atof(tempforce_atk);
+					}					
+					child = child->next;
+				}
+				gtk_list_store_append(store, &iter);
+				gtk_list_store_set(store, &iter, PLAYING, "", TRACKNUMBER, temptracknumber, TRACK, temptrack, ALBUM, tempalbum, ARTIST, tempartist, FORCE, tempforcef, FORCE_TEMPO, tempforce_envf, FORCE_AMP, tempforce_ampf, FORCE_FREQ, tempforce_freqf, FORCE_ATK, tempforce_atkf, TEXTFORCE, forceresult, AFILE, tempfile, -1);
+				free(temptracknumber);
+				free(temptrack);
+				free(tempartist);
+				free(tempalbum);
+				free(tempfile);
+				free(tempforce);
+				free(tempforce_amp);
+				free(tempforce_freq);
+				free(tempforce_env);
+				free(tempforce_atk);
+			}
+			cur = cur->next;
+		}
+		xmlFreeDoc(library);
 	}
 }
 
@@ -692,12 +718,12 @@ int main(int argc, char **argv) {
 	gtk_init(&argc, &argv);	
 	gst_init(&argc, &argv);
 	
-	char lib_file[] = "library.txt";
+	char lib_file[] = "library.xml";
 	gchar *libdir;
 	gchar *libfile;
 
 	libdir = g_build_filename(g_get_home_dir(), ".local", "share", "leleleplayer", NULL);
-	libfile = g_build_filename(libdir, "library.txt", NULL);
+	libfile = g_build_filename(libdir, "library.xml", NULL);
 
 	if(g_mkdir_with_parents(libdir, 0755) != -1)
 		pargument->lib_path = libfile;

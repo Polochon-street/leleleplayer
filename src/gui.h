@@ -10,6 +10,9 @@
 #include <limits.h>
 #define GST_USE_UNSTABLE_API
 #include <gst/gl/gl.h>
+#include <libxml/xmlmemory.h>
+#include <libxml/parser.h>
+#include <libxml/xmlwriter.h>
 
 #ifdef linux
 #include <X11/Xlib.h>

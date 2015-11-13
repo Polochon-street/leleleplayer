@@ -58,31 +58,44 @@ gboolean refresh_config_progressbar(struct pref_arguments *argument) {
 }
 
 void analyze_thread(struct pref_arguments *argument) {
+	xmlKeepBlanksDefault(0);
 	GList *list, *l = NULL;
-	FILE *library;
+	xmlDocPtr library;
+	xmlNodePtr cur, child, cur_find, child_find;
+	xmlTextWriterPtr library_writer;
 	int i;
 	gchar *temptracknumber;
 
 	list = g_list_alloc();
 
 	if(argument->erase) {
-		if(!(library = fopen(argument->lib_path, "w"))) {
+		library_writer = xmlNewTextWriterFilename(argument->lib_path, 0);
+		if(library_writer == NULL) {
 			g_warning("Couldn't write library file");
 			return;
 		}
+		xmlTextWriterStartDocument(library_writer, NULL, "UTF-8", NULL);
+		xmlTextWriterStartElement(library_writer, "lelelelibrary");
+		xmlTextWriterEndElement(library_writer);
+		xmlTextWriterEndDocument(library_writer);
+		xmlFreeTextWriter(library_writer);
+		library = xmlParseFile(argument->lib_path);
 	}
 	else {
-		if(!(library = fopen(argument->lib_path, "a+"))) {
+		library = xmlParseFile(argument->lib_path);
+		if(library == NULL) {
 			g_warning("Couldn't write library file");
 			return;
 		}
 	}
+	cur = xmlDocGetRootElement(library);
+
 	GDir *dir = g_dir_open(argument->folder, 0, NULL);
 	explore(dir, argument->folder, list);
 	list = list->next;
 
 	int nblines = 0;
-	char line[PATH_MAX];
+	gchar *tempstring;
 	GAsyncQueue *msg_queue = g_async_queue_new();
 	argument->msg_queue = msg_queue;
 	char *msg;
@@ -93,8 +106,6 @@ void analyze_thread(struct pref_arguments *argument) {
 	argument->nblines = nblines;
 
 	gpointer msg_thread;
-	gchar tempstring[PATH_MAX];
-	FILE *library_read = fopen(argument->lib_path, "r");
 	int resnum;
 	argument->count = 0;
 	gboolean found = FALSE;
@@ -104,17 +115,32 @@ void analyze_thread(struct pref_arguments *argument) {
 
 	for(l = list; l != NULL; l = l->next) {
 		((gchar*)l->data)[strcspn((gchar*)l->data, "\n")] = '\0';
-		rewind(library_read);
 		found = FALSE;
-		while(fgets(tempstring, PATH_MAX, library_read)) {
-			if(strstr(tempstring, l->data)) {
-				found == TRUE;
+
+		cur_find = xmlDocGetRootElement(library);
+		cur_find = cur_find->xmlChildrenNode;
+		while(cur_find != NULL) {
+			if((!xmlStrcmp(cur_find->name, (const xmlChar *)"song"))) {
+				child_find = cur_find->xmlChildrenNode;
+				while(child_find != NULL) {
+					if((!xmlStrcmp(child_find->name, (const xmlChar *)"filename"))) {
+						tempstring = xmlNodeListGetString(library, child_find->xmlChildrenNode, 1);
+						if(!g_strcmp0(tempstring, l->data)) {
+							found = TRUE;
+						}
+						free(tempstring);
+					}
+					child_find = child_find->next;
+				}
 			}
-		}
+			cur_find = cur_find->next;
+		} 
 		if(found == FALSE) {
 			struct song song;
 			struct song msg_song;
+			child = xmlNewTextChild(cur, NULL, "song", NULL);
 			int tempint;
+			gchar *amplitude, *freq, *tempo, *atk, *resnum_s;
 			if((resnum = lelele_analyze(l->data, &song, 0, argument->lelele_scan)) < 3) {
 				for(i = 0; (song.tracknumber[i] != '\0') && (g_ascii_isdigit(song.tracknumber[i]) == FALSE); ++i)
 					song.tracknumber[i] = '0';
@@ -124,10 +150,26 @@ void analyze_thread(struct pref_arguments *argument) {
 					g_free(song.tracknumber);
 					song.tracknumber = temptracknumber;
 				}
-	//		fprintf(test, "%f %f %f\n", song.force_vector.x, song.force_vector.y, song.force_vector.z);
-				fprintf(library, "%s\n%s\n%s\n%s\n%s\n%d\n%f\n%f\n%f\n%f\n", l->data, song.tracknumber, song.title, song.album, song.artist, resnum, song.force_vector.x,
-					song.force_vector.y, song.force_vector.z, song.force_vector.t);
-				
+				resnum_s = g_strdup_printf("%d", resnum);
+				amplitude = g_strdup_printf("%f", song.force_vector.y);
+				freq = g_strdup_printf("%f", song.force_vector.z);
+				tempo = g_strdup_printf("%f", song.force_vector.x);
+				atk = g_strdup_printf("%f", song.force_vector.t);
+				xmlNewTextChild(child, NULL, "filename", l->data);
+				xmlNewTextChild(child, NULL, "tracknumber", song.tracknumber);
+				xmlNewTextChild(child, NULL, "title", song.title);
+				xmlNewTextChild(child, NULL, "album", song.album);
+				xmlNewTextChild(child, NULL, "artist", song.artist);
+				xmlNewTextChild(child, NULL, "analyze-resnum", resnum_s);
+				xmlNewTextChild(child, NULL, "analyze-amplitude", amplitude);
+				xmlNewTextChild(child, NULL, "analyze-freq", freq);
+				xmlNewTextChild(child, NULL, "analyze-tempo", tempo);
+				xmlNewTextChild(child, NULL, "analyze-atk", atk);
+				g_free(amplitude);
+				g_free(resnum_s);
+				g_free(freq);
+				g_free(tempo);
+				g_free(atk);
 				msg_song = song;
 				msg_song.tracknumber = g_malloc(strlen(song.tracknumber)+1);
 				msg_song.tracknumber = strcpy(msg_song.tracknumber, song.tracknumber);
@@ -143,6 +185,7 @@ void analyze_thread(struct pref_arguments *argument) {
 				msg_song.filename = strcpy(msg_song.filename, l->data);
 				g_async_queue_push(msg_queue, (gpointer)&msg_song);
 				lelele_free_song(&song);
+				xmlSaveFormatFile(argument->lib_path, library, 1);
 				//fflush(library); 
 			}
 		}
@@ -150,8 +193,8 @@ void analyze_thread(struct pref_arguments *argument) {
 	}
 	argument->terminate = TRUE;
 	g_list_free_full(list, g_free);
-	fclose(library);
-	fclose(library_read);
+	xmlSaveFormatFile(argument->lib_path, library, 1);
+	xmlFreeDoc(library);	
 	//fclose(test);
 }
 
@@ -615,7 +658,7 @@ void display_library(GtkTreeView *treeview, GtkListStore *store, gchar *libfile)
 						tempalbum = xmlNodeListGetString(library, child->xmlChildrenNode, 1);
 					else if((!xmlStrcmp(child->name, (const xmlChar *)"tracknumber")))
 						temptracknumber = xmlNodeListGetString(library, child->xmlChildrenNode, 1);
-					else if((!xmlStrcmp(child->name, (const xmlChar *)"file")))
+					else if((!xmlStrcmp(child->name, (const xmlChar *)"filename")))
 						tempfile = xmlNodeListGetString(library, child->xmlChildrenNode, 1);
 					else if((!xmlStrcmp(child->name, (const xmlChar *)"analyze-resnum"))) {
 						tempforce = xmlNodeListGetString(library, child->xmlChildrenNode, 1);

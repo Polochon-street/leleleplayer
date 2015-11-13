@@ -5,9 +5,9 @@ project(leleleplayer C)
 find_package(PkgConfig REQUIRED)
 
 if(WIN32)
-pkg_check_modules(MULTIMEDIA REQUIRED libavformat libavutil libavcodec gstreamer-1.0 gstreamer-video-1.0)
+pkg_check_modules(MULTIMEDIA REQUIRED libavformat libavutil libavcodec gstreamer-1.0 gstreamer-video-1.0 libxml-2.0)
 else()
-pkg_check_modules(MULTIMEDIA REQUIRED libavformat libavutil libavcodec gstreamer-1.0 gstreamer-video-1.0 x11)
+pkg_check_modules(MULTIMEDIA REQUIRED libavformat libavutil libavcodec gstreamer-1.0 gstreamer-video-1.0 libxml-2.0 x11)
 endif()
 
 pkg_check_modules(GTK REQUIRED gtk+-3.0)

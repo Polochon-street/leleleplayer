@@ -118,13 +118,13 @@ void analyze_thread(struct pref_arguments *argument) {
 		found = FALSE;
 
 		cur_find = xmlDocGetRootElement(library);
-		cur_find = cur_find->xmlChildrenNode;
+		cur_find = cur_find->children;
 		while(cur_find != NULL) {
 			if((!xmlStrcmp(cur_find->name, (const xmlChar *)"song"))) {
-				child_find = cur_find->xmlChildrenNode;
+				child_find = cur_find->children;
 				while(child_find != NULL) {
 					if((!xmlStrcmp(child_find->name, (const xmlChar *)"filename"))) {
-						tempstring = xmlNodeListGetString(library, child_find->xmlChildrenNode, 1);
+						tempstring = xmlNodeGetContent(child_find->children);
 						if(!g_strcmp0(tempstring, l->data)) {
 							found = TRUE;
 						}
@@ -610,21 +610,21 @@ void display_library(GtkTreeView *treeview, GtkListStore *store, gchar *libfile)
 	xmlDocPtr library;
 	xmlNodePtr cur;
 	xmlNodePtr child;
-	xmlChar *tempfile;
-	xmlChar *temptrack;
-	xmlChar *tempalbum;
-	xmlChar *tempartist;
-	xmlChar *temptracknumber;
-	xmlChar *tempforce;
-	gchar forceresult[15];
+	xmlChar *tempfile = NULL;
+	xmlChar *temptrack = NULL;
+	xmlChar *tempalbum = NULL;
+	xmlChar *tempartist = NULL;
+	xmlChar *temptracknumber = NULL;
+	xmlChar *tempforce = NULL;
+	gchar forceresult[20];
 	float tempforcef;
-	xmlChar *tempforce_env;
+	xmlChar *tempforce_env = NULL;
 	float tempforce_envf;
-	xmlChar *tempforce_amp;
+	xmlChar *tempforce_amp = NULL;
 	float tempforce_ampf;
-	xmlChar *tempforce_freq;
+	xmlChar *tempforce_freq = NULL;
 	float tempforce_freqf;
-	xmlChar *tempforce_atk;
+	xmlChar *tempforce_atk = NULL;
 	float tempforce_atkf;
 
 	gtk_list_store_clear(store);
@@ -645,23 +645,23 @@ void display_library(GtkTreeView *treeview, GtkListStore *store, gchar *libfile)
 			xmlFreeDoc(library);
 			return;
 		}
-		cur = cur->xmlChildrenNode;
-		while(cur != NULL) {
-			if((!xmlStrcmp(cur->name, (const xmlChar *)"song"))) {
-				child = cur->xmlChildrenNode;
-				while(child != NULL) {
+		for(cur = cur->children; cur != NULL; cur = cur->next) {
+			if((!xmlStrcmp(cur->name, (const xmlChar *)"song")) && cur->children != NULL ) {
+				for(child = cur->children; child != NULL; child = child->next) {
+					if(child->type != XML_ELEMENT_NODE)
+						continue;
 					if((!xmlStrcmp(child->name, (const xmlChar *)"title"))) 
-						temptrack = xmlNodeListGetString(library, child->xmlChildrenNode, 1);
+						temptrack = xmlNodeGetContent(child);
 					else if((!xmlStrcmp(child->name, (const xmlChar *)"artist")))
-						tempartist = xmlNodeListGetString(library, child->xmlChildrenNode, 1);
+						tempartist = xmlNodeGetContent(child);
 					else if((!xmlStrcmp(child->name, (const xmlChar *)"album")))
-						tempalbum = xmlNodeListGetString(library, child->xmlChildrenNode, 1);
+						tempalbum = xmlNodeGetContent(child);
 					else if((!xmlStrcmp(child->name, (const xmlChar *)"tracknumber")))
-						temptracknumber = xmlNodeListGetString(library, child->xmlChildrenNode, 1);
-					else if((!xmlStrcmp(child->name, (const xmlChar *)"filename")))
-						tempfile = xmlNodeListGetString(library, child->xmlChildrenNode, 1);
+						temptracknumber = xmlNodeGetContent(child);
+					else if((!xmlStrcmp(child->name, (const xmlChar *)"filename"))) 
+						tempfile = xmlNodeGetContent(child);
 					else if((!xmlStrcmp(child->name, (const xmlChar *)"analyze-resnum"))) {
-						tempforce = xmlNodeListGetString(library, child->xmlChildrenNode, 1);
+						tempforce = xmlNodeGetContent(child);
 						tempforcef = atof(tempforce);
 						if(tempforcef == 0)
 							strcpy(forceresult, "Loud");
@@ -671,27 +671,26 @@ void display_library(GtkTreeView *treeview, GtkListStore *store, gchar *libfile)
 							strcpy(forceresult, "Can't conclude");
 					}
 					else if((!xmlStrcmp(child->name, (const xmlChar *)"analyze-amplitude"))) {
-						tempforce_amp = xmlNodeListGetString(library, child->xmlChildrenNode, 1);
+						tempforce_amp = xmlNodeGetContent(child);
 						tempforce_ampf = atof(tempforce_amp);
 					}
 					else if((!xmlStrcmp(child->name, (const xmlChar *)"analyze-freq"))) {
-						tempforce_freq = xmlNodeListGetString(library, child->xmlChildrenNode, 1);
+						tempforce_freq = xmlNodeGetContent(child);
 						tempforce_freqf = atof(tempforce_freq);
 					}
 					else if((!xmlStrcmp(child->name, (const xmlChar *)"analyze-tempo"))) {
-						tempforce_env = xmlNodeListGetString(library, child->xmlChildrenNode, 1);
+						tempforce_env = xmlNodeGetContent(child);
 						tempforce_envf = atof(tempforce_env);
 					}
 					else if((!xmlStrcmp(child->name, (const xmlChar *)"analyze-atk"))) {
-						tempforce_atk = xmlNodeListGetString(library, child->xmlChildrenNode, 1);
+						tempforce_atk = xmlNodeGetContent(child);
 						tempforce_atkf = atof(tempforce_atk);
-					}					
-					child = child->next;
+					}
 				}
+
 				gtk_list_store_append(store, &iter);
 				gtk_list_store_set(store, &iter, PLAYING, "", TRACKNUMBER, temptracknumber, TRACK, temptrack, ALBUM, tempalbum, ARTIST, tempartist, FORCE, tempforcef, FORCE_TEMPO, tempforce_envf, FORCE_AMP, tempforce_ampf, FORCE_FREQ, tempforce_freqf, FORCE_ATK, tempforce_atkf, TEXTFORCE, forceresult, AFILE, tempfile, -1);
-				printf("%s\n", tempfile);
-			/*	xmlFree(temptracknumber);
+				xmlFree(temptracknumber);
 				xmlFree(temptrack);
 				xmlFree(tempartist);
 				xmlFree(tempalbum);
@@ -701,9 +700,8 @@ void display_library(GtkTreeView *treeview, GtkListStore *store, gchar *libfile)
 				xmlFree(tempforce_freq);
 				xmlFree(tempforce_env);
 				xmlFree(tempforce_atk);
-				temptracknumber = temptrack = tempartist = tempforce = tempforce_amp = tempfile = tempforce_freq = tempforce_env = tempforce_atk = NULL;*/
+				temptracknumber = temptrack = tempartist = tempalbum =  tempforce = tempforce_amp = tempfile = tempforce_freq = tempforce_env = tempforce_atk = NULL;
 			}
-			cur = cur->next;
 		}
 		xmlFreeDoc(library);
 	}

@@ -104,7 +104,7 @@ struct pref_arguments {
     GtkListStore *store_library;
     GtkTreeStore *store_album;
     GtkTreeStore *store_artist;
-	GtkWidget *library_entry, *spinner;
+	GtkWidget *library_entry, *spinner, *progress_label;
 	GSettings *preferences;
 	gboolean terminate;
 	gboolean erase;

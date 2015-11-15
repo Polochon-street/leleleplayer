@@ -14,6 +14,7 @@ gboolean refresh_config_progressbar(struct pref_arguments *argument) {
 	int nblines = argument->nblines;
 	int count = argument->count;
 	gchar tempforce[17];
+	gchar *progression;
 	struct song *song;
 	GtkTreeModel *model_library;
 	gtk_spinner_start(GTK_SPINNER(argument->spinner));
@@ -22,6 +23,10 @@ gboolean refresh_config_progressbar(struct pref_arguments *argument) {
 	GtkTreeSortable *sortable_album = GTK_TREE_SORTABLE(argument->store_album);
 	gtk_tree_sortable_set_sort_column_id(sortable_library, ARTIST, GTK_SORT_ASCENDING);
 	gtk_tree_sortable_set_sort_column_id(sortable_artist, COLUMN_ARTIST, GTK_SORT_ASCENDING);
+
+	progression = g_strdup_printf("<span weight=\"bold\">%d/%d</span>", count, nblines);
+	gtk_label_set_markup(GTK_LABEL(argument->progress_label), progression);
+	g_free(progression);
 
 	do {
 		if((msg != NULL)) {
@@ -102,7 +107,7 @@ void analyze_thread(struct pref_arguments *argument) {
 
 	for(l = list; l != NULL; l = l->next) 
 		nblines++;
-
+	
 	argument->nblines = nblines;
 
 	gpointer msg_thread;
@@ -963,6 +968,7 @@ int main(int argc, char **argv) {
 	gtk_widget_set_tooltip_text(time_checkbox, "Ends the playing after a given time");
 	pargument->time_checkbox = time_checkbox;
 	analyze_spinner = gtk_spinner_new();		
+	
 
 	file = gtk_menu_item_new_with_label("File");
 	edit = gtk_menu_item_new_with_label("Edit");
@@ -991,6 +997,7 @@ int main(int argc, char **argv) {
 	pref_arguments.store_artist = pargument->store_artist;
 	pref_arguments.store_album = pargument->store_album;
 	pref_arguments.spinner = analyze_spinner;
+	pref_arguments.progress_label = gtk_label_new(NULL);
 
 	/* Signal management */
 	g_signal_connect(G_OBJECT(bus), "message::state-changed", G_CALLBACK(state_changed_cb), pargument);
@@ -1082,6 +1089,7 @@ int main(int argc, char **argv) {
 		gtk_notebook_append_page(GTK_NOTEBOOK(pargument->libnotebook), playlist_panel, gtk_label_new("Playlist"));
 	gtk_box_pack_start(GTK_BOX(vboxv), time_box, FALSE, FALSE, 1);
 		gtk_box_pack_end(GTK_BOX(time_box), analyze_spinner, FALSE, FALSE, 5);
+		gtk_box_pack_end(GTK_BOX(time_box), pref_arguments.progress_label, FALSE, FALSE, 1);
 		gtk_box_pack_end(GTK_BOX(time_box), pargument->time_spin, TRUE, TRUE, 5);
 		gtk_box_pack_end(GTK_BOX(time_box), time_checkbox, FALSE, FALSE, 5);
 

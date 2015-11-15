@@ -690,16 +690,18 @@ void display_library(GtkTreeView *treeview, GtkListStore *store, gchar *libfile)
 				}
 				gtk_list_store_append(store, &iter);
 				gtk_list_store_set(store, &iter, PLAYING, "", TRACKNUMBER, temptracknumber, TRACK, temptrack, ALBUM, tempalbum, ARTIST, tempartist, FORCE, tempforcef, FORCE_TEMPO, tempforce_envf, FORCE_AMP, tempforce_ampf, FORCE_FREQ, tempforce_freqf, FORCE_ATK, tempforce_atkf, TEXTFORCE, forceresult, AFILE, tempfile, -1);
-				free(temptracknumber);
-				free(temptrack);
-				free(tempartist);
-				free(tempalbum);
-				free(tempfile);
-				free(tempforce);
-				free(tempforce_amp);
-				free(tempforce_freq);
-				free(tempforce_env);
-				free(tempforce_atk);
+				printf("%s\n", tempfile);
+			/*	xmlFree(temptracknumber);
+				xmlFree(temptrack);
+				xmlFree(tempartist);
+				xmlFree(tempalbum);
+				xmlFree(tempfile);
+				xmlFree(tempforce);
+				xmlFree(tempforce_amp);
+				xmlFree(tempforce_freq);
+				xmlFree(tempforce_env);
+				xmlFree(tempforce_atk);
+				temptracknumber = temptrack = tempartist = tempforce = tempforce_amp = tempfile = tempforce_freq = tempforce_env = tempforce_atk = NULL;*/
 			}
 			cur = cur->next;
 		}

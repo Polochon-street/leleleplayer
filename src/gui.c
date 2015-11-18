@@ -10,11 +10,14 @@ void toggle_playpause(struct arguments *argument) {
 gboolean refresh_config_progressbar(struct pref_arguments *argument) {	
 	GAsyncQueue *msg_queue = argument->msg_queue;
 	gpointer msg = NULL;
-	GtkTreeIter iter;
+	gboolean valid;
+	gboolean found = FALSE;
+	GtkTreeIter iter, tempiter;
 	int nblines = argument->nblines;
 	int count = argument->count;
 	gchar tempforce[17];
 	gchar *progression;
+	gchar *tempfile;
 	struct song *song;
 	GtkTreeModel *model_library;
 	gtk_spinner_start(GTK_SPINNER(argument->spinner));
@@ -24,6 +27,8 @@ gboolean refresh_config_progressbar(struct pref_arguments *argument) {
 	gtk_tree_sortable_set_sort_column_id(sortable_library, ARTIST, GTK_SORT_ASCENDING);
 	gtk_tree_sortable_set_sort_column_id(sortable_artist, COLUMN_ARTIST, GTK_SORT_ASCENDING);
 
+
+	model_library = gtk_tree_view_get_model(GTK_TREE_VIEW(argument->treeview));
 	progression = g_strdup_printf("<span weight=\"bold\">%d/%d</span>", count, nblines);
 	gtk_label_set_markup(GTK_LABEL(argument->progress_label), progression);
 	g_free(progression);
@@ -39,12 +44,30 @@ gboolean refresh_config_progressbar(struct pref_arguments *argument) {
 			else
 				strcpy(tempforce, "Can't conclude"); 
 			
-			model_library = gtk_tree_view_get_model(GTK_TREE_VIEW(argument->treeview));
-			gtk_list_store_append(argument->store_library, &iter);			
-			gtk_list_store_set(argument->store_library, &iter, PLAYING, "", TRACKNUMBER, song->tracknumber, TRACK, song->title, ALBUM, song->album, ARTIST, song->artist,
-			 FORCE, (float)song->resnum, FORCE_TEMPO, song->force_vector.x, FORCE_AMP, song->force_vector.y, FORCE_FREQ, song->force_vector.z, FORCE_ATK, song->force_vector.t, TEXTFORCE, tempforce, AFILE, song->filename, -1);
-			add_entry_artist_tab(argument->treeview_artist, argument->store_artist, model_library, &iter);
-			add_entry_album_tab(argument->treeview_album, argument->store_album, model_library, &iter);
+			valid = gtk_tree_model_get_iter_first(model_library, &tempiter);
+			while(valid) {
+				gtk_tree_model_get(model_library, &tempiter, AFILE, &tempfile, -1); 
+				if(!g_strcmp0(tempfile, song->filename)) {
+					found = TRUE;
+					break;
+				}
+				valid = gtk_tree_model_iter_next(model_library, &tempiter);
+			}
+			if(found == TRUE) {
+				if(song->resnum == 2)
+					gtk_list_store_set(argument->store_library, &tempiter, PLAYING, "", TRACKNUMBER, song->tracknumber, TRACK, song->title, ALBUM, song->album, ARTIST, song->artist,
+			 			FORCE, (float)song->resnum, AFILE, song->filename, -1);
+				else
+					gtk_list_store_set(argument->store_library, &tempiter, PLAYING, "", TRACKNUMBER, song->tracknumber, TRACK, song->title, ALBUM, song->album, ARTIST, song->artist,
+			 			FORCE, (float)song->resnum, FORCE_TEMPO, song->force_vector.x, FORCE_AMP, song->force_vector.y, FORCE_FREQ, song->force_vector.z, FORCE_ATK, song->force_vector.t, TEXTFORCE, tempforce, AFILE, song->filename, -1);
+			}
+			else {
+				gtk_list_store_append(argument->store_library, &iter);			
+				gtk_list_store_set(argument->store_library, &iter, PLAYING, "", TRACKNUMBER, song->tracknumber, TRACK, song->title, ALBUM, song->album, ARTIST, song->artist,
+			 	FORCE, (float)song->resnum, FORCE_TEMPO, song->force_vector.x, FORCE_AMP, song->force_vector.y, FORCE_FREQ, song->force_vector.z, FORCE_ATK, song->force_vector.t, TEXTFORCE, tempforce, AFILE, song->filename, -1);
+				add_entry_artist_tab(argument->treeview_artist, argument->store_artist, model_library, &iter);
+				add_entry_album_tab(argument->treeview_album, argument->store_album, model_library, &iter);
+			}
 			lelele_free_song(msg);
 			g_free(song->filename);
 			msg = NULL; 
@@ -56,6 +79,7 @@ gboolean refresh_config_progressbar(struct pref_arguments *argument) {
 		msg_queue = NULL;
 		gtk_spinner_stop(GTK_SPINNER(argument->spinner));
 		argument->library_set = TRUE;
+		gtk_label_set_text(GTK_LABEL(argument->progress_label), "");
 		return FALSE;
 	}
 	else
@@ -68,6 +92,7 @@ void analyze_thread(struct pref_arguments *argument) {
 	xmlDocPtr library;
 	xmlNodePtr cur, child, cur_find, child_find;
 	xmlTextWriterPtr library_writer;
+	int tempresnum = 0;
 	int i;
 	gchar *temptracknumber;
 
@@ -88,10 +113,20 @@ void analyze_thread(struct pref_arguments *argument) {
 	}
 	else {
 		library = xmlParseFile(argument->lib_path);
-		if(library == NULL) {
+		if(library == NULL)
+			g_warning("Couldn't open library file; creating a new");
+		library_writer = xmlNewTextWriterFilename(argument->lib_path, 0);
+		if(library_writer == NULL) {
 			g_warning("Couldn't write library file");
 			return;
 		}
+		xmlTextWriterStartDocument(library_writer, NULL, "UTF-8", NULL);
+		xmlTextWriterStartElement(library_writer, "lelelelibrary");
+		xmlTextWriterEndElement(library_writer);
+		xmlTextWriterEndDocument(library_writer);
+		xmlFreeTextWriter(library_writer);
+		library = xmlParseFile(argument->lib_path);
+
 	}
 	cur = xmlDocGetRootElement(library);
 
@@ -126,40 +161,47 @@ void analyze_thread(struct pref_arguments *argument) {
 		cur_find = cur_find->children;
 		while(cur_find != NULL) {
 			if((!xmlStrcmp(cur_find->name, (const xmlChar *)"song"))) {
-				child_find = cur_find->children;
-				while(child_find != NULL) {
+				for(child_find = cur_find->children; child_find != NULL; child_find = child_find->next) {
 					if((!xmlStrcmp(child_find->name, (const xmlChar *)"filename"))) {
 						tempstring = xmlNodeGetContent(child_find->children);
 						if(!g_strcmp0(tempstring, l->data)) {
 							found = TRUE;
 						}
 						free(tempstring);
+					}	
+					if((!xmlStrcmp(child_find->name, (const xmlChar *)"analyze-resnum"))) {
+						tempstring = xmlNodeGetContent(child_find->children);
+						tempresnum = atoi(tempstring);
+						g_free(tempstring);
 					}
-					child_find = child_find->next;
 				}
+				if(found == TRUE)
+					break;
 			}
 			cur_find = cur_find->next;
-		} 
-		if(found == FALSE) {
-			struct song song;
-			struct song msg_song;
-			child = xmlNewTextChild(cur, NULL, "song", NULL);
-			int tempint;
-			gchar *amplitude, *freq, *tempo, *atk, *resnum_s;
-			if((resnum = lelele_analyze(l->data, &song, 0, argument->lelele_scan)) < 3) {
-				for(i = 0; (song.tracknumber[i] != '\0') && (g_ascii_isdigit(song.tracknumber[i]) == FALSE); ++i)
-					song.tracknumber[i] = '0';
-				if(song.tracknumber[i] != '\0') {
-					tempint = strtol(song.tracknumber, NULL, 10);
-					temptracknumber = g_strdup_printf("%02d", tempint);
-					g_free(song.tracknumber);
-					song.tracknumber = temptracknumber;
-				}
-				resnum_s = g_strdup_printf("%d", resnum);
-				amplitude = g_strdup_printf("%f", song.force_vector.y);
-				freq = g_strdup_printf("%f", song.force_vector.z);
-				tempo = g_strdup_printf("%f", song.force_vector.x);
-				atk = g_strdup_printf("%f", song.force_vector.t);
+		}
+		printf("%d, %s\n", ( argument->lelele_scan && ( (tempresnum == 2) || (found == FALSE) ) ), l->data);
+		struct song song;
+		struct song msg_song;
+		child = xmlNewTextChild(cur, NULL, "song", NULL);
+		int tempint;
+		gchar *amplitude, *freq, *tempo, *atk, *resnum_s;
+		if((resnum = lelele_analyze(l->data, &song, 0, ( argument->lelele_scan && ( (tempresnum == 2) || !found ) ) )) < 3) {
+			for(i = 0; (song.tracknumber[i] != '\0') && (g_ascii_isdigit(song.tracknumber[i]) == FALSE); ++i)
+				song.tracknumber[i] = '0';
+			if(song.tracknumber[i] != '\0') {
+				tempint = strtol(song.tracknumber, NULL, 10);
+				temptracknumber = g_strdup_printf("%02d", tempint);
+				g_free(song.tracknumber);
+				song.tracknumber = temptracknumber;
+			}
+			resnum_s = g_strdup_printf("%d", resnum);
+			amplitude = g_strdup_printf("%f", song.force_vector.y);
+			freq = g_strdup_printf("%f", song.force_vector.z);
+			tempo = g_strdup_printf("%f", song.force_vector.x);
+			atk = g_strdup_printf("%f", song.force_vector.t);
+	
+			if(found == FALSE) {
 				xmlNewTextChild(child, NULL, "filename", l->data);
 				xmlNewTextChild(child, NULL, "tracknumber", song.tracknumber);
 				xmlNewTextChild(child, NULL, "title", song.title);
@@ -170,29 +212,60 @@ void analyze_thread(struct pref_arguments *argument) {
 				xmlNewTextChild(child, NULL, "analyze-freq", freq);
 				xmlNewTextChild(child, NULL, "analyze-tempo", tempo);
 				xmlNewTextChild(child, NULL, "analyze-atk", atk);
-				g_free(amplitude);
-				g_free(resnum_s);
-				g_free(freq);
-				g_free(tempo);
-				g_free(atk);
-				msg_song = song;
-				msg_song.tracknumber = g_malloc(strlen(song.tracknumber)+1);
-				msg_song.tracknumber = strcpy(msg_song.tracknumber, song.tracknumber);
-				msg_song.title = g_malloc(strlen(song.title)+1);
-				msg_song.title = strcpy(msg_song.title, song.title);
-				msg_song.album = g_malloc(strlen(song.album)+1);
-				msg_song.album = strcpy(msg_song.album, song.album);	
-				msg_song.artist= g_malloc(strlen(song.artist)+1);
-				msg_song.artist = strcpy(msg_song.artist, song.artist);
-				msg_song.sample_array = NULL;
-				msg_song.resnum = (int)resnum;
-				msg_song.filename = g_malloc(strlen(l->data)+1);
-				msg_song.filename = strcpy(msg_song.filename, l->data);
-				g_async_queue_push(msg_queue, (gpointer)&msg_song);
-				lelele_free_song(&song);
-				xmlSaveFormatFile(argument->lib_path, library, 1);
-				//fflush(library); 
 			}
+			else {
+				if((!xmlStrcmp(cur_find->name, (const xmlChar *)"song"))) {
+					for(child_find = cur_find->children; child_find != NULL; child_find = child_find->next) {
+						if((!xmlStrcmp(child_find->name, (const xmlChar *)"title"))) 
+							xmlNodeSetContent(child_find, song.title);
+						else if((!xmlStrcmp(child_find->name, (const xmlChar *)"artist")))
+							xmlNodeSetContent(child_find, song.artist);
+						else if((!xmlStrcmp(child_find->name, (const xmlChar *)"album")))
+							xmlNodeSetContent(child_find, song.album);
+						else if((!xmlStrcmp(child_find->name, (const xmlChar *)"tracknumber")))
+							xmlNodeSetContent(child_find, song.tracknumber);	
+						if(tempresnum == 2) {
+							if((!xmlStrcmp(child_find->name, (const xmlChar *)"analyze-resnum"))) {
+								xmlNodeSetContent(child_find, resnum_s);
+							}
+							else if((!xmlStrcmp(child_find->name, (const xmlChar *)"analyze-amplitude"))) {
+								xmlNodeSetContent(child_find, amplitude);
+							}
+							else if((!xmlStrcmp(child_find->name, (const xmlChar *)"analyze-freq"))) {
+								xmlNodeSetContent(child_find, freq);
+							}
+							else if((!xmlStrcmp(child_find->name, (const xmlChar *)"analyze-tempo"))) {
+								xmlNodeSetContent(child_find, tempo);
+							}
+							else if((!xmlStrcmp(child_find->name, (const xmlChar *)"analyze-atk"))) {
+								xmlNodeSetContent(child_find, atk);
+							}		
+						}
+					}
+				}
+			}
+			g_free(amplitude);
+			g_free(resnum_s);
+			g_free(freq);
+			g_free(tempo);
+			g_free(atk);
+			msg_song = song;
+			msg_song.tracknumber = g_malloc(strlen(song.tracknumber)+1);
+			msg_song.tracknumber = strcpy(msg_song.tracknumber, song.tracknumber);
+			msg_song.title = g_malloc(strlen(song.title)+1);
+			msg_song.title = strcpy(msg_song.title, song.title);
+			msg_song.album = g_malloc(strlen(song.album)+1);
+			msg_song.album = strcpy(msg_song.album, song.album);	
+			msg_song.artist= g_malloc(strlen(song.artist)+1);
+			msg_song.artist = strcpy(msg_song.artist, song.artist);
+			msg_song.sample_array = NULL;
+			msg_song.resnum = (int)resnum;
+			msg_song.filename = g_malloc(strlen(l->data)+1);
+			msg_song.filename = strcpy(msg_song.filename, l->data);
+			g_async_queue_push(msg_queue, (gpointer)&msg_song);
+			lelele_free_song(&song);
+			xmlSaveFormatFile(argument->lib_path, library, 1);
+			//fflush(library); 
 		}
 		argument->count++;
 	}
@@ -655,8 +728,9 @@ void display_library(GtkTreeView *treeview, GtkListStore *store, gchar *libfile)
 				for(child = cur->children; child != NULL; child = child->next) {
 					if(child->type != XML_ELEMENT_NODE)
 						continue;
-					if((!xmlStrcmp(child->name, (const xmlChar *)"title"))) 
+					if((!xmlStrcmp(child->name, (const xmlChar *)"title"))) {
 						temptrack = xmlNodeGetContent(child);
+					}
 					else if((!xmlStrcmp(child->name, (const xmlChar *)"artist")))
 						tempartist = xmlNodeGetContent(child);
 					else if((!xmlStrcmp(child->name, (const xmlChar *)"album")))

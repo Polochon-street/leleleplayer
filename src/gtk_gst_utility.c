@@ -255,14 +255,14 @@ void continue_track_cb(GstElement *playbin, struct arguments *argument) {
 	structure = gst_structure_new_empty("next_song");
 	g_mutex_lock(&argument->queue_mutex);
 	GstMessage *msg = gst_message_new_application(GST_OBJECT(playbin), structure);
-	gst_element_post_message(argument->current_song.playbin, msg);
+	gst_element_post_message(argument->playbin, msg);
 
 	g_cond_wait(&argument->queue_cond, &argument->queue_mutex);
 	g_mutex_unlock(&argument->queue_mutex);
 
 	if(argument->current_song.filename) {
 		uri = g_filename_to_uri(argument->current_song.filename, NULL, NULL);
-		g_object_set(argument->current_song.playbin, "uri", uri, NULL);
+		g_object_set(argument->playbin, "uri", uri, NULL);
 		g_free(uri);
 	}
 	// TODO: Wait until message_application ends!
@@ -281,7 +281,7 @@ void queue_song(struct arguments *argument) {
 	FORCE_ATK, &argument->current_song.force_vector.t, -1);
 
 	uri = g_filename_to_uri(argument->current_song.filename, NULL, NULL);
-	g_object_set(argument->current_song.playbin, "uri", uri, NULL);
+	g_object_set(argument->playbin, "uri", uri, NULL);
 
 	g_free(uri); 
 }
@@ -302,9 +302,9 @@ void start_song(struct arguments *argument) {
 	gtk_widget_set_sensitive(argument->progressbar, TRUE);
 	uri = g_filename_to_uri(argument->current_song.filename, NULL, NULL);
 
-	gst_element_set_state(argument->current_song.playbin, GST_STATE_NULL);
-	g_object_set(argument->current_song.playbin, "uri", uri, NULL);
-	gst_element_set_state(argument->current_song.playbin, GST_STATE_PLAYING);
+	gst_element_set_state(argument->playbin, GST_STATE_NULL);
+	g_object_set(argument->playbin, "uri", uri, NULL);
+	gst_element_set_state(argument->playbin, GST_STATE_PLAYING);
 	if(argument->bartag)
 		g_source_remove(argument->bartag);
 	argument->bartag = g_timeout_add_seconds(1, refresh_progressbar, argument);
@@ -315,21 +315,21 @@ void start_song(struct arguments *argument) {
 void pause_song(struct arguments *argument) {
 	gtk_button_set_image(GTK_BUTTON(argument->playpause_button), gtk_image_new_from_icon_name("media-playback-start-symbolic", GTK_ICON_SIZE_BUTTON));
 	gtk_list_store_set(argument->store_playlist, &(argument->iter_playlist), PLAYING, "▍▍", -1);
-	gst_element_set_state(argument->current_song.playbin, GST_STATE_PAUSED);
+	gst_element_set_state(argument->playbin, GST_STATE_PAUSED);
 }
 
 void resume_song(struct arguments *argument) {
 	gtk_button_set_image(GTK_BUTTON(argument->playpause_button), gtk_image_new_from_icon_name("media-playback-pause-symbolic", GTK_ICON_SIZE_BUTTON));
 	gtk_list_store_set(argument->store_playlist, &(argument->iter_playlist), PLAYING, "▶",-1);
-	gst_element_set_state(argument->current_song.playbin, GST_STATE_PLAYING);
+	gst_element_set_state(argument->playbin, GST_STATE_PLAYING);
 }
 
 void state_changed_cb(GstBus *bus, GstMessage *msg, struct arguments *argument) {
 	GstState old_state, new_state, pending_state;
 
-	if(GST_MESSAGE_SRC(msg) == GST_OBJECT(argument->current_song.playbin)) {
+	if(GST_MESSAGE_SRC(msg) == GST_OBJECT(argument->playbin)) {
 		gst_message_parse_state_changed(msg, &old_state, &new_state, &pending_state);
-    	argument->current_song.state = new_state;
+    	argument->state = new_state;
 	}
 }
 

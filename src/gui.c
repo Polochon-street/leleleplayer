@@ -1,9 +1,9 @@
 #include "gui.h"
 
 void toggle_playpause(struct arguments *argument) {
-	if(argument->current_song.state == GST_STATE_PLAYING)
+	if(argument->state == GST_STATE_PLAYING)
 		pause_song(argument);
-	else if(argument->current_song.state == GST_STATE_PAUSED)
+	else if(argument->state == GST_STATE_PAUSED)
 		resume_song(argument);
 }
 
@@ -18,7 +18,7 @@ gboolean refresh_config_progressbar(struct pref_arguments *argument) {
 	gchar tempforce[17];
 	gchar *progression;
 	gchar *tempfile;
-	struct song *song;
+	struct bl_song *song;
 	GtkTreeModel *model_library;
 	gtk_spinner_start(GTK_SPINNER(argument->spinner));
 	GtkTreeSortable *sortable_library = GTK_TREE_SORTABLE(argument->store_library);
@@ -35,7 +35,7 @@ gboolean refresh_config_progressbar(struct pref_arguments *argument) {
 
 	do {
 		if((msg != NULL)) {
-			song = (struct song*)msg;
+			song = (struct bl_song*)msg;
 			if(song->resnum == 0)
 				strcpy(tempforce, "Loud");
 			else if(song->resnum == 1) {
@@ -68,7 +68,7 @@ gboolean refresh_config_progressbar(struct pref_arguments *argument) {
 				add_entry_artist_tab(argument->treeview_artist, argument->store_artist, model_library, &iter);
 				add_entry_album_tab(argument->treeview_album, argument->store_album, model_library, &iter);
 			}
-			lelele_free_song(msg);
+			bl_free_song(msg);
 			g_free(song->filename);
 			msg = NULL; 
 		}
@@ -181,12 +181,12 @@ void analyze_thread(struct pref_arguments *argument) {
 			cur_find = cur_find->next;
 		}
 		printf("%d, %s\n", ( argument->lelele_scan && ( (tempresnum == 2) || (found == FALSE) ) ), l->data);
-		struct song song;
-		struct song msg_song;
+		struct bl_song song;
+		struct bl_song msg_song;
 		child = xmlNewTextChild(cur, NULL, "song", NULL);
 		int tempint;
 		gchar *amplitude, *freq, *tempo, *atk, *resnum_s;
-		if((resnum = lelele_analyze(l->data, &song, 0, ( argument->lelele_scan && ( (tempresnum == 2) || !found ) ) )) < 3) {
+		if((resnum = bl_analyze(l->data, &song, 0, ( argument->lelele_scan && ( (tempresnum == 2) || !found ) ) )) < 3) {
 			for(i = 0; (song.tracknumber[i] != '\0') && (g_ascii_isdigit(song.tracknumber[i]) == FALSE); ++i)
 				song.tracknumber[i] = '0';
 			if(song.tracknumber[i] != '\0') {
@@ -263,7 +263,7 @@ void analyze_thread(struct pref_arguments *argument) {
 			msg_song.filename = g_malloc(strlen(l->data)+1);
 			msg_song.filename = strcpy(msg_song.filename, l->data);
 			g_async_queue_push(msg_queue, (gpointer)&msg_song);
-			lelele_free_song(&song);
+			bl_free_song(&song);
 			xmlSaveFormatFile(argument->lib_path, library, 1);
 			//fflush(library); 
 		}
@@ -283,7 +283,7 @@ void reset_ui(struct arguments *argument) {
 
 	GtkTreeSelection *selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(argument->treeview_playlist));
 
-	gst_element_set_state(argument->current_song.playbin, GST_STATE_NULL);
+	gst_element_set_state(argument->playbin, GST_STATE_NULL);
 	gtk_button_set_image(GTK_BUTTON(argument->playpause_button), gtk_image_new_from_icon_name("media-playback-start-symbolic", GTK_ICON_SIZE_BUTTON));
 	
 	valid = gtk_tree_model_get_iter_first(model_playlist, &iter);
@@ -298,7 +298,7 @@ void reset_ui(struct arguments *argument) {
 
 	gtk_widget_set_sensitive(argument->progressbar, FALSE);
 	g_signal_handler_block(argument->progressbar, argument->progressbar_update_signal_id);
-	gtk_adjustment_configure(argument->adjust, 0, 0, argument->current_song.duration/GST_SECOND, 
+	gtk_adjustment_configure(argument->adjust, 0, 0, argument->duration/GST_SECOND, 
 		1, 1, 1);
 	g_signal_handler_unblock(argument->progressbar, argument->progressbar_update_signal_id);
 
@@ -337,14 +337,14 @@ gboolean refresh_progressbar(gpointer pargument) {
 		}
 	}
 
-	if(argument->current_song.state < GST_STATE_PAUSED) {
+	if(argument->state < GST_STATE_PAUSED) {
 		return TRUE;
 	}
 	
-	if(gst_element_query_position(argument->current_song.playbin, 
-		fmt, &(argument->current_song.current))) {
+	if(gst_element_query_position(argument->playbin, 
+		fmt, &(argument->current))) {
 		g_signal_handler_block(argument->progressbar, argument->progressbar_update_signal_id);
-		gtk_adjustment_configure(argument->adjust, argument->current_song.current/GST_SECOND, 0, argument->current_song.duration/GST_SECOND, 
+		gtk_adjustment_configure(argument->adjust, argument->current/GST_SECOND, 0, argument->duration/GST_SECOND, 
 			1, 1, 1);
 		g_signal_handler_unblock(argument->progressbar, argument->progressbar_update_signal_id);
 		return TRUE;
@@ -826,8 +826,8 @@ int main(int argc, char **argv) {
 	pargument->playlist_count = 0;
 	pargument->iter_library.stamp = 0;
 	pargument->iter_playlist.stamp = 0;
-	pargument->current_song.duration = GST_CLOCK_TIME_NONE;
-	pargument->current_song.state = GST_STATE_NULL;
+	pargument->duration = GST_CLOCK_TIME_NONE;
+	pargument->state = GST_STATE_NULL;
 	pargument->current_song.artist = pargument->current_song.title = pargument->current_song.album = pargument->current_song.tracknumber = NULL;
 	pargument->str_genre = pargument->str_bitrate = pargument->str_samplerate = pargument->str_channels = NULL;
 	pargument->history = NULL;
@@ -858,10 +858,10 @@ int main(int argc, char **argv) {
 	gtk_window_set_title(GTK_WINDOW(window), "lelele player");
 	gtk_widget_set_size_request(window, 900, 700);
 
-	pargument->current_song.playbin = gst_element_factory_make("playbin", "playbin");
-	if(!pargument->current_song.playbin)
+	pargument->playbin = gst_element_factory_make("playbin", "playbin");
+	if(!pargument->playbin)
 		g_error("Not all elements could be created.\n");
-	bus = gst_element_get_bus(pargument->current_song.playbin);
+	bus = gst_element_get_bus(pargument->playbin);
 	gst_bus_add_signal_watch(bus);
 
 	/*if((gtk_sink = gst_element_factory_make("gtkglsink", NULL))) {
@@ -1075,11 +1075,11 @@ int main(int argc, char **argv) {
 
 	/* Signal management */
 	g_signal_connect(G_OBJECT(bus), "message::state-changed", G_CALLBACK(state_changed_cb), pargument);
-	g_signal_connect(G_OBJECT(pargument->current_song.playbin), "about-to-finish", G_CALLBACK(continue_track_cb), pargument);
+	g_signal_connect(G_OBJECT(pargument->playbin), "about-to-finish", G_CALLBACK(continue_track_cb), pargument);
 	g_signal_connect(G_OBJECT(bus), "message::stream-start", G_CALLBACK(refresh_ui_cb), pargument);
 	g_signal_connect(G_OBJECT(bus), "message::eos", G_CALLBACK(end_of_playlist_cb), pargument);
 	g_signal_connect(G_OBJECT(bus), "message::application", G_CALLBACK(message_application_cb), pargument);
-	g_signal_connect(G_OBJECT(pargument->current_song.playbin), "audio-tags-changed", G_CALLBACK(tags_obtained_cb), pargument);
+	g_signal_connect(G_OBJECT(pargument->playbin), "audio-tags-changed", G_CALLBACK(tags_obtained_cb), pargument);
 	g_signal_connect(G_OBJECT(pargument->playpause_button), "clicked", G_CALLBACK(toggle_playpause_button_cb), pargument);
 	g_signal_connect(G_OBJECT(pargument->volume_scale), "value-changed", G_CALLBACK(volume_scale_changed_cb), pargument);
 	g_signal_connect(G_OBJECT(random_button), "clicked", G_CALLBACK(toggle_random_cb), pargument);
@@ -1178,7 +1178,7 @@ int main(int argc, char **argv) {
 	gtk_main();
 
 	gst_object_unref(bus);
-	gst_object_unref(pargument->current_song.playbin);
+	gst_object_unref(pargument->playbin);
 
 	return 0;
 }

@@ -205,7 +205,7 @@ void next_buttonf_cb(GtkWidget *button, struct arguments *argument) {
 	
 	if((iter_string = gtk_tree_model_get_string_from_iter(model_playlist, &argument->iter_playlist))) {
 		argument->history = g_list_prepend(argument->history, iter_string);
-		lelele_free_song(&argument->current_song);
+		bl_free_song(&argument->current_song);
 		if(get_next_playlist_song(GTK_TREE_VIEW(argument->treeview_playlist), argument)) {
 			start_song(argument);
 		}
@@ -213,7 +213,7 @@ void next_buttonf_cb(GtkWidget *button, struct arguments *argument) {
 }
 
 void previous_buttonf_cb(GtkWidget *button, struct arguments *argument) {
-	lelele_free_song(&argument->current_song);
+	bl_free_song(&argument->current_song);
 	if(get_previous_playlist_song(GTK_TREE_VIEW(argument->treeview_playlist), argument)) {
 		start_song(argument);
 	}
@@ -346,7 +346,7 @@ void add_file_to_playlist_cb(GtkMenuItem *add_file, struct arguments *argument) 
 		for(filelist = gtk_file_chooser_get_filenames(chooser); filelist; filelist = filelist->next) {
 			GtkFileChooser *chooser = GTK_FILE_CHOOSER(dialog);
 			filename = (gchar*)filelist->data;
-			if((resnum = lelele_analyze(filename, &song, 0, 0)) == 0)
+			if((resnum = bl_analyze(filename, &song, 0, 0)) == 0)
 				printf("Couldn't conclude\n");
 			else {
 				gtk_list_store_append(argument->store_playlist, &iter_playlist);
@@ -367,7 +367,7 @@ void add_file_to_playlist_cb(GtkMenuItem *add_file, struct arguments *argument) 
 				argument->playlist_count++;
 
 				argument->iter_playlist = iter_playlist;
-				lelele_free_song(&song);
+				bl_free_song(&song);
 			}
 			g_free(filename);
 		}
@@ -418,7 +418,7 @@ void open_audio_file_cb(GtkMenuItem *open, struct arguments *argument) {
 			argument->playlist_count++;
 
 			argument->iter_playlist = iter_playlist;
-			lelele_free_song(&song);
+			bl_free_song(&song);
 			start_song(argument);
 		}
 		g_free(filename);
@@ -545,7 +545,7 @@ void message_application_cb(GstBus *bus, GstMessage *msg, struct arguments *argu
 		
 		argument->history = g_list_prepend(argument->history, gtk_tree_model_get_string_from_iter(model_playlist, &argument->iter_playlist));
 		if(!argument->repeat) {
-			lelele_free_song(&argument->current_song); 
+			bl_free_song(&argument->current_song); 
 			if(get_next_playlist_song(GTK_TREE_VIEW(argument->treeview_playlist), argument)) {
 				GtkTreeModel *model_playlist;
 	
@@ -956,5 +956,6 @@ void time_checkbox_toggled_cb(GtkToggleButton *togglebutton, struct arguments *a
 		argument->sleep_timer = NULL;
 	}
 }
+
 
 

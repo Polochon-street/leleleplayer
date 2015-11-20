@@ -1,5 +1,3 @@
-#include "analyze.h"
-
 #include <stdbool.h>
 #include <gtk/gtk.h>
 #include <glib/gprintf.h>
@@ -13,6 +11,7 @@
 #include <libxml/xmlmemory.h>
 #include <libxml/parser.h>
 #include <libxml/xmlwriter.h>
+#include <bliss.h>
 
 #ifdef linux
 #include <X11/Xlib.h>
@@ -48,7 +47,11 @@ struct arguments {
 	gboolean lelelerandom;
 	gboolean random;
 	gboolean repeat;
-	struct song current_song;
+	struct bl_song current_song;
+	GstElement *playbin;
+	GstState state;
+	gint64 duration;
+	gint64 current;
 	int first;
 	int bartag;
 	int playlist_count;
@@ -88,6 +91,10 @@ struct arguments {
 	gdouble vol;
 	gchar *lib_path;
 	GSettings *preferences;
+};
+
+struct lelele_song {
+	struct bl_song song;
 };
 
 struct pref_arguments {
@@ -217,7 +224,7 @@ void destroy_cb(GtkWidget *, struct arguments *);
 * Arguments: struct arguments *argument: the global argument struct containing:
 * -treeview_playlist, the playlist treeview, used to get the playlist model
 * -iter_playlist: the playlist iter, in order to add the created iter to the playlist treeview (and add the first to the history)
-* -store_playlist: the playlist GtkTreeStore, used to set the struct song variables
+* -store_playlist: the playlist GtkTreeStore, used to set the struct bl_song variables
 * -playlist_count: the playlist count to increment for each song
 * Arguments: gboolean erase: boolean in order ton know if the library folder has changed and must be erased or not
 */
@@ -228,7 +235,7 @@ void add_file_to_playlist_cb(GtkMenuItem *open, struct arguments *);
 * Arguments: struct arguments *argument: the global argument struct containing: 
 * -treeview_playlist, the playlist treeview, used to get the playlist model
 * -iter_playlist: the playlist iter, in order to add the created iter to the playlist treeview, and add it to the history
-* -store_playlist: the playlist GtkTreeStore, used to set the struct song variables
+* -store_playlist: the playlist GtkTreeStore, used to set the struct bl_song variables
 * -playlist_count: the playlist count to increment
 */
 void open_audio_file_cb(GtkMenuItem *, struct arguments *);
@@ -259,19 +266,19 @@ void album_popup_menu(GtkWidget *, GdkEventButton *event, struct arguments *);
 void add_library_selection_to_playlist_cb(GtkWidget *, struct arguments *);
 void add_artist_selection_to_playlist_cb(GtkWidget *, struct arguments *);
 void add_album_selection_to_playlist_cb(GtkWidget *, struct arguments *);
-int bufferize(struct song, struct arguments *);
+int bufferize(struct bl_song, struct arguments *);
 float distance(struct d4vector, struct d4vector);
 void pause_song(struct arguments *);
 void start_song(struct arguments *);
 void resume_song(struct arguments *);
 void play_song(struct arguments *);
 void queue_song(struct arguments *);
-void free_song(struct song *);
+void free_song(struct bl_song *);
 void explore(GDir *dir, const gchar *folder, GList *list);
 void folder_chooser_cb(GtkWidget *, struct pref_arguments *);
 void display_library(GtkTreeView *, GtkListStore *, gchar *libfile);
 void playlist_queue(GtkTreeIter *, GtkTreeModel *, GtkTreeView *, struct arguments *);
-void get_playlist_song(GtkTreeView *, struct song *, struct arguments *);
+void get_playlist_song(GtkTreeView *, struct bl_song *, struct arguments *);
 void clean_playlist(GtkTreeView *, struct arguments *);
 void reset_ui(struct arguments *);
 void display_album_tab(GtkWidget *, GtkTreeStore *, GtkTreeModel *);

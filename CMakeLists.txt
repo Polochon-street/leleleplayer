@@ -5,10 +5,13 @@ project(leleleplayer C)
 find_package(PkgConfig REQUIRED)
 
 if(WIN32)
-pkg_check_modules(MULTIMEDIA REQUIRED libavformat libavutil libavcodec gstreamer-1.0 gstreamer-video-1.0 libxml-2.0)
+pkg_check_modules(MULTIMEDIA REQUIRED gstreamer-1.0 gstreamer-video-1.0 libxml-2.0)
 else()
-pkg_check_modules(MULTIMEDIA REQUIRED libavformat libavutil libavcodec gstreamer-1.0 gstreamer-video-1.0 libxml-2.0 x11)
+pkg_check_modules(MULTIMEDIA REQUIRED gstreamer-1.0 gstreamer-video-1.0 libxml-2.0 x11)
 endif()
+
+set(GCC_BLISS_LINK_FLAGS "-lbliss")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS}${GCC_BLISS_LINK_FLAGS}")
 
 pkg_check_modules(GTK REQUIRED gtk+-3.0)
 
@@ -16,21 +19,18 @@ include_directories(${MULTIMEDIA_INCLUDE_DIRS} ${GTK_INCLUDE_DIRS})
 link_directories(${MULTIMEDIA_LIBRARY_DIRS} ${GTK_LIBRARY_DIRS})
 add_definitions(${MULTIMEDIA_CFLAGS_OTHER} ${GTK_CFLAGS_OTHER})
 
-ADD_LIBRARY(lelele src/amp_sort.c src/decode.c src/envelope.c src/freq_sort.c src/analyze.c)
-target_link_libraries(lelele ${MULTIMEDIA_LIBRARIES})
-
 add_executable(analyze src/gui_dummy.c)
 add_executable(leleleplayer WIN32 src/gui.c src/callbacks.c src/gtk_gst_utility.c)
-target_link_libraries(leleleplayer ${GTK_LIBRARIES})
+target_link_libraries(leleleplayer ${GTK_LIBRARIES} ${MULTIMEDIA_LIBRARIES} "-lbliss")
 
 foreach(EXE analyze leleleplayer)
-	target_link_libraries(${EXE} lelele m)
+	target_link_libraries(${EXE} "-lbliss" ${CMAKE_C_FLAGS} m)
 endforeach ()
 
 if(NOT WIN32)
 	set(CMAKE_INSTALL_PREFIX /usr)
 endif()
-set_property(TARGET lelele analyze leleleplayer PROPERTY C_STANDARD 99)
+set_property(TARGET analyze leleleplayer PROPERTY C_STANDARD 99)
 
 if(WIN32)
 install(TARGETS leleleplayer RUNTIME DESTINATION bin COMPONENT applications)

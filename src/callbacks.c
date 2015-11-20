@@ -1,7 +1,7 @@
 #include "gui.h"
 
 void destroy_cb(GtkWidget *window, struct arguments *argument) {
-	gst_element_set_state(argument->current_song.playbin, GST_STATE_NULL);
+	gst_element_set_state(argument->playbin, GST_STATE_NULL);
 	gtk_main_quit();
 }
 
@@ -12,7 +12,7 @@ void tags_obtained_cb(GstElement *playbin, gint stream, struct arguments *argume
 
 	GstMessage *msg = gst_message_new_application(GST_OBJECT(playbin), structure);
 
-	gst_element_post_message(argument->current_song.playbin, msg);
+	gst_element_post_message(argument->playbin, msg);
 }
 
 void artist_row_activated_cb(GtkTreeView *treeview, GtkTreePath *path, GtkTreeViewColumn *column, struct arguments *argument) {
@@ -179,7 +179,7 @@ void toggle_playpause_button_cb(GtkWidget *button, struct arguments *argument) {
 	
 	page = gtk_notebook_get_current_page(GTK_NOTEBOOK(argument->libnotebook));
 
-	if(argument->current_song.state == GST_STATE_NULL) {
+	if(argument->state == GST_STATE_NULL) {
 		if(page == 0) {
 			selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(argument->treeview_library));
 			if((path_list = gtk_tree_selection_get_selected_rows(selection, &model))) {
@@ -317,7 +317,7 @@ void preferences_callback_cb(GtkMenuItem *preferences, struct pref_arguments *ar
 }
 
 void add_file_to_playlist_cb(GtkMenuItem *add_file, struct arguments *argument) {
-	struct song song;
+	struct bl_song song;
 	int resnum;
 	GtkWidget *dialog;
 	GtkFileChooserAction action = GTK_FILE_CHOOSER_ACTION_OPEN;
@@ -376,7 +376,7 @@ void add_file_to_playlist_cb(GtkMenuItem *add_file, struct arguments *argument) 
 }
 
 void open_audio_file_cb(GtkMenuItem *open, struct arguments *argument) {
-	struct song song;
+	struct bl_song song;
 	int resnum;
 	GtkWidget *dialog;
 	GtkFileChooserAction action = GTK_FILE_CHOOSER_ACTION_OPEN;
@@ -395,7 +395,7 @@ void open_audio_file_cb(GtkMenuItem *open, struct arguments *argument) {
 		char *filename;
 		GtkFileChooser *chooser = GTK_FILE_CHOOSER(dialog);
 		filename = gtk_file_chooser_get_filename(chooser);
-		if((resnum = lelele_analyze(filename, &song, 0, 0)) == 0)
+		if((resnum = bl_analyze(filename, &song, 0, 0)) == 0)
 			printf("Couldn't conclude\n");
 		else { // Create an iter_forge() function?
 			gtk_list_store_append(argument->store_playlist, &iter_playlist);
@@ -460,14 +460,14 @@ void refresh_ui_cb(GstBus *bus, GstMessage *msg, struct arguments *argument) {
 		gtk_label_set_text(GTK_LABEL(argument->artist_label), argument->current_song.artist);
 		gtk_label_set_text(GTK_LABEL(argument->title_label), argument->current_song.title);	
 	}
-	while(!gst_element_query_duration(argument->current_song.playbin, fmt,
-		&(argument->current_song.duration)))
+	while(!gst_element_query_duration(argument->playbin, fmt,
+		&(argument->duration)))
 		;
-	gst_element_query_position(argument->current_song.playbin, 
-		fmt, &(argument->current_song.current));
+	gst_element_query_position(argument->playbin, 
+		fmt, &(argument->current));
 
 	g_signal_handler_block(argument->progressbar, argument->progressbar_update_signal_id);
-	gtk_adjustment_configure(argument->adjust, 0, 0, argument->current_song.duration/GST_SECOND, 
+	gtk_adjustment_configure(argument->adjust, 0, 0, argument->duration/GST_SECOND, 
 		1, 1, 1);
 	g_signal_handler_unblock(argument->progressbar, argument->progressbar_update_signal_id);
 	refresh_progressbar(argument);
@@ -483,7 +483,7 @@ void message_application_cb(GstBus *bus, GstMessage *msg, struct arguments *argu
 		GstPad *pad;
 		GstCaps *caps;
 
-		g_signal_emit_by_name(argument->current_song.playbin, "get-audio-pad", 0, &pad);
+		g_signal_emit_by_name(argument->playbin, "get-audio-pad", 0, &pad);
 		caps = gst_pad_get_current_caps(pad);
 
 		s = gst_caps_get_structure(caps, 0);
@@ -505,7 +505,7 @@ void message_application_cb(GstBus *bus, GstMessage *msg, struct arguments *argu
 			argument->str_samplerate = g_strdup("Sample rate not found");
 		}
 
-		g_signal_emit_by_name(argument->current_song.playbin, "get-audio-tags", 0, &tags);
+		g_signal_emit_by_name(argument->playbin, "get-audio-tags", 0, &tags);
 		if(tags) {
 			if(gst_tag_list_get_string(tags, GST_TAG_GENRE, &str)) {
 				argument->str_genre = g_strdup_printf("Genre: %s", str);
@@ -571,7 +571,7 @@ void ui_playlist_changed_cb(GtkTreeModel *playlist_model, GtkTreePath *path, Gtk
 }
 
 void slider_changed_cb(GtkRange *progressbar, struct arguments *argument) {
-	if(!gst_element_seek(argument->current_song.playbin, 1.0, GST_FORMAT_TIME, GST_SEEK_FLAG_FLUSH, 
+	if(!gst_element_seek(argument->playbin, 1.0, GST_FORMAT_TIME, GST_SEEK_FLAG_FLUSH, 
 		GST_SEEK_TYPE_SET, gtk_adjustment_get_value(argument->adjust)*GST_SECOND, GST_SEEK_TYPE_NONE,
 		GST_CLOCK_TIME_NONE)) 
 		g_warning("Seek failed!\n");
@@ -580,7 +580,7 @@ void slider_changed_cb(GtkRange *progressbar, struct arguments *argument) {
 void volume_scale_changed_cb(GtkScaleButton* volume_scale, gdouble value, struct arguments *argument) {
 	double vol = pow(value, 3);
 	argument->vol = value;
-	g_object_set(argument->current_song.playbin, "volume", argument->vol, NULL);
+	g_object_set(argument->playbin, "volume", argument->vol, NULL);
 	g_settings_set_double(argument->preferences, "volume", value);
 }
 

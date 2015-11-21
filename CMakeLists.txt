@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.1)
+cmake_minimum_required(VERSION 3.0)
 
 project(leleleplayer C)
 
@@ -7,7 +7,7 @@ find_package(PkgConfig REQUIRED)
 if(WIN32)
 pkg_check_modules(MULTIMEDIA REQUIRED gstreamer-1.0 gstreamer-video-1.0 libxml-2.0)
 else()
-pkg_check_modules(MULTIMEDIA REQUIRED gstreamer-1.0 gstreamer-video-1.0 libxml-2.0 x11)
+pkg_check_modules(MULTIMEDIA REQUIRED gstreamer-1.0 gstreamer-video-1.0 libxml-2.0)
 endif()
 
 set(GCC_BLISS_LINK_FLAGS "-lbliss")

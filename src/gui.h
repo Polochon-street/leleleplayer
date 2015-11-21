@@ -7,7 +7,7 @@
 #include <glib.h>
 #include <limits.h>
 #define GST_USE_UNSTABLE_API
-#include <gst/gl/gl.h>
+#include <gst/gst.h>
 #include <libxml/xmlmemory.h>
 #include <libxml/parser.h>
 #include <libxml/xmlwriter.h>
@@ -91,10 +91,6 @@ struct arguments {
 	gdouble vol;
 	gchar *lib_path;
 	GSettings *preferences;
-};
-
-struct lelele_song {
-	struct bl_song song;
 };
 
 struct pref_arguments {

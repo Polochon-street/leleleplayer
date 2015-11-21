@@ -814,9 +814,9 @@ int main(int argc, char **argv) {
 	GstElement *gtk_sink;
 	GstBus *bus;
 	
-	#ifdef linux
+/*	#ifdef linux
 		XInitThreads();
-	#endif
+	#endif */
 
 	pargument->lelelerandom = 0;
 	pargument->timer_delay = 0;

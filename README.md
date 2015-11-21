@@ -6,6 +6,7 @@ Handy when you don't want to bother yourself with creating a complete playlist.
 ![Leleleplayer screenshot](http://i.imgur.com/6CPLGVx.png)
 
 ## Dependencies
+* [bliss](https://github.com/Polochon-street/bliss) library
 * ffmpeg
 * gstreamer-1.0 (and gst-plugins-good/bad/ugly)
 * gtk3

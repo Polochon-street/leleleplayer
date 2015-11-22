@@ -346,7 +346,7 @@ void add_file_to_playlist_cb(GtkMenuItem *add_file, struct arguments *argument) 
 		for(filelist = gtk_file_chooser_get_filenames(chooser); filelist; filelist = filelist->next) {
 			GtkFileChooser *chooser = GTK_FILE_CHOOSER(dialog);
 			filename = (gchar*)filelist->data;
-			if((resnum = bl_analyze(filename, &song, 0, 0)) == 0)
+			if((resnum = bl_analyze(filename, &song)) == 0)
 				printf("Couldn't conclude\n");
 			else {
 				gtk_list_store_append(argument->store_playlist, &iter_playlist);
@@ -355,10 +355,10 @@ void add_file_to_playlist_cb(GtkMenuItem *add_file, struct arguments *argument) 
 				gtk_list_store_set(argument->store_playlist, &iter_playlist, TRACK, song.title, -1);
 				gtk_list_store_set(argument->store_playlist, &iter_playlist, ALBUM, song.album, -1);
 				gtk_list_store_set(argument->store_playlist, &iter_playlist, ARTIST, song.artist, -1);		
-				gtk_list_store_set(argument->store_playlist, &iter_playlist, FORCE_TEMPO, song.force_vector.x, -1);
-				gtk_list_store_set(argument->store_playlist, &iter_playlist, FORCE_AMP, song.force_vector.y, -1);
-				gtk_list_store_set(argument->store_playlist, &iter_playlist, FORCE_FREQ, song.force_vector.z, -1);
-				gtk_list_store_set(argument->store_playlist, &iter_playlist, FORCE_ATK, song.force_vector.t, -1);
+				gtk_list_store_set(argument->store_playlist, &iter_playlist, FORCE_TEMPO, song.force_vector.tempo, -1);
+				gtk_list_store_set(argument->store_playlist, &iter_playlist, FORCE_AMP, song.force_vector.amplitude, -1);
+				gtk_list_store_set(argument->store_playlist, &iter_playlist, FORCE_FREQ, song.force_vector.frequency, -1);
+				gtk_list_store_set(argument->store_playlist, &iter_playlist, FORCE_ATK, song.force_vector.attack, -1);
 				if(resnum > 0)
 					gtk_list_store_set(argument->store_playlist, &iter_playlist, TEXTFORCE, "Loud", -1);
 				else if(resnum < 0)
@@ -395,7 +395,7 @@ void open_audio_file_cb(GtkMenuItem *open, struct arguments *argument) {
 		char *filename;
 		GtkFileChooser *chooser = GTK_FILE_CHOOSER(dialog);
 		filename = gtk_file_chooser_get_filename(chooser);
-		if((resnum = bl_analyze(filename, &song, 0, 0)) == 0)
+		if((resnum = bl_analyze(filename, &song)) == 0)
 			printf("Couldn't conclude\n");
 		else { // Create an iter_forge() function?
 			gtk_list_store_append(argument->store_playlist, &iter_playlist);
@@ -404,10 +404,10 @@ void open_audio_file_cb(GtkMenuItem *open, struct arguments *argument) {
 			gtk_list_store_set(argument->store_playlist, &iter_playlist, TRACK, song.title, -1);
 			gtk_list_store_set(argument->store_playlist, &iter_playlist, ALBUM, song.album, -1);
 			gtk_list_store_set(argument->store_playlist, &iter_playlist, ARTIST, song.artist, -1);		
-			gtk_list_store_set(argument->store_playlist, &iter_playlist, FORCE_TEMPO, song.force_vector.x, -1);
-			gtk_list_store_set(argument->store_playlist, &iter_playlist, FORCE_AMP, song.force_vector.y, -1);
-			gtk_list_store_set(argument->store_playlist, &iter_playlist, FORCE_FREQ, song.force_vector.z, -1);
-			gtk_list_store_set(argument->store_playlist, &iter_playlist, FORCE_ATK, song.force_vector.t, -1);
+			gtk_list_store_set(argument->store_playlist, &iter_playlist, FORCE_TEMPO, song.force_vector.tempo, -1);
+			gtk_list_store_set(argument->store_playlist, &iter_playlist, FORCE_AMP, song.force_vector.amplitude, -1);
+			gtk_list_store_set(argument->store_playlist, &iter_playlist, FORCE_FREQ, song.force_vector.frequency, -1);
+			gtk_list_store_set(argument->store_playlist, &iter_playlist, FORCE_ATK, song.force_vector.attack, -1);
 			if(resnum > 0) 
 				gtk_list_store_set(argument->store_playlist, &iter_playlist, TEXTFORCE, "Loud", -1);
 			else if(resnum < 0)
@@ -553,9 +553,9 @@ void message_application_cb(GstBus *bus, GstMessage *msg, struct arguments *argu
 				gtk_tree_model_get(model_playlist, &(argument->iter_playlist), AFILE, &argument->current_song.filename, 
 				TRACKNUMBER, &argument->current_song.tracknumber, TRACK, &argument->current_song.title, 
 				ALBUM, &argument->current_song.album, ARTIST, &argument->current_song.artist, 
-				FORCE, &argument->current_song.force, FORCE_TEMPO, &argument->current_song.force_vector.x, 
-				FORCE_AMP, &argument->current_song.force_vector.y, FORCE_FREQ, &argument->current_song.force_vector.z, 
-				FORCE_ATK, &argument->current_song.force_vector.t, -1);
+				FORCE, &argument->current_song.force, FORCE_TEMPO, &argument->current_song.force_vector.tempo, 
+				FORCE_AMP, &argument->current_song.force_vector.amplitude, FORCE_FREQ, &argument->current_song.force_vector.frequency, 
+				FORCE_ATK, &argument->current_song.force_vector.attack, -1);
 			}
 			else {
 				argument->current_song.filename = NULL;

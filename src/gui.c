@@ -54,17 +54,13 @@ gboolean refresh_config_progressbar(struct pref_arguments *argument) {
 				valid = gtk_tree_model_iter_next(model_library, &tempiter);
 			}
 			if(found == TRUE) {
-				if(song->resnum == 2)
-					gtk_list_store_set(argument->store_library, &tempiter, PLAYING, "", TRACKNUMBER, song->tracknumber, TRACK, song->title, ALBUM, song->album, ARTIST, song->artist,
-			 			FORCE, (float)song->resnum, AFILE, song->filename, -1);
-				else
-					gtk_list_store_set(argument->store_library, &tempiter, PLAYING, "", TRACKNUMBER, song->tracknumber, TRACK, song->title, ALBUM, song->album, ARTIST, song->artist,
-			 			FORCE, (float)song->resnum, FORCE_TEMPO, song->force_vector.x, FORCE_AMP, song->force_vector.y, FORCE_FREQ, song->force_vector.z, FORCE_ATK, song->force_vector.t, TEXTFORCE, tempforce, AFILE, song->filename, -1);
+				gtk_list_store_set(argument->store_library, &tempiter, PLAYING, "", TRACKNUMBER, song->tracknumber, TRACK, song->title, ALBUM, song->album, ARTIST, song->artist,
+			 			FORCE, (float)song->resnum, FORCE_TEMPO, song->force_vector.tempo, FORCE_AMP, song->force_vector.amplitude, FORCE_FREQ, song->force_vector.frequency, FORCE_ATK, song->force_vector.attack, TEXTFORCE, tempforce, AFILE, song->filename, -1);
 			}
 			else {
 				gtk_list_store_append(argument->store_library, &iter);			
 				gtk_list_store_set(argument->store_library, &iter, PLAYING, "", TRACKNUMBER, song->tracknumber, TRACK, song->title, ALBUM, song->album, ARTIST, song->artist,
-			 	FORCE, (float)song->resnum, FORCE_TEMPO, song->force_vector.x, FORCE_AMP, song->force_vector.y, FORCE_FREQ, song->force_vector.z, FORCE_ATK, song->force_vector.t, TEXTFORCE, tempforce, AFILE, song->filename, -1);
+			 	FORCE, (float)song->resnum, FORCE_TEMPO, song->force_vector.tempo, FORCE_AMP, song->force_vector.amplitude, FORCE_FREQ, song->force_vector.frequency, FORCE_ATK, song->force_vector.attack, TEXTFORCE, tempforce, AFILE, song->filename, -1);
 				add_entry_artist_tab(argument->treeview_artist, argument->store_artist, model_library, &iter);
 				add_entry_album_tab(argument->treeview_album, argument->store_album, model_library, &iter);
 			}
@@ -87,7 +83,7 @@ gboolean refresh_config_progressbar(struct pref_arguments *argument) {
 }
 
 void analyze_thread(struct pref_arguments *argument) {
-	xmlKeepBlanksDefault(0);
+xmlKeepBlanksDefault(0);
 	GList *list, *l = NULL;
 	xmlDocPtr library;
 	xmlNodePtr cur, child, cur_find, child_find;
@@ -186,7 +182,7 @@ void analyze_thread(struct pref_arguments *argument) {
 		child = xmlNewTextChild(cur, NULL, "song", NULL);
 		int tempint;
 		gchar *amplitude, *freq, *tempo, *atk, *resnum_s;
-		if((resnum = bl_analyze(l->data, &song, 0, ( argument->lelele_scan && ( (tempresnum == 2) || !found ) ) )) < 3) {
+		if((resnum = bl_analyze(l->data, &song)) < 3) {
 			for(i = 0; (song.tracknumber[i] != '\0') && (g_ascii_isdigit(song.tracknumber[i]) == FALSE); ++i)
 				song.tracknumber[i] = '0';
 			if(song.tracknumber[i] != '\0') {
@@ -196,10 +192,10 @@ void analyze_thread(struct pref_arguments *argument) {
 				song.tracknumber = temptracknumber;
 			}
 			resnum_s = g_strdup_printf("%d", resnum);
-			amplitude = g_strdup_printf("%f", song.force_vector.y);
-			freq = g_strdup_printf("%f", song.force_vector.z);
-			tempo = g_strdup_printf("%f", song.force_vector.x);
-			atk = g_strdup_printf("%f", song.force_vector.t);
+			amplitude = g_strdup_printf("%f", song.force_vector.amplitude);
+			freq = g_strdup_printf("%f", song.force_vector.frequency);
+			tempo = g_strdup_printf("%f", song.force_vector.tempo);
+			atk = g_strdup_printf("%f", song.force_vector.attack);
 	
 			if(found == FALSE) {
 				xmlNewTextChild(child, NULL, "filename", l->data);
@@ -273,7 +269,6 @@ void analyze_thread(struct pref_arguments *argument) {
 	g_list_free_full(list, g_free);
 	xmlSaveFormatFile(argument->lib_path, library, 1);
 	xmlFreeDoc(library);	
-	//fclose(test);
 }
 
 void reset_ui(struct arguments *argument) {

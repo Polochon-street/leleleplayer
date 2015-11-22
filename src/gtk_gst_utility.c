@@ -12,13 +12,6 @@ gboolean filter_vis_features(GstPluginFeature *feature, gpointer data) {
 	return TRUE;
 }
 
-float distance(struct d4vector v1, struct d4vector v2) {
-	float distance;
-	distance = sqrt((v1.x - v2.x)*(v1.x - v2.x) + (v1.y - v2.y)*(v1.y - v2.y) +
-		(v1.z - v2.z)*(v1.z - v2.z));
-	return distance;
-}
-
 void explore(GDir *dir, const gchar *folder, GList *list) {
 	const gchar *file;
 	gchar *temppath;
@@ -36,6 +29,27 @@ void explore(GDir *dir, const gchar *folder, GList *list) {
 	if(file == NULL) {
 		g_dir_close(dir);
 	}
+}
+
+float distance(struct force_vector_s v1, struct force_vector_s v2) {
+	float distance;
+	distance = sqrt((v1.amplitude - v2.amplitude)*(v1.amplitude- v2.amplitude) + (v1.frequency - v2.frequency)*(v1.frequency- v2.frequency) +
+		(v1.tempo - v2.tempo)*(v1.tempo - v2.tempo));
+	return distance;
+}
+
+
+float cosine_distance(struct force_vector_s v1, struct force_vector_s v2) {
+	float similarity;
+
+    similarity = (v1.tempo*v2.tempo + v1.amplitude*v2.amplitude +
+            v1.frequency*v2.frequency + v1.attack*v2.attack) / (
+            sqrt(v1.tempo*v1.tempo + v1.amplitude*v1.amplitude +
+                v1.frequency*v1.frequency + v1.attack*v1.attack) * 
+            sqrt(v2.tempo*v2.tempo + v2.amplitude*v2.amplitude +
+                v2.frequency*v2.frequency + v2.attack*v2.attack));
+
+	return similarity;
 }
 
 gboolean add_artist_to_playlist(gchar *artist, struct arguments *argument) {
@@ -213,18 +227,18 @@ gboolean get_lelelerandom_playlist_song(GtkTreeView *treeview_playlist, struct a
 	GtkTreeModel *model_playlist;
 
 	model_playlist = gtk_tree_view_get_model(GTK_TREE_VIEW(argument->treeview_playlist));
-	struct d4vector current_force = argument->current_song.force_vector;
+	struct force_vector_s current_force = argument->current_song.force_vector;
 	float treshold = 0.20;
 	int i = 0;
 	do {
 		treshold += 0.001;
 		if(!get_random_playlist_song(treeview_playlist, argument))
 			return FALSE;
-		gtk_tree_model_get(model_playlist, &(argument->iter_playlist), FORCE_TEMPO, &argument->current_song.force_vector.x, 
-		FORCE_AMP, &argument->current_song.force_vector.y, FORCE_FREQ, &argument->current_song.force_vector.z, 
-		FORCE_ATK, &argument->current_song.force_vector.t, -1);
-		argument->current_song.force_vector.t = current_force.t = 0;
-		argument->current_song.force_vector.x = current_force.x = 0;
+		gtk_tree_model_get(model_playlist, &(argument->iter_playlist), FORCE_TEMPO, &argument->current_song.force_vector.tempo, 
+		FORCE_AMP, &argument->current_song.force_vector.amplitude, FORCE_FREQ, &argument->current_song.force_vector.frequency, 
+		FORCE_ATK, &argument->current_song.force_vector.attack, -1);
+		argument->current_song.force_vector.attack = current_force.attack = 0;
+		argument->current_song.force_vector.tempo = current_force.tempo = 0;
 	} while(distance(current_force, argument->current_song.force_vector) >= treshold);
 	return TRUE;
 }
@@ -276,9 +290,9 @@ void queue_song(struct arguments *argument) {
 	gtk_tree_model_get(model_playlist, &(argument->iter_playlist), AFILE, &argument->current_song.filename, 
 	TRACKNUMBER, &argument->current_song.tracknumber, TRACK, &argument->current_song.title, 
 	ALBUM, &argument->current_song.album, ARTIST, &argument->current_song.artist, 
-	FORCE, &argument->current_song.force, FORCE_TEMPO, &argument->current_song.force_vector.x, 
-	FORCE_AMP, &argument->current_song.force_vector.y, FORCE_FREQ, &argument->current_song.force_vector.z, 
-	FORCE_ATK, &argument->current_song.force_vector.t, -1);
+	FORCE, &argument->current_song.force, FORCE_TEMPO, &argument->current_song.force_vector.tempo, 
+	FORCE_AMP, &argument->current_song.force_vector.amplitude, FORCE_FREQ, &argument->current_song.force_vector.frequency, 
+	FORCE_ATK, &argument->current_song.force_vector.attack, -1);
 
 	uri = g_filename_to_uri(argument->current_song.filename, NULL, NULL);
 	g_object_set(argument->playbin, "uri", uri, NULL);
@@ -295,9 +309,9 @@ void start_song(struct arguments *argument) {
 	gtk_tree_model_get(model_playlist, &(argument->iter_playlist), AFILE, &argument->current_song.filename, 
 	TRACKNUMBER, &argument->current_song.tracknumber, TRACK, &argument->current_song.title, 
 	ALBUM, &argument->current_song.album, ARTIST, &argument->current_song.artist, 
-	FORCE, &argument->current_song.force, FORCE_TEMPO, &argument->current_song.force_vector.x, 
-	FORCE_AMP, &argument->current_song.force_vector.y, FORCE_FREQ, &argument->current_song.force_vector.z, 
-	FORCE_ATK, &argument->current_song.force_vector.t, -1);
+	FORCE, &argument->current_song.force, FORCE_TEMPO, &argument->current_song.force_vector.tempo, 
+	FORCE_AMP, &argument->current_song.force_vector.amplitude, FORCE_FREQ, &argument->current_song.force_vector.frequency, 
+	FORCE_ATK, &argument->current_song.force_vector.attack, -1);
 
 	gtk_widget_set_sensitive(argument->progressbar, TRUE);
 	uri = g_filename_to_uri(argument->current_song.filename, NULL, NULL);

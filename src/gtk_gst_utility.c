@@ -228,18 +228,18 @@ gboolean get_lelelerandom_playlist_song(GtkTreeView *treeview_playlist, struct a
 
 	model_playlist = gtk_tree_view_get_model(GTK_TREE_VIEW(argument->treeview_playlist));
 	struct force_vector_s current_force = argument->current_song.force_vector;
-	float treshold = 0.20;
+	float treshold = 0.5;
 	int i = 0;
 	do {
-		treshold += 0.001;
+		treshold -= 0.001;
 		if(!get_random_playlist_song(treeview_playlist, argument))
 			return FALSE;
-		gtk_tree_model_get(model_playlist, &(argument->iter_playlist), FORCE_TEMPO, &argument->current_song.force_vector.tempo, 
+		gtk_tree_model_get(model_playlist, &(argument->iter_playlist), TRACK, &argument->current_song.title, FORCE_TEMPO, &argument->current_song.force_vector.tempo, 
 		FORCE_AMP, &argument->current_song.force_vector.amplitude, FORCE_FREQ, &argument->current_song.force_vector.frequency, 
 		FORCE_ATK, &argument->current_song.force_vector.attack, -1);
 		argument->current_song.force_vector.attack = current_force.attack = 0;
 		argument->current_song.force_vector.tempo = current_force.tempo = 0;
-	} while(distance(current_force, argument->current_song.force_vector) >= treshold);
+	} while(cosine_distance(current_force, argument->current_song.force_vector) < treshold);
 	return TRUE;
 }
 

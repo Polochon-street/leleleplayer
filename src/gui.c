@@ -36,9 +36,9 @@ gboolean refresh_config_progressbar(struct pref_arguments *argument) {
 	do {
 		if((msg != NULL)) {
 			song = (struct bl_song*)msg;
-			if(song->resnum == 0)
+			if(song->calm_or_loud == BL_LOUD)
 				strcpy(tempforce, "Loud");
-			else if(song->resnum == 1) {
+			else if(song->calm_or_loud == BL_CALM) {
 				strcpy(tempforce, "Calm");
 			}
 			else
@@ -55,12 +55,12 @@ gboolean refresh_config_progressbar(struct pref_arguments *argument) {
 			}
 			if(found == TRUE) {
 				gtk_list_store_set(argument->store_library, &tempiter, PLAYING, "", TRACKNUMBER, song->tracknumber, TRACK, song->title, ALBUM, song->album, ARTIST, song->artist,
-			 			FORCE, (float)song->resnum, FORCE_TEMPO, song->force_vector.tempo, FORCE_AMP, song->force_vector.amplitude, FORCE_FREQ, song->force_vector.frequency, FORCE_ATK, song->force_vector.attack, TEXTFORCE, tempforce, AFILE, song->filename, -1);
+			 			FORCE, (float)song->calm_or_loud, FORCE_TEMPO, song->force_vector.tempo, FORCE_AMP, song->force_vector.amplitude, FORCE_FREQ, song->force_vector.frequency, FORCE_ATK, song->force_vector.attack, TEXTFORCE, tempforce, AFILE, song->filename, -1);
 			}
 			else {
 				gtk_list_store_append(argument->store_library, &iter);			
 				gtk_list_store_set(argument->store_library, &iter, PLAYING, "", TRACKNUMBER, song->tracknumber, TRACK, song->title, ALBUM, song->album, ARTIST, song->artist,
-			 	FORCE, (float)song->resnum, FORCE_TEMPO, song->force_vector.tempo, FORCE_AMP, song->force_vector.amplitude, FORCE_FREQ, song->force_vector.frequency, FORCE_ATK, song->force_vector.attack, TEXTFORCE, tempforce, AFILE, song->filename, -1);
+			 	FORCE, (float)song->calm_or_loud, FORCE_TEMPO, song->force_vector.tempo, FORCE_AMP, song->force_vector.amplitude, FORCE_FREQ, song->force_vector.frequency, FORCE_ATK, song->force_vector.attack, TEXTFORCE, tempforce, AFILE, song->filename, -1);
 				add_entry_artist_tab(argument->treeview_artist, argument->store_artist, model_library, &iter);
 				add_entry_album_tab(argument->treeview_album, argument->store_album, model_library, &iter);
 			}
@@ -255,7 +255,7 @@ xmlKeepBlanksDefault(0);
 			msg_song.artist= g_malloc(strlen(song.artist)+1);
 			msg_song.artist = strcpy(msg_song.artist, song.artist);
 			msg_song.sample_array = NULL;
-			msg_song.resnum = (int)resnum;
+			msg_song.calm_or_loud = (int)resnum;
 			msg_song.filename = g_malloc(strlen(l->data)+1);
 			msg_song.filename = strcpy(msg_song.filename, l->data);
 			g_async_queue_push(msg_queue, (gpointer)&msg_song);
@@ -737,9 +737,9 @@ void display_library(GtkTreeView *treeview, GtkListStore *store, gchar *libfile)
 					else if((!xmlStrcmp(child->name, (const xmlChar *)"analyze-resnum"))) {
 						tempforce = xmlNodeGetContent(child);
 						tempforcef = atof(tempforce);
-						if(tempforcef == 0)
+						if(tempforcef == BL_LOUD)
 							strcpy(forceresult, "Loud");
-						else if(tempforcef == 1) 
+						else if(tempforcef == BL_CALM) 
 							strcpy(forceresult, "Calm");
 						else
 							strcpy(forceresult, "Can't conclude");

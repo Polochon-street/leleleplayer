@@ -786,6 +786,8 @@ int main(int argc, char **argv) {
 	struct arguments *pargument = &argument;
 	struct pref_arguments pref_arguments;
 
+	GtkBuilder *builder;
+
 	GtkWidget *window, *treeview_library, *treeview_playlist, *treeview_artist, *treeview_album, *library_panel, *artist_panel, *album_panel, *playlist_panel, *vboxv,
 		*playbox, *volumebox, *randombox, *repeat_button, *random_button, *lelele_button, *labelbox, *next_button, *previous_button, 
 		*menubar, *file, *filemenu, *open, *add_file, *close, *edit, *editmenu, *preferences,
@@ -849,7 +851,9 @@ int main(int argc, char **argv) {
 
 	g_free(libdir);
 
-	window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+	builder = gtk_builder_new_from_file("/usr/share/leleleplayer/gui.ui");
+	
+	window = GTK_WIDGET(gtk_builder_get_object(builder, "window"));
 	gtk_window_set_title(GTK_WINDOW(window), "lelele player");
 	gtk_widget_set_size_request(window, 900, 700);
 
@@ -917,32 +921,29 @@ int main(int argc, char **argv) {
 	artist_panel = gtk_scrolled_window_new(NULL, NULL);
 	album_panel = gtk_scrolled_window_new(NULL, NULL);
 
-	pargument->store_library = gtk_list_store_new(COLUMNS, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_FLOAT, G_TYPE_FLOAT, G_TYPE_FLOAT, G_TYPE_FLOAT, G_TYPE_FLOAT, G_TYPE_STRING, G_TYPE_STRING);
+	pargument->store_library = GTK_LIST_STORE(gtk_builder_get_object(builder, "store_library"));
+	pargument->treeview_library = GTK_WIDGET(gtk_builder_get_object(builder, "treeview_library"));
 	sortable_library = GTK_TREE_SORTABLE(pargument->store_library);
-	treeview_library = gtk_tree_view_new_with_model(GTK_TREE_MODEL(pargument->store_library));
 	gtk_tree_sortable_set_sort_func(sortable_library, TRACKNUMBER, sort_iter_compare_func, NULL, NULL); 
 	gtk_tree_sortable_set_sort_func(sortable_library, TEXTFORCE, sort_force, NULL, NULL);
 	gtk_tree_sortable_set_sort_func(sortable_library, ARTIST, sort_artist_album_tracks, NULL, NULL);
 	gtk_tree_sortable_set_sort_func(sortable_library, ALBUM, sort_album_tracks, NULL, NULL);
-	setup_tree_view_renderer_play_lib(treeview_library);	
-	pargument->treeview_library = treeview_library;
-	display_library(GTK_TREE_VIEW(treeview_library), pargument->store_library, pargument->lib_path);
-	model_library = gtk_tree_view_get_model(GTK_TREE_VIEW(treeview_library));
-	GtkTreeSelection *selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(treeview_library));
+	setup_tree_view_renderer_play_lib(pargument->treeview_library);	
+	display_library(GTK_TREE_VIEW(pargument->treeview_library), pargument->store_library, pargument->lib_path);
+	model_library = gtk_tree_view_get_model(GTK_TREE_VIEW(pargument->treeview_library));
+	GtkTreeSelection *selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(pargument->treeview_library));
 	gtk_tree_selection_set_mode(selection, GTK_SELECTION_MULTIPLE);
 
-	pargument->store_playlist = gtk_list_store_new(COLUMNS, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_FLOAT, G_TYPE_FLOAT, G_TYPE_FLOAT, G_TYPE_FLOAT, G_TYPE_FLOAT, G_TYPE_STRING, G_TYPE_STRING);
-	treeview_playlist = gtk_tree_view_new_with_model(GTK_TREE_MODEL(pargument->store_playlist));
+	pargument->store_playlist = GTK_LIST_STORE(gtk_builder_get_object(builder, "store_playlist"));
+	treeview_playlist = GTK_WIDGET(gtk_builder_get_object(builder, "treeview_playlist"));
 	setup_tree_view_renderer_play_lib(treeview_playlist);
-	gtk_tree_view_set_reorderable(GTK_TREE_VIEW(treeview_playlist), TRUE);
-	gtk_tree_view_set_headers_clickable(GTK_TREE_VIEW(treeview_playlist), FALSE);
 	pargument->treeview_playlist = treeview_playlist;
 	model_playlist = gtk_tree_view_get_model(GTK_TREE_VIEW(treeview_playlist));
 	selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(treeview_playlist));
 	gtk_tree_selection_set_mode(selection, GTK_SELECTION_MULTIPLE);
 
-	pargument->store_artist = gtk_tree_store_new(NUM_COLS_ARTIST, G_TYPE_STRING);
-	treeview_artist = gtk_tree_view_new_with_model(GTK_TREE_MODEL(pargument->store_artist));
+	pargument->store_artist = GTK_TREE_STORE(gtk_builder_get_object(builder, "store_artist"));
+	treeview_artist = GTK_WIDGET(gtk_builder_get_object(builder, "treeview_artist"));
 	sortable_artist = GTK_TREE_SORTABLE(pargument->store_artist);
 	gtk_tree_sortable_set_sort_column_id(sortable_library, ARTIST, GTK_SORT_ASCENDING);
 	gtk_tree_sortable_set_sort_func(sortable_artist, COLUMN_ARTIST, sort_text, NULL, NULL); 
@@ -953,8 +954,8 @@ int main(int argc, char **argv) {
 	selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(treeview_artist));
 	gtk_tree_selection_set_mode(selection, GTK_SELECTION_MULTIPLE);
 
-	pargument->store_album = gtk_tree_store_new(NUM_COLS_ALBUM, G_TYPE_STRING);
-	treeview_album = gtk_tree_view_new_with_model(GTK_TREE_MODEL(pargument->store_album));
+	pargument->store_album = GTK_TREE_STORE(gtk_builder_get_object(builder, "store_album"));
+	treeview_album = GTK_WIDGET(gtk_builder_get_object(builder, "treeview_album"));
 	sortable_album = GTK_TREE_SORTABLE(pargument->store_album);
 	gtk_tree_sortable_set_sort_func(sortable_album, COLUMN_ALBUM, sort_text, NULL, NULL); 
 	gtk_tree_sortable_set_sort_column_id(sortable_album, COLUMN_ALBUM, GTK_SORT_ASCENDING);
@@ -973,49 +974,33 @@ int main(int argc, char **argv) {
 	playbox = gtk_button_box_new(GTK_ORIENTATION_HORIZONTAL);
 	randombox = gtk_button_box_new(GTK_ORIENTATION_HORIZONTAL);
 	volumebox = gtk_button_box_new(GTK_ORIENTATION_HORIZONTAL);
-	pargument->playpause_button= gtk_button_new();
-	random_button = gtk_toggle_button_new();
-	gtk_button_set_image(GTK_BUTTON(random_button), gtk_image_new_from_icon_name("media-playlist-shuffle-symbolic", GTK_ICON_SIZE_BUTTON));
-	gtk_widget_set_tooltip_text(random_button, "Standard random button");
-	repeat_button = gtk_toggle_button_new();
-	gtk_button_set_image(GTK_BUTTON(repeat_button), gtk_image_new_from_icon_name("media-playlist-repeat-symbolic", GTK_ICON_SIZE_BUTTON));
 	lelele_button = gtk_toggle_button_new();
 	if(g_file_test("../images/lelelerandom.svg", G_FILE_TEST_EXISTS))
 		gtk_button_set_image(GTK_BUTTON(lelele_button), gtk_image_new_from_file("../images/lelelerandom.svg"));
 	else
 		gtk_button_set_image(GTK_BUTTON(lelele_button), gtk_image_new_from_file("/usr/share/leleleplayer/icons/lelelerandom.svg"));
 
-	gtk_widget_set_tooltip_text(lelele_button, "Random smoothly over songs");
-	next_button = gtk_button_new();
-	gtk_button_set_image(GTK_BUTTON(next_button), gtk_image_new_from_icon_name("media-skip-forward-symbolic", GTK_ICON_SIZE_BUTTON));
-	previous_button = gtk_button_new();
-	gtk_button_set_image(GTK_BUTTON(previous_button), gtk_image_new_from_icon_name("media-skip-backward-symbolic", GTK_ICON_SIZE_BUTTON));
-	pargument->playpause_button = gtk_button_new();
-	gtk_button_set_image(GTK_BUTTON(pargument->playpause_button), gtk_image_new_from_icon_name("media-playback-start-symbolic", GTK_ICON_SIZE_BUTTON));
+	pargument->playpause_button = GTK_WIDGET(gtk_builder_get_object(builder, "playpause_button"));
+	
+	// TODO
 	if(g_file_test("../images/lelele.png", G_FILE_TEST_EXISTS)) 
 		gtk_window_set_icon_from_file(GTK_WINDOW(window), "../images/lelele.png", NULL);
 	else
 		gtk_window_set_icon_from_file(GTK_WINDOW(window), "/usr/share/leleleplayer/icons/lelele.png", NULL);
-	pargument->adjust = (GtkAdjustment*)gtk_adjustment_new(0, 0, 100, 1, 1, 1);
-	pargument->progressbar = gtk_scale_new(GTK_ORIENTATION_HORIZONTAL, pargument->adjust);
-	pargument->volume_scale = gtk_scale_button_new(GTK_ICON_SIZE_BUTTON, 0, 1, 0.1, volume);
-	gtk_scale_set_draw_value((GtkScale*)pargument->progressbar, FALSE);
-	gtk_widget_set_sensitive(pargument->progressbar, FALSE);
-	vboxv = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
-	time_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
-	labelbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
-	pargument->title_label = gtk_label_new("");
-	pargument->album_label = gtk_label_new("");
-	gtk_label_set_markup(GTK_LABEL(pargument->album_label), "<span foreground=\"grey\">No song currently playing</span>");
-	pargument->artist_label = gtk_label_new("");
-	pargument->genre_label = gtk_label_new("Genre:");
+	pargument->adjust = GTK_ADJUSTMENT(gtk_builder_get_object(builder, "adjust"));
+	pargument->progressbar = GTK_WIDGET(gtk_builder_get_object(builder, "progressbar"));
+	pargument->volume_scale = GTK_WIDGET(gtk_builder_get_object(builder, "volume_scale"));
+	pargument->title_label = GTK_WIDGET(gtk_builder_get_object(builder, "title_label"));
+	pargument->album_label = GTK_WIDGET(gtk_builder_get_object(builder, "album_label"));
+	pargument->artist_label = GTK_WIDGET(gtk_builder_get_object(builder, "artist_label"));
+	/*pargument->genre_label = gtk_label_new("Genre:");
 	pargument->samplerate_label = gtk_label_new("Sample rate:");
 	pargument->bitrate_label = gtk_label_new("Bitrate:");
-	pargument->channels_label = gtk_label_new("Channels:");
-	pargument->libnotebook = gtk_notebook_new();
-	mediainfo_expander = gtk_expander_new("Visualizer/Mediainfo");
+	pargument->channels_label = gtk_label_new("Channels:");*/
+	pargument->libnotebook = GTK_WIDGET(gtk_builder_get_object(builder, "libnotebook"));
+	/*mediainfo_expander = gtk_expander_new("Visualizer/Mediainfo");
 	mediainfo_labelbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
-	mediainfo_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
+	mediainfo_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);*/
 	//gtk_widget_set_size_request(area, -1, 50);
 	menubar = gtk_menu_bar_new();
 	if(schema_source = g_settings_schema_source_new_from_directory("..", NULL, FALSE, NULL))
@@ -1029,37 +1014,11 @@ int main(int argc, char **argv) {
 	pref_arguments.lelele_scan = g_settings_get_boolean(pref_arguments.preferences, "lelele-scan");
 	pref_arguments.lib_path = pargument->lib_path;
 	pargument->vol = g_settings_get_double(pref_arguments.preferences, "volume");
-	time_adjust = gtk_adjustment_new(0, 0, 86399, 30, 60, 0);
-	pargument->time_spin = gtk_spin_button_new(time_adjust, 1, 1);
-	gtk_widget_set_tooltip_text(pargument->time_spin, "Ends the playing after a given time");
-	gtk_spin_button_set_wrap(GTK_SPIN_BUTTON(pargument->time_spin), TRUE);
-	time_checkbox = gtk_check_button_new_with_label("Enable sleep timer until ");
-	gtk_widget_set_tooltip_text(time_checkbox, "Ends the playing after a given time");
-	pargument->time_checkbox = time_checkbox;
-	analyze_spinner = gtk_spinner_new();		
-	
-
-	file = gtk_menu_item_new_with_label("File");
-	edit = gtk_menu_item_new_with_label("Edit");
-	filemenu = gtk_menu_new();
-	editmenu = gtk_menu_new();
-
-	gtk_menu_item_set_submenu(GTK_MENU_ITEM(file), filemenu);
-	gtk_menu_item_set_submenu(GTK_MENU_ITEM(edit), editmenu);
-	gtk_menu_shell_append(GTK_MENU_SHELL(menubar), file);
-	gtk_menu_shell_append(GTK_MENU_SHELL(menubar), edit);
-
-	open = gtk_menu_item_new_with_label("Open...");
-	add_file = gtk_menu_item_new_with_label("Add file to playlist...");
-	close = gtk_menu_item_new_with_label("Close");
-	preferences = gtk_menu_item_new_with_label("Preferences");
-	gtk_menu_shell_append(GTK_MENU_SHELL(filemenu), open);
-	gtk_menu_shell_append(GTK_MENU_SHELL(filemenu), add_file);
-	gtk_menu_shell_append(GTK_MENU_SHELL(filemenu), close);
-	gtk_menu_shell_append(GTK_MENU_SHELL(editmenu), preferences);
+	pargument->time_spin = GTK_WIDGET(gtk_builder_get_object(builder, "time_spin"));
+	pargument->time_checkbox = GTK_WIDGET(gtk_builder_get_object(builder, "time_checkbok"));
 
 	pref_arguments.window = window;
-	pref_arguments.treeview = treeview_library;
+	pref_arguments.treeview = pargument->treeview_library;
 	pref_arguments.treeview_artist = treeview_artist;
 	pref_arguments.treeview_album = treeview_album;
 	pref_arguments.store_library = pargument->store_library;
@@ -1068,6 +1027,17 @@ int main(int argc, char **argv) {
 	pref_arguments.spinner = analyze_spinner;
 	pref_arguments.progress_label = gtk_label_new(NULL);
 
+	random_button = GTK_WIDGET(gtk_builder_get_object(builder, "random_button"));
+	repeat_button = GTK_WIDGET(gtk_builder_get_object(builder, "repeat_button"));
+	lelele_button = GTK_WIDGET(gtk_builder_get_object(builder, "lelele_button"));
+	next_button = GTK_WIDGET(gtk_builder_get_object(builder, "next_button"));
+	previous_button = GTK_WIDGET(gtk_builder_get_object(builder, "previous_button"));
+	time_checkbox = GTK_WIDGET(gtk_builder_get_object(builder, "time_checkbox"));
+	open = GTK_WIDGET(gtk_builder_get_object(builder, "open"));
+	add_file = GTK_WIDGET(gtk_builder_get_object(builder, "addfiletoplaylist"));
+	close = GTK_WIDGET(gtk_builder_get_object(builder, "close"));
+	preferences = GTK_WIDGET(gtk_builder_get_object(builder, "preferences"));
+	
 	/* Signal management */
 	g_signal_connect(G_OBJECT(bus), "message::state-changed", G_CALLBACK(state_changed_cb), pargument);
 	g_signal_connect(G_OBJECT(pargument->playbin), "about-to-finish", G_CALLBACK(continue_track_cb), pargument);
@@ -1086,8 +1056,8 @@ int main(int argc, char **argv) {
 	g_signal_connect(G_OBJECT(open), "activate", G_CALLBACK(open_audio_file_cb), pargument);
 	g_signal_connect(G_OBJECT(add_file), "activate", G_CALLBACK(add_file_to_playlist_cb), pargument);
 	g_signal_connect(G_OBJECT(close), "activate", G_CALLBACK(destroy_cb), pargument);
-	g_signal_connect(G_OBJECT(treeview_library), "row-activated", G_CALLBACK(lib_row_activated_cb), pargument);
-	g_signal_connect(G_OBJECT(treeview_library), "button-press-event", G_CALLBACK(treeviews_right_click_cb), pargument);
+	g_signal_connect(G_OBJECT(pargument->treeview_library), "row-activated", G_CALLBACK(lib_row_activated_cb), pargument);
+	g_signal_connect(G_OBJECT(pargument->treeview_library), "button-press-event", G_CALLBACK(treeviews_right_click_cb), pargument);
 	g_signal_connect(G_OBJECT(treeview_artist), "button-press-event", G_CALLBACK(treeviews_right_click_cb), pargument);
 	g_signal_connect(G_OBJECT(treeview_album), "button-press-event", G_CALLBACK(treeviews_right_click_cb), pargument);
 	g_signal_connect(G_OBJECT(treeview_playlist), "button-press-event", G_CALLBACK(treeviews_right_click_cb), pargument);
@@ -1103,67 +1073,10 @@ int main(int argc, char **argv) {
 	g_signal_connect(G_OBJECT(pargument->libnotebook), "switch-page", G_CALLBACK(changed_page_notebook_cb), NULL);
 	pargument->progressbar_update_signal_id = g_signal_connect(G_OBJECT(pargument->progressbar), 
 		"value-changed", G_CALLBACK(slider_changed_cb), pargument);
-	g_signal_connect(G_OBJECT(window), "destroy", G_CALLBACK(destroy_cb), pargument);	
+	g_signal_connect(G_OBJECT(window), "destroy", G_CALLBACK(destroy_cb), pargument);
 
-	gtk_container_add(GTK_CONTAINER(library_panel), treeview_library);
-	gtk_container_add(GTK_CONTAINER(playlist_panel), treeview_playlist);
-	gtk_container_add(GTK_CONTAINER(artist_panel), treeview_artist);
-	gtk_container_add(GTK_CONTAINER(album_panel), treeview_album);
-
-	gtk_box_set_homogeneous(GTK_BOX(vboxv), FALSE);
-	gtk_box_set_homogeneous(GTK_BOX(time_box), FALSE);
-	
 	/* Add objects to the box */
-	gtk_box_pack_start(GTK_BOX(vboxv), menubar, FALSE, FALSE, 1);
-	gtk_box_pack_start(GTK_BOX(vboxv), labelbox, FALSE, FALSE, 1);
-		gtk_box_pack_start(GTK_BOX(labelbox), pargument->title_label, FALSE, FALSE, 1);
-		gtk_box_pack_start(GTK_BOX(labelbox), pargument->album_label, FALSE, FALSE, 1);
-		gtk_box_pack_start(GTK_BOX(labelbox), pargument->artist_label, FALSE, FALSE, 1);
-	gtk_box_pack_start(GTK_BOX(vboxv), playbox, FALSE, FALSE, 1);
-		gtk_button_box_set_layout(GTK_BUTTON_BOX(playbox), GTK_BUTTONBOX_CENTER);
-		gtk_box_pack_start(GTK_BOX(playbox), previous_button, FALSE, FALSE, 1);
-		gtk_box_pack_start(GTK_BOX(playbox), pargument->playpause_button, FALSE, FALSE, 1);
-		gtk_box_pack_start(GTK_BOX(playbox), next_button, FALSE, FALSE, 1);
-		gtk_button_box_set_child_non_homogeneous(GTK_BUTTON_BOX(playbox), pargument->playpause_button, TRUE);
-		gtk_button_box_set_child_non_homogeneous(GTK_BUTTON_BOX(playbox), next_button, TRUE);
-		gtk_button_box_set_child_non_homogeneous(GTK_BUTTON_BOX(playbox), previous_button, TRUE);
-		gtk_box_set_spacing(GTK_BOX(playbox), 5);
-	gtk_box_pack_start(GTK_BOX(vboxv), randombox, FALSE, FALSE, 1);
-		gtk_button_box_set_layout(GTK_BUTTON_BOX(randombox), GTK_BUTTONBOX_CENTER);
-		gtk_box_pack_start(GTK_BOX(randombox), lelele_button, FALSE, FALSE, 1);
-		gtk_box_pack_start(GTK_BOX(randombox), repeat_button, FALSE, FALSE, 1);
-		gtk_box_pack_start(GTK_BOX(randombox), random_button, FALSE, FALSE, 1);
-		gtk_button_box_set_child_non_homogeneous(GTK_BUTTON_BOX(randombox), repeat_button, TRUE);
-		gtk_button_box_set_child_non_homogeneous(GTK_BUTTON_BOX(randombox), lelele_button, TRUE);
-		gtk_button_box_set_child_non_homogeneous(GTK_BUTTON_BOX(randombox), random_button, TRUE);
-		gtk_box_set_spacing(GTK_BOX(randombox), 5);
-	gtk_box_pack_start(GTK_BOX(vboxv), volumebox, FALSE, FALSE, 1);
-		gtk_button_box_set_layout(GTK_BUTTON_BOX(volumebox), GTK_BUTTONBOX_CENTER);
-		gtk_box_pack_start(GTK_BOX(volumebox), pargument->volume_scale, FALSE, FALSE, 1);
-		gtk_button_box_set_child_non_homogeneous(GTK_BUTTON_BOX(volumebox), pargument->volume_scale, TRUE);
-	gtk_box_pack_start(GTK_BOX(vboxv), mediainfo_expander, FALSE, FALSE, 1);
-	gtk_container_add(GTK_CONTAINER(mediainfo_expander), mediainfo_box);
-		//gtk_box_pack_start(GTK_BOX(mediainfo_box), area, TRUE, TRUE, 1);
-		gtk_box_pack_start(GTK_BOX(mediainfo_box), mediainfo_labelbox, FALSE, FALSE, 1);
-			gtk_box_pack_start(GTK_BOX(mediainfo_labelbox), gtk_label_new("More information:"), FALSE, FALSE, 1);
-			gtk_box_pack_start(GTK_BOX(mediainfo_labelbox), pargument->genre_label,FALSE, FALSE, 1);
-			gtk_box_pack_start(GTK_BOX(mediainfo_labelbox), pargument->bitrate_label, FALSE, FALSE, 1);
-			gtk_box_pack_start(GTK_BOX(mediainfo_labelbox), pargument->channels_label, FALSE, FALSE, 1);
-			gtk_box_pack_start(GTK_BOX(mediainfo_labelbox), pargument->samplerate_label, FALSE, FALSE, 1);
-	gtk_box_pack_start(GTK_BOX(vboxv), pargument->progressbar, FALSE, FALSE, 1);
-	gtk_box_pack_start(GTK_BOX(vboxv), pargument->libnotebook, TRUE, TRUE, 1);
-		gtk_notebook_append_page(GTK_NOTEBOOK(pargument->libnotebook), library_panel, gtk_label_new("Library"));
-		gtk_notebook_append_page(GTK_NOTEBOOK(pargument->libnotebook), artist_panel, gtk_label_new("Artists"));
-		gtk_notebook_append_page(GTK_NOTEBOOK(pargument->libnotebook), album_panel, gtk_label_new("Albums"));
-		gtk_notebook_append_page(GTK_NOTEBOOK(pargument->libnotebook), playlist_panel, gtk_label_new("Playlist"));
-	gtk_box_pack_start(GTK_BOX(vboxv), time_box, FALSE, FALSE, 1);
-		gtk_box_pack_end(GTK_BOX(time_box), analyze_spinner, FALSE, FALSE, 5);
-		gtk_box_pack_end(GTK_BOX(time_box), pref_arguments.progress_label, FALSE, FALSE, 1);
-		gtk_box_pack_end(GTK_BOX(time_box), pargument->time_spin, TRUE, TRUE, 5);
-		gtk_box_pack_end(GTK_BOX(time_box), time_checkbox, FALSE, FALSE, 5);
-
 	gtk_scale_button_set_value(GTK_SCALE_BUTTON(pargument->volume_scale), pargument->vol);
-	gtk_container_add(GTK_CONTAINER(window), vboxv);
 	gtk_widget_show_all(window);
 
 	if(library_set == FALSE) {

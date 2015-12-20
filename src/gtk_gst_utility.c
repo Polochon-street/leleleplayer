@@ -181,6 +181,10 @@ gboolean get_next_playlist_song(GtkTreeView *treeview_playlist, struct arguments
 		tempiter = argument->iter_playlist;
 		if(gtk_tree_model_iter_next(model_playlist, &tempiter)) {
 			argument->iter_playlist = tempiter;
+			/*gchar *tempstring;
+			gtk_tree_model_get(model_playlist, &argument->iter_playlist, 2, &tempstring, -1);
+			printf("%s\n", tempstring);*/
+
 			return TRUE;
 		}
 		else {
@@ -228,10 +232,10 @@ gboolean get_lelelerandom_playlist_song(GtkTreeView *treeview_playlist, struct a
 
 	model_playlist = gtk_tree_view_get_model(GTK_TREE_VIEW(argument->treeview_playlist));
 	struct force_vector_s current_force = argument->current_song.force_vector;
-	float treshold = 0.5;
+	float treshold = 1;
 	int i = 0;
 	do {
-		treshold -= 0.001;
+		//treshold -= 0.001;
 		if(!get_random_playlist_song(treeview_playlist, argument))
 			return FALSE;
 		gtk_tree_model_get(model_playlist, &(argument->iter_playlist), TRACK, &argument->current_song.title, FORCE_TEMPO, &argument->current_song.force_vector.tempo, 
@@ -305,6 +309,10 @@ void start_song(struct arguments *argument) {
 	GtkTreeModel *model_playlist;
 	
 	model_playlist = gtk_tree_view_get_model(GTK_TREE_VIEW(argument->treeview_playlist));
+
+	gchar *tempstring;
+			gtk_tree_model_get(model_playlist, &argument->iter_playlist, 2, &tempstring, -1);
+			printf("%s\n", tempstring);
 
 	gtk_tree_model_get(model_playlist, &(argument->iter_playlist), AFILE, &argument->current_song.filename, 
 	TRACKNUMBER, &argument->current_song.tracknumber, TRACK, &argument->current_song.title, 

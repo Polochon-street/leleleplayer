@@ -148,7 +148,6 @@ void lib_row_activated_cb(GtkTreeView *treeview, GtkTreePath *path, GtkTreeViewC
 
 	gtk_tree_model_get_iter(model_playlist, &(argument->iter_playlist), path);
 	argument->history = g_list_prepend(argument->history, gtk_tree_model_get_string_from_iter(model_playlist, &argument->iter_playlist));
-
 	start_song(argument);
 }
 
@@ -207,7 +206,9 @@ void next_buttonf_cb(GtkWidget *button, struct arguments *argument) {
 		argument->history = g_list_prepend(argument->history, iter_string);
 		bl_free_song(&argument->current_song);
 		if(get_next_playlist_song(GTK_TREE_VIEW(argument->treeview_playlist), argument)) {
+	printf("coucou\n");
 			start_song(argument);
+		printf("yolo\n");
 		}
 	}
 }
@@ -215,6 +216,7 @@ void next_buttonf_cb(GtkWidget *button, struct arguments *argument) {
 void previous_buttonf_cb(GtkWidget *button, struct arguments *argument) {
 	bl_free_song(&argument->current_song);
 	if(get_previous_playlist_song(GTK_TREE_VIEW(argument->treeview_playlist), argument)) {
+		printf("caca\n");
 		start_song(argument);
 	}
 }
@@ -476,6 +478,7 @@ void refresh_ui_cb(GstBus *bus, GstMessage *msg, struct arguments *argument) {
 void message_application_cb(GstBus *bus, GstMessage *msg, struct arguments *argument) {
 	const GstStructure *structure = gst_message_get_structure(msg);
 	if(!strcmp(gst_structure_get_name(structure), "tags")) {
+/*
 		GstTagList *tags;
 		gchar *str;
 		gint samplerate = 0, channels = 0, bitrate;
@@ -536,7 +539,7 @@ void message_application_cb(GstBus *bus, GstMessage *msg, struct arguments *argu
 		argument->str_genre = NULL;
 		gtk_label_set_text(GTK_LABEL(argument->bitrate_label), argument->str_bitrate);
 		g_free(argument->str_bitrate);
-		argument->str_bitrate = NULL;
+		argument->str_bitrate = NULL;*/
 	}
 	else if(!strcmp(gst_structure_get_name(structure), "next_song")) {
 		GtkTreeModel *model_playlist;

@@ -232,7 +232,7 @@ gboolean get_lelelerandom_playlist_song(GtkTreeView *treeview_playlist, struct a
 
 	model_playlist = gtk_tree_view_get_model(GTK_TREE_VIEW(argument->treeview_playlist));
 	struct force_vector_s current_force = argument->current_song.force_vector;
-	float treshold = 1;
+	float treshold = 0.99;
 	int i = 0;
 	do {
 		//treshold -= 0.001;

@@ -1,4 +1,5 @@
 #include "gui.h"
+#include <string.h>
 
 gboolean filter_vis_features(GstPluginFeature *feature, gpointer data) {
 	GstElementFactory *factory;
@@ -232,7 +233,10 @@ gboolean get_lelelerandom_playlist_song(GtkTreeView *treeview_playlist, struct a
 
 	model_playlist = gtk_tree_view_get_model(GTK_TREE_VIEW(argument->treeview_playlist));
 	struct force_vector_s current_force = argument->current_song.force_vector;
-	float treshold = 0.99;
+	float treshold = 0.95;
+	float treshold_distance = 4.0;
+	gchar *tempstring;
+	gtk_tree_model_get(model_playlist, &(argument->iter_playlist), TRACK, &tempstring, -1);
 	int i = 0;
 	do {
 		//treshold -= 0.001;
@@ -243,7 +247,9 @@ gboolean get_lelelerandom_playlist_song(GtkTreeView *treeview_playlist, struct a
 		FORCE_ATK, &argument->current_song.force_vector.attack, -1);
 		argument->current_song.force_vector.attack = current_force.attack = 0;
 		argument->current_song.force_vector.tempo = current_force.tempo = 0;
-	} while(cosine_distance(current_force, argument->current_song.force_vector) < treshold);
+		printf("Between %s and %s: %f, %f\n", tempstring, argument->current_song.title, bl_cosine_similarity(current_force, argument->current_song.force_vector), bl_distance(current_force, argument->current_song.force_vector));
+	} while((bl_cosine_similarity(current_force, argument->current_song.force_vector) < treshold) ||
+		 (bl_distance(current_force, argument->current_song.force_vector) > treshold_distance));
 	return TRUE;
 }
 
@@ -309,10 +315,6 @@ void start_song(struct arguments *argument) {
 	GtkTreeModel *model_playlist;
 	
 	model_playlist = gtk_tree_view_get_model(GTK_TREE_VIEW(argument->treeview_playlist));
-
-	gchar *tempstring;
-			gtk_tree_model_get(model_playlist, &argument->iter_playlist, 2, &tempstring, -1);
-			printf("%s\n", tempstring);
 
 	gtk_tree_model_get(model_playlist, &(argument->iter_playlist), AFILE, &argument->current_song.filename, 
 	TRACKNUMBER, &argument->current_song.tracknumber, TRACK, &argument->current_song.title, 
@@ -481,4 +483,85 @@ gint sort_force(GtkTreeModel *model, GtkTreeIter *a, GtkTreeIter *b, gpointer us
 		return -1;
 	else
 		return 0;
+}
+
+gboolean filter_library(GtkTreeModel *model_library, GtkTreeIter *iter, struct arguments *argument) {
+	gchar *compstr = argument->search_entry_text;
+	gchar *track, *artist, *album;
+	gboolean visible = FALSE;
+	gtk_tree_model_get(model_library, iter, TRACK, &track, ALBUM, &album, ARTIST, &artist, -1);
+
+	if(compstr && track && album && artist && (strcasestr(track, compstr) || strcasestr(album, compstr) || strcasestr(artist, compstr)))  {
+		visible = TRUE;
+	}
+	g_free(track);
+	g_free(artist);
+	g_free(album);
+	
+	return visible;
+}
+
+gboolean filter_artist(GtkTreeModel *model_artist, GtkTreeIter *iter, struct arguments *argument) {
+	gchar *compstr = argument->search_entry_text;
+	gchar *artist;
+	GtkTreeIter tempiter;
+	gboolean visible = FALSE;
+	GtkTreePath *artist_path = gtk_tree_model_get_path(model_artist, iter);
+
+	gtk_tree_model_get(model_artist, iter, COLUMN_ARTIST, &artist, -1);
+
+
+	if(gtk_tree_path_get_depth(artist_path) == 1) {
+		if(artist && compstr && (strcasestr(artist, compstr))) {
+			visible = TRUE;
+		}
+	}
+	else if(gtk_tree_path_get_depth(artist_path) == 2) {
+		gtk_tree_path_up(artist_path);
+		gtk_tree_model_get_iter(model_artist, &tempiter,artist_path);
+		gtk_tree_model_get(model_artist, &tempiter,COLUMN_ARTIST, &artist, -1);
+		if(artist && compstr &&(strcasestr(artist, compstr))) {
+			visible = TRUE;
+		}
+	}
+	else if(gtk_tree_path_get_depth(artist_path) == 3) {
+		gtk_tree_path_up(artist_path);
+		gtk_tree_path_up(artist_path);
+		gtk_tree_model_get_iter(model_artist, &tempiter, artist_path);
+		gtk_tree_model_get(model_artist, &tempiter, COLUMN_ARTIST, &artist, -1);
+		if(artist && compstr &&(strcasestr(artist, compstr))) {
+			visible = TRUE;
+		}
+	}
+	g_free(artist);
+	
+	return visible;
+}
+
+gboolean filter_album(GtkTreeModel *model_album, GtkTreeIter *iter, struct arguments *argument) {
+	gchar *compstr = argument->search_entry_text;
+	gchar *album;
+	GtkTreeIter tempiter;
+	gboolean visible = FALSE;
+	GtkTreePath *album_path = gtk_tree_model_get_path(model_album, iter);
+
+	gtk_tree_model_get(model_album, iter, COLUMN_ALBUM, &album, -1);
+
+	if(gtk_tree_path_get_depth(album_path) == 1) {
+		if(album && compstr && (strcasestr(album, compstr))) {
+			visible = TRUE;
+		}
+	}
+	else if(gtk_tree_path_get_depth(album_path) == 2) {
+		gtk_tree_path_up(album_path);
+		gtk_tree_model_get_iter(model_album, &tempiter,album_path);
+		gtk_tree_model_get(model_album, &tempiter,COLUMN_ALBUM, &album, -1);
+		if(album && compstr && (strcasestr(album, compstr))) {
+			visible = TRUE;
+		}
+	}
+	
+	g_free(album);
+	
+	return visible;
 }

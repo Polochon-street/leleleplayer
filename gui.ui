@@ -44,11 +44,17 @@
       <column type="gchararray"/>
     </columns>
   </object>
+  <object class="GtkTreeModelFilter" id="album_filter">
+    <property name="child_model">store_album</property>
+  </object>
   <object class="GtkTreeStore" id="store_artist">
     <columns>
       <!-- column-name gchararray1 -->
       <column type="gchararray"/>
     </columns>
+  </object>
+  <object class="GtkTreeModelFilter" id="artist_filter">
+    <property name="child_model">store_artist</property>
   </object>
   <object class="GtkListStore" id="store_library">
     <columns>
@@ -77,6 +83,9 @@
       <!-- column-name gchararray7 -->
       <column type="gchararray"/>
     </columns>
+  </object>
+  <object class="GtkTreeModelFilter" id="library_filter">
+    <property name="child_model">store_library</property>
   </object>
   <object class="GtkListStore" id="store_playlist">
     <columns>
@@ -553,6 +562,21 @@ audio-volume-medium-symbolic</property>
           </packing>
         </child>
         <child>
+          <object class="GtkSearchEntry" id="searchentry">
+            <property name="visible">True</property>
+            <property name="can_focus">True</property>
+            <property name="primary_icon_name">edit-find-symbolic</property>
+            <property name="primary_icon_activatable">False</property>
+            <property name="primary_icon_sensitive">False</property>
+            <property name="placeholder_text" translatable="yes">Search for a song/artist/album</property>
+          </object>
+          <packing>
+            <property name="expand">False</property>
+            <property name="fill">True</property>
+            <property name="position">7</property>
+          </packing>
+        </child>
+        <child>
           <object class="GtkBox" id="time_box">
             <property name="visible">True</property>
             <property name="can_focus">False</property>
@@ -563,7 +587,7 @@ audio-volume-medium-symbolic</property>
                 <property name="can_focus">True</property>
                 <property name="receives_default">False</property>
                 <property name="tooltip_text" translatable="yes">Ends the playing after a given time</property>
-                <property name="xalign">0.5</property>
+                <property name="xalign">0</property>
                 <property name="draw_indicator">True</property>
               </object>
               <packing>
@@ -577,6 +601,7 @@ audio-volume-medium-symbolic</property>
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
                 <property name="tooltip_text" translatable="yes">Ends the playing after a given time</property>
+                <property name="text" translatable="yes">0</property>
                 <property name="xalign">2.2351741291171123e-10</property>
                 <property name="adjustment">time_adjust</property>
                 <property name="wrap">True</property>
@@ -614,7 +639,7 @@ audio-volume-medium-symbolic</property>
             <property name="expand">False</property>
             <property name="fill">True</property>
             <property name="padding">3</property>
-            <property name="position">7</property>
+            <property name="position">8</property>
           </packing>
         </child>
       </object>

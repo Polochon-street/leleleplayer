@@ -206,9 +206,7 @@ void next_buttonf_cb(GtkWidget *button, struct arguments *argument) {
 		argument->history = g_list_prepend(argument->history, iter_string);
 		bl_free_song(&argument->current_song);
 		if(get_next_playlist_song(GTK_TREE_VIEW(argument->treeview_playlist), argument)) {
-	printf("coucou\n");
 			start_song(argument);
-		printf("yolo\n");
 		}
 	}
 }
@@ -216,7 +214,6 @@ void next_buttonf_cb(GtkWidget *button, struct arguments *argument) {
 void previous_buttonf_cb(GtkWidget *button, struct arguments *argument) {
 	bl_free_song(&argument->current_song);
 	if(get_previous_playlist_song(GTK_TREE_VIEW(argument->treeview_playlist), argument)) {
-		printf("caca\n");
 		start_song(argument);
 	}
 }
@@ -961,4 +958,10 @@ void time_checkbox_toggled_cb(GtkToggleButton *togglebutton, struct arguments *a
 }
 
 
+void search_cb(GtkSearchEntry *search_entry, struct arguments *argument) {
+	argument->search_entry_text = gtk_entry_get_text(GTK_ENTRY(search_entry));
 
+	gtk_tree_model_filter_refilter(argument->library_filter);
+	gtk_tree_model_filter_refilter(argument->artist_filter);
+	gtk_tree_model_filter_refilter(argument->album_filter);
+}

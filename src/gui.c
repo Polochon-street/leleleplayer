@@ -255,6 +255,7 @@ xmlKeepBlanksDefault(0);
 			msg_song.artist= g_malloc(strlen(song.artist)+1);
 			msg_song.artist = strcpy(msg_song.artist, song.artist);
 			msg_song.sample_array = NULL;
+			msg_song.genre = NULL;
 			msg_song.calm_or_loud = (int)resnum;
 			msg_song.filename = g_malloc(strlen(l->data)+1);
 			msg_song.filename = strcpy(msg_song.filename, l->data);
@@ -788,9 +789,9 @@ int main(int argc, char **argv) {
 
 	GtkBuilder *builder;
 
-	GtkWidget *window, *treeview_library, *treeview_playlist, *treeview_artist, *treeview_album, *library_panel, *artist_panel, *album_panel, *playlist_panel, *vboxv,
-		*playbox, *volumebox, *randombox, *repeat_button, *random_button, *lelele_button, *labelbox, *next_button, *previous_button, 
-		*menubar, *file, *filemenu, *open, *add_file, *close, *edit, *editmenu, *preferences,
+	GtkWidget *window, *treeview_library, *treeview_playlist, *treeview_artist, *treeview_album, *library_panel, *artist_panel, *album_panel,
+		*playlist_panel, *vboxv, *playbox, *volumebox, *randombox, *repeat_button, *random_button, *lelele_button, *labelbox, *next_button, *previous_button, 
+		*menubar, *file, *filemenu, *open, *add_file, *close, *edit, *editmenu, *preferences, *search_entry,
 		*mediainfo_expander, *mediainfo_box, *mediainfo_labelbox, *area, *time_spin, *time_box, *time_checkbox, *analyze_spinner;
 	GtkAdjustment *time_adjust;
 	GSettingsSchema *schema;
@@ -799,6 +800,7 @@ int main(int argc, char **argv) {
 	
 	GtkTreeModel *model_playlist;
 	GtkTreeModel *model_library;
+	GtkTreeModelFilter *library_filter, *album_filter, *artist_filter;
 	GtkTreeSortable *sortable_library, *sortable_artist, *sortable_album;
 	const gchar *volume[5] = {
 		"audio-volume-muted-symbolic",
@@ -825,12 +827,13 @@ int main(int argc, char **argv) {
 	pargument->iter_playlist.stamp = 0;
 	pargument->duration = GST_CLOCK_TIME_NONE;
 	pargument->state = GST_STATE_NULL;
-	pargument->current_song.artist = pargument->current_song.title = pargument->current_song.album = pargument->current_song.tracknumber = NULL;
+	pargument->current_song.artist = pargument->current_song.title = pargument->current_song.album = pargument->current_song.tracknumber = pargument->current_song.genre = NULL;
 	pargument->str_genre = pargument->str_bitrate = pargument->str_samplerate = pargument->str_channels = NULL;
 	pargument->history = NULL;
 	pargument->current_song.sample_array = NULL;
 	pargument->bartag = 0;
 	pargument->sleep_timer = NULL;
+	pargument->search_entry_text = NULL;
 	g_mutex_init(&pargument->queue_mutex);
 	g_cond_init(&pargument->queue_cond);
 
@@ -930,6 +933,10 @@ int main(int argc, char **argv) {
 	gtk_tree_sortable_set_sort_func(sortable_library, ALBUM, sort_album_tracks, NULL, NULL);
 	setup_tree_view_renderer_play_lib(pargument->treeview_library);	
 	display_library(GTK_TREE_VIEW(pargument->treeview_library), pargument->store_library, pargument->lib_path);
+	library_filter = GTK_TREE_MODEL_FILTER(gtk_builder_get_object(builder, "library_filter"));
+	gtk_tree_model_filter_set_visible_func(library_filter, (GtkTreeModelFilterVisibleFunc)filter_library, pargument, NULL);
+	gtk_tree_view_set_model(GTK_TREE_VIEW(pargument->treeview_library), GTK_TREE_MODEL(library_filter));
+	pargument->library_filter = library_filter;
 	model_library = gtk_tree_view_get_model(GTK_TREE_VIEW(pargument->treeview_library));
 	GtkTreeSelection *selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(pargument->treeview_library));
 	gtk_tree_selection_set_mode(selection, GTK_SELECTION_MULTIPLE);
@@ -951,6 +958,10 @@ int main(int argc, char **argv) {
 	setup_tree_view_renderer_artist(treeview_artist, pargument->store_artist, model_library);
 	pargument->treeview_artist = treeview_artist;
 	display_artist_tab(treeview_artist, pargument->store_artist, model_library);
+	artist_filter = GTK_TREE_MODEL_FILTER(gtk_builder_get_object(builder, "artist_filter"));
+	gtk_tree_model_filter_set_visible_func(artist_filter, (GtkTreeModelFilterVisibleFunc)filter_artist, pargument, NULL);
+	gtk_tree_view_set_model(GTK_TREE_VIEW(pargument->treeview_artist), GTK_TREE_MODEL(artist_filter));
+	pargument->artist_filter = artist_filter;
 	selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(treeview_artist));
 	gtk_tree_selection_set_mode(selection, GTK_SELECTION_MULTIPLE);
 
@@ -963,9 +974,13 @@ int main(int argc, char **argv) {
 	setup_tree_view_renderer_album(treeview_album, pargument->store_album, model_library);
 	pargument->treeview_album = treeview_album;
 	display_album_tab(treeview_album, pargument->store_album, model_library);
+	album_filter = GTK_TREE_MODEL_FILTER(gtk_builder_get_object(builder, "album_filter"));
+	gtk_tree_model_filter_set_visible_func(album_filter, (GtkTreeModelFilterVisibleFunc)filter_album, pargument, NULL);
+	gtk_tree_view_set_model(GTK_TREE_VIEW(pargument->treeview_album), GTK_TREE_MODEL(album_filter));
+	pargument->album_filter = album_filter;
+
 	selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(treeview_album));
 	gtk_tree_selection_set_mode(selection, GTK_SELECTION_MULTIPLE);
-
 
 	gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(library_panel), GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
 	gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(playlist_panel), GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
@@ -1015,7 +1030,10 @@ int main(int argc, char **argv) {
 	pref_arguments.lib_path = pargument->lib_path;
 	pargument->vol = g_settings_get_double(pref_arguments.preferences, "volume");
 	pargument->time_spin = GTK_WIDGET(gtk_builder_get_object(builder, "time_spin"));
+	analyze_spinner = GTK_WIDGET(gtk_builder_get_object(builder, "spinner1"));
 	pargument->time_checkbox = GTK_WIDGET(gtk_builder_get_object(builder, "time_checkbok"));
+
+	search_entry = GTK_WIDGET(gtk_builder_get_object(builder, "searchentry"));
 
 	pref_arguments.window = window;
 	pref_arguments.treeview = pargument->treeview_library;
@@ -1066,6 +1084,7 @@ int main(int argc, char **argv) {
 	g_signal_connect(G_OBJECT(treeview_artist), "row-activated", G_CALLBACK(artist_row_activated_cb), pargument);
 	g_signal_connect(G_OBJECT(treeview_album), "row-activated", G_CALLBACK(album_row_activated_cb), pargument);
 	g_signal_connect(G_OBJECT(time_checkbox), "toggled", G_CALLBACK(time_checkbox_toggled_cb), pargument);
+	g_signal_connect(G_OBJECT(search_entry), "search-changed", G_CALLBACK(search_cb), pargument);
 	g_signal_connect(G_OBJECT(pargument->time_spin), "input", G_CALLBACK(time_spin_input_cb), pargument);
 	g_signal_connect(G_OBJECT(pargument->time_spin), "output", G_CALLBACK(time_spin_output_cb), pargument);
 	pargument->time_spin_update_signal_id = g_signal_connect(G_OBJECT(pargument->time_spin), "value-changed", G_CALLBACK(time_spin_changed_cb), pargument);
@@ -1082,7 +1101,7 @@ int main(int argc, char **argv) {
 	if(library_set == FALSE) {
 		preferences_callback_cb(GTK_MENU_ITEM(preferences), &pref_arguments);
 	}
-
+	
 	gtk_main();
 
 	gst_object_unref(bus);

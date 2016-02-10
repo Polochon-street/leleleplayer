@@ -998,10 +998,10 @@ int main(int argc, char **argv) {
 	pargument->playpause_button = GTK_WIDGET(gtk_builder_get_object(builder, "playpause_button"));
 	
 	// TODO
-	if(g_file_test("../images/lelele.png", G_FILE_TEST_EXISTS)) 
-		gtk_window_set_icon_from_file(GTK_WINDOW(window), "../images/lelele.png", NULL);
+	if(g_file_test("../images/leleleplayer.png", G_FILE_TEST_EXISTS)) 
+		gtk_window_set_icon_from_file(GTK_WINDOW(window), "../images/leleleplayer.png", NULL);
 	else
-		gtk_window_set_icon_from_file(GTK_WINDOW(window), "/usr/share/leleleplayer/icons/lelele.png", NULL);
+		gtk_window_set_icon_from_file(GTK_WINDOW(window), "/usr/share/leleleplayer/icons/leleleplayer.png", NULL);
 	pargument->adjust = GTK_ADJUSTMENT(gtk_builder_get_object(builder, "adjust"));
 	pargument->progressbar = GTK_WIDGET(gtk_builder_get_object(builder, "progressbar"));
 	pargument->volume_scale = GTK_WIDGET(gtk_builder_get_object(builder, "volume_scale"));

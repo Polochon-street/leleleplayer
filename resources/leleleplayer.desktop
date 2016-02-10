@@ -1,0 +1,13 @@
+[Desktop Entry]
+Name=Leleleplayer
+GenericName=Music Player & Playlist Creator
+X-GNOME-FullName=Leleleplayer Music Manager
+Comment=Play music smoothly & create playlists
+Keywords=Audio;Song;MP3;CD;Playlist;
+Exec=leleleplayer
+Terminal=false
+Type=Application
+Icon=leleleplayer.png
+Categories=GTK;Audio;Player;
+MimeType=application/x-ogg;application/ogg;audio/x-vorbis+ogg;audio/vorbis;audio/x-vorbis;audio/x-mp3;audio/x-mpeg;audio/mpeg;audio/x-flac;
+StartupNotify=false

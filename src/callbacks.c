@@ -256,15 +256,17 @@ void preferences_callback_cb(GtkMenuItem *preferences, struct pref_arguments *ar
 	browse_button = gtk_button_new_with_label("Browse...");
 	library_entry = gtk_entry_new();
 	argument->folder = (gchar*)g_variant_get_data(g_settings_get_value(argument->preferences, "library"));
+	if(*(argument->folder) == '\0')
+		argument->folder = g_get_user_special_dir(G_USER_DIRECTORY_MUSIC);
 	gtk_entry_set_text((GtkEntry*)library_entry, argument->folder);
 	vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
 	hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
 	labelbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
 	dialog = gtk_dialog_new_with_buttons("Preferences", GTK_WINDOW(argument->window), flags, "Cancel", GTK_RESPONSE_REJECT, "Save", GTK_RESPONSE_ACCEPT, NULL);
-	if(g_file_test("../images/lelele.png", G_FILE_TEST_EXISTS))
-		gtk_window_set_icon_from_file(GTK_WINDOW(dialog), "../images/lelele.png", NULL);
+	if(g_file_test("../images/leleleplayer.png", G_FILE_TEST_EXISTS))
+		gtk_window_set_icon_from_file(GTK_WINDOW(dialog), "../images/leleleplayer.png", NULL);
 	else
-		gtk_window_set_icon_from_file(GTK_WINDOW(dialog), "/usr/share/leleleplayer/icons/lelele.png", NULL);
+		gtk_window_set_icon_from_file(GTK_WINDOW(dialog), "/usr/share/leleleplayer/icons/leleleplayer.png", NULL);
 
 	area = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
 	complete_box = gtk_check_button_new_with_label("LeleleScan (complete but longer) (not functionnal now)");

@@ -1,7 +1,7 @@
 <schemalist>
 	<schema id="org.gnome.leleleplayer.preferences" path="/org/gnome/leleleplayer/">
 		<key name="library" type="s">
-			<default>'~/Music'</default>
+			<default>''</default>
 			<summary>Library location</summary>
 			<description>
 				The audio library location

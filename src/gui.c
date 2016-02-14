@@ -857,8 +857,6 @@ int main(int argc, char **argv) {
 	builder = gtk_builder_new_from_file("/usr/share/leleleplayer/gui.ui");
 	
 	window = GTK_WIDGET(gtk_builder_get_object(builder, "window"));
-	gtk_window_set_title(GTK_WINDOW(window), "lelele player");
-	gtk_widget_set_size_request(window, 900, 700);
 
 	pargument->playbin = gst_element_factory_make("playbin", "playbin");
 	if(!pargument->playbin)

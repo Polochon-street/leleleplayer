@@ -427,6 +427,7 @@ void add_entry_artist_tab(GtkWidget *treeview, GtkTreeStore *treestore, GtkTreeM
 	TRACKNUMBER, &temptracknumber1, -1);
 	gchar *song = g_strconcat(temptracknumber1, "  ", temptrack, NULL);
 
+
 	if(gtk_tree_model_get_iter_first(model_artist, &iter_artist) == TRUE) {
 		do {
 			gtk_tree_model_get(model_artist, &iter_artist, COLUMN_ARTIST, &tempartist2, -1);
@@ -924,17 +925,17 @@ int main(int argc, char **argv) {
 
 	pargument->store_library = GTK_LIST_STORE(gtk_builder_get_object(builder, "store_library"));
 	pargument->treeview_library = GTK_WIDGET(gtk_builder_get_object(builder, "treeview_library"));
-	sortable_library = GTK_TREE_SORTABLE(pargument->store_library);
-	gtk_tree_sortable_set_sort_func(sortable_library, TRACKNUMBER, sort_iter_compare_func, NULL, NULL); 
-	gtk_tree_sortable_set_sort_func(sortable_library, TEXTFORCE, sort_force, NULL, NULL);
-	gtk_tree_sortable_set_sort_func(sortable_library, ARTIST, sort_artist_album_tracks, NULL, NULL);
-	gtk_tree_sortable_set_sort_func(sortable_library, ALBUM, sort_album_tracks, NULL, NULL);
 	setup_tree_view_renderer_play_lib(pargument->treeview_library);	
 	display_library(GTK_TREE_VIEW(pargument->treeview_library), pargument->store_library, pargument->lib_path);
 	library_filter = GTK_TREE_MODEL_FILTER(gtk_builder_get_object(builder, "library_filter"));
 	gtk_tree_model_filter_set_visible_func(library_filter, (GtkTreeModelFilterVisibleFunc)filter_library, pargument, NULL);
-	gtk_tree_view_set_model(GTK_TREE_VIEW(pargument->treeview_library), GTK_TREE_MODEL(library_filter));
 	pargument->library_filter = library_filter;
+	sortable_library = GTK_TREE_SORTABLE(gtk_builder_get_object(builder, "sortable_library"));
+	gtk_tree_sortable_set_sort_func(sortable_library, TRACKNUMBER, sort_iter_compare_func, NULL, NULL); 
+	gtk_tree_sortable_set_sort_func(sortable_library, TEXTFORCE, sort_force, NULL, NULL);
+	gtk_tree_sortable_set_sort_func(sortable_library, ARTIST, sort_artist_album_tracks, NULL, NULL);
+	gtk_tree_sortable_set_sort_func(sortable_library, ALBUM, sort_album_tracks, NULL, NULL);
+	gtk_tree_view_set_model(GTK_TREE_VIEW(pargument->treeview_library), GTK_TREE_MODEL(sortable_library));
 	model_library = gtk_tree_view_get_model(GTK_TREE_VIEW(pargument->treeview_library));
 	GtkTreeSelection *selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(pargument->treeview_library));
 	gtk_tree_selection_set_mode(selection, GTK_SELECTION_MULTIPLE);
@@ -949,34 +950,35 @@ int main(int argc, char **argv) {
 
 	pargument->store_artist = GTK_TREE_STORE(gtk_builder_get_object(builder, "store_artist"));
 	treeview_artist = GTK_WIDGET(gtk_builder_get_object(builder, "treeview_artist"));
-	sortable_artist = GTK_TREE_SORTABLE(pargument->store_artist);
-	gtk_tree_sortable_set_sort_column_id(sortable_library, ARTIST, GTK_SORT_ASCENDING);
-	gtk_tree_sortable_set_sort_func(sortable_artist, COLUMN_ARTIST, sort_text, NULL, NULL); 
-	gtk_tree_sortable_set_sort_column_id(sortable_artist, COLUMN_ARTIST, GTK_SORT_ASCENDING);
-	setup_tree_view_renderer_artist(treeview_artist, pargument->store_artist, model_library);
 	pargument->treeview_artist = treeview_artist;
+	setup_tree_view_renderer_artist(treeview_artist, pargument->store_artist, model_library);
 	display_artist_tab(treeview_artist, pargument->store_artist, model_library);
 	artist_filter = GTK_TREE_MODEL_FILTER(gtk_builder_get_object(builder, "artist_filter"));
-	gtk_tree_model_filter_set_visible_func(artist_filter, (GtkTreeModelFilterVisibleFunc)filter_artist, pargument, NULL);
-	gtk_tree_view_set_model(GTK_TREE_VIEW(pargument->treeview_artist), GTK_TREE_MODEL(artist_filter));
 	pargument->artist_filter = artist_filter;
+	gtk_tree_model_filter_set_visible_func(artist_filter, (GtkTreeModelFilterVisibleFunc)filter_artist, pargument, NULL);
+	sortable_artist = GTK_TREE_SORTABLE(gtk_builder_get_object(builder, "sortable_artist"));
+	gtk_tree_sortable_set_sort_func(sortable_artist, COLUMN_ARTIST, sort_text, NULL, NULL); 
+	gtk_tree_sortable_set_sort_column_id(sortable_artist, COLUMN_ARTIST, GTK_SORT_ASCENDING);
+	gtk_tree_sortable_set_sort_column_id(sortable_library, ARTIST, GTK_SORT_ASCENDING);
+	gtk_tree_view_set_model(GTK_TREE_VIEW(pargument->treeview_artist), GTK_TREE_MODEL(sortable_artist));
+	gtk_tree_model_filter_refilter(pargument->artist_filter);
 	selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(treeview_artist));
 	gtk_tree_selection_set_mode(selection, GTK_SELECTION_MULTIPLE);
 
 	pargument->store_album = GTK_TREE_STORE(gtk_builder_get_object(builder, "store_album"));
 	treeview_album = GTK_WIDGET(gtk_builder_get_object(builder, "treeview_album"));
-	sortable_album = GTK_TREE_SORTABLE(pargument->store_album);
+	pargument->treeview_album = treeview_album;
+	setup_tree_view_renderer_album(treeview_album, pargument->store_album, model_library);
+	display_album_tab(treeview_album, pargument->store_album, model_library);
+	album_filter = GTK_TREE_MODEL_FILTER(gtk_builder_get_object(builder, "album_filter"));
+	pargument->album_filter = album_filter;
+	gtk_tree_model_filter_set_visible_func(album_filter, (GtkTreeModelFilterVisibleFunc)filter_album, pargument, NULL);
+	sortable_album = GTK_TREE_SORTABLE(gtk_builder_get_object(builder, "sortable_album"));
 	gtk_tree_sortable_set_sort_func(sortable_album, COLUMN_ALBUM, sort_text, NULL, NULL); 
 	gtk_tree_sortable_set_sort_column_id(sortable_album, COLUMN_ALBUM, GTK_SORT_ASCENDING);
 	gtk_tree_sortable_set_sort_column_id(sortable_library, ALBUM, GTK_SORT_ASCENDING);
-	setup_tree_view_renderer_album(treeview_album, pargument->store_album, model_library);
-	pargument->treeview_album = treeview_album;
-	display_album_tab(treeview_album, pargument->store_album, model_library);
-	album_filter = GTK_TREE_MODEL_FILTER(gtk_builder_get_object(builder, "album_filter"));
-	gtk_tree_model_filter_set_visible_func(album_filter, (GtkTreeModelFilterVisibleFunc)filter_album, pargument, NULL);
-	gtk_tree_view_set_model(GTK_TREE_VIEW(pargument->treeview_album), GTK_TREE_MODEL(album_filter));
-	pargument->album_filter = album_filter;
-
+	gtk_tree_view_set_model(GTK_TREE_VIEW(pargument->treeview_album), GTK_TREE_MODEL(sortable_album));
+	gtk_tree_model_filter_refilter(pargument->album_filter);
 	selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(treeview_album));
 	gtk_tree_selection_set_mode(selection, GTK_SELECTION_MULTIPLE);
 

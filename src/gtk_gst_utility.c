@@ -510,29 +510,33 @@ gboolean filter_artist(GtkTreeModel *model_artist, GtkTreeIter *iter, struct arg
 
 	gtk_tree_model_get(model_artist, iter, COLUMN_ARTIST, &artist, -1);
 
+	if(compstr != NULL) {
+		if(gtk_tree_path_get_depth(artist_path) == 1) {
+			if(artist && compstr && (strcasestr(artist, compstr))) {
+				visible = TRUE;
+			}
+		}
+		else if(gtk_tree_path_get_depth(artist_path) == 2) {
+			gtk_tree_path_up(artist_path);
+			gtk_tree_model_get_iter(model_artist, &tempiter,artist_path);
+			gtk_tree_model_get(model_artist, &tempiter,COLUMN_ARTIST, &artist, -1);
+			if(artist && compstr &&(strcasestr(artist, compstr))) {
+				visible = TRUE;
+			}
+		}
+		else if(gtk_tree_path_get_depth(artist_path) == 3) {
+			gtk_tree_path_up(artist_path);
+			gtk_tree_path_up(artist_path);
+			gtk_tree_model_get_iter(model_artist, &tempiter, artist_path);
+			gtk_tree_model_get(model_artist, &tempiter, COLUMN_ARTIST, &artist, -1);
+			if(artist && compstr &&(strcasestr(artist, compstr))) {
+				visible = TRUE;
+			}
+		}
+	}
+	else
+		visible = TRUE;
 
-	if(gtk_tree_path_get_depth(artist_path) == 1) {
-		if(artist && compstr && (strcasestr(artist, compstr))) {
-			visible = TRUE;
-		}
-	}
-	else if(gtk_tree_path_get_depth(artist_path) == 2) {
-		gtk_tree_path_up(artist_path);
-		gtk_tree_model_get_iter(model_artist, &tempiter,artist_path);
-		gtk_tree_model_get(model_artist, &tempiter,COLUMN_ARTIST, &artist, -1);
-		if(artist && compstr &&(strcasestr(artist, compstr))) {
-			visible = TRUE;
-		}
-	}
-	else if(gtk_tree_path_get_depth(artist_path) == 3) {
-		gtk_tree_path_up(artist_path);
-		gtk_tree_path_up(artist_path);
-		gtk_tree_model_get_iter(model_artist, &tempiter, artist_path);
-		gtk_tree_model_get(model_artist, &tempiter, COLUMN_ARTIST, &artist, -1);
-		if(artist && compstr &&(strcasestr(artist, compstr))) {
-			visible = TRUE;
-		}
-	}
 	g_free(artist);
 	
 	return visible;
@@ -546,20 +550,24 @@ gboolean filter_album(GtkTreeModel *model_album, GtkTreeIter *iter, struct argum
 	GtkTreePath *album_path = gtk_tree_model_get_path(model_album, iter);
 
 	gtk_tree_model_get(model_album, iter, COLUMN_ALBUM, &album, -1);
-
-	if(gtk_tree_path_get_depth(album_path) == 1) {
-		if(album && compstr && (strcasestr(album, compstr))) {
-			visible = TRUE;
+	
+	if(compstr != NULL) {
+		if(gtk_tree_path_get_depth(album_path) == 1) {
+			if(album && compstr && (strcasestr(album, compstr))) {
+				visible = TRUE;
+			}
+		}
+		else if(gtk_tree_path_get_depth(album_path) == 2) {
+			gtk_tree_path_up(album_path);
+			gtk_tree_model_get_iter(model_album, &tempiter,album_path);
+			gtk_tree_model_get(model_album, &tempiter,COLUMN_ALBUM, &album, -1);
+			if(album && compstr && (strcasestr(album, compstr))) {
+				visible = TRUE;
+			}
 		}
 	}
-	else if(gtk_tree_path_get_depth(album_path) == 2) {
-		gtk_tree_path_up(album_path);
-		gtk_tree_model_get_iter(model_album, &tempiter,album_path);
-		gtk_tree_model_get(model_album, &tempiter,COLUMN_ALBUM, &album, -1);
-		if(album && compstr && (strcasestr(album, compstr))) {
-			visible = TRUE;
-		}
-	}
+	else
+		visible = TRUE;
 	
 	g_free(album);
 	

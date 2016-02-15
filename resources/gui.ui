@@ -47,6 +47,9 @@
   <object class="GtkTreeModelFilter" id="album_filter">
     <property name="child_model">store_album</property>
   </object>
+  <object class="GtkTreeModelSort" id="sortable_album">
+    <property name="model">album_filter</property>
+  </object>
   <object class="GtkTreeStore" id="store_artist">
     <columns>
       <!-- column-name gchararray1 -->
@@ -55,6 +58,9 @@
   </object>
   <object class="GtkTreeModelFilter" id="artist_filter">
     <property name="child_model">store_artist</property>
+  </object>
+  <object class="GtkTreeModelSort" id="sortable_artist">
+    <property name="model">artist_filter</property>
   </object>
   <object class="GtkListStore" id="store_library">
     <columns>
@@ -86,6 +92,9 @@
   </object>
   <object class="GtkTreeModelFilter" id="library_filter">
     <property name="child_model">store_library</property>
+  </object>
+  <object class="GtkTreeModelSort" id="sortable_library">
+    <property name="model">library_filter</property>
   </object>
   <object class="GtkListStore" id="store_playlist">
     <columns>
@@ -441,7 +450,6 @@ audio-volume-medium-symbolic</property>
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
                     <property name="model">store_library</property>
-                    <property name="headers_clickable">False</property>
                     <child internal-child="selection">
                       <object class="GtkTreeSelection" id="treeview-selection1"/>
                     </child>

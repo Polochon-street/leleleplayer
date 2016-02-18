@@ -286,6 +286,8 @@ void add_entry_album_tab(GtkWidget *treeview, GtkTreeStore *treestore, GtkTreeMo
 void time_checkbox_toggled_cb(GtkToggleButton *, struct arguments *);
 float distance(struct force_vector_s, struct force_vector_s);
 float cosine_distance(struct force_vector_s, struct force_vector_s);
+void lib_row_del_label(GtkTreeModel *, GtkTreePath *, GtkWidget *); 
+void lib_row_add_label(GtkTreeModel *, GtkTreePath *, GtkTreeIter *, GtkWidget *); 
 gboolean lib_right_click(GtkWidget *, GdkEventButton *, struct arguments *);
 gboolean artist_right_click(GtkWidget *, GdkEventButton *, struct arguments *);
 gboolean playlist_right_click(GtkWidget *, GdkEventButton *, struct arguments *);

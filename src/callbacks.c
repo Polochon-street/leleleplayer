@@ -151,6 +151,42 @@ void lib_row_activated_cb(GtkTreeView *treeview, GtkTreePath *path, GtkTreeViewC
 	start_song(argument);
 }
 
+void lib_row_del_label(GtkTreeModel *model, GtkTreePath *treepath, GtkWidget *library_label) {
+	GtkTreeIter tempiter;
+	gboolean valid = FALSE;
+	gchar *tempchar;
+	int count = 0;
+
+	valid = gtk_tree_model_get_iter_first(model, &tempiter);
+	
+	while(valid == TRUE) {
+		count++;
+		valid = gtk_tree_model_iter_next(model, &tempiter);
+	}
+
+	tempchar = g_strdup_printf("Library (%d)", count - 1);
+	gtk_label_set_text(GTK_LABEL(library_label), tempchar);
+	g_free(tempchar);
+}
+
+void lib_row_add_label(GtkTreeModel *model, GtkTreePath *treepath, GtkTreeIter *iter, GtkWidget *library_label) {
+	GtkTreeIter tempiter;
+	gboolean valid = FALSE;
+	gchar *tempchar;
+	int count = 0;
+
+	valid = gtk_tree_model_get_iter_first(model, &tempiter);
+	
+	while(valid == TRUE) {
+		count++;
+		valid = gtk_tree_model_iter_next(model, &tempiter);
+	}
+
+	tempchar = g_strdup_printf("Library (%d)", count - 1);
+	gtk_label_set_text(GTK_LABEL(library_label), tempchar);
+	g_free(tempchar);
+}
+
 void toggle_random_cb(GtkWidget *button, struct arguments *argument) {
 	argument->random = (argument->random == 1 ? 0 : 1);
 }

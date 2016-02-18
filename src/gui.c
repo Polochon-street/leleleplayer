@@ -793,7 +793,7 @@ int main(int argc, char **argv) {
 	GtkWidget *window, *treeview_library, *treeview_playlist, *treeview_artist, *treeview_album, *library_panel, *artist_panel, *album_panel,
 		*playlist_panel, *vboxv, *playbox, *volumebox, *randombox, *repeat_button, *random_button, *lelele_button, *labelbox, *next_button, *previous_button, 
 		*menubar, *file, *filemenu, *open, *add_file, *close, *edit, *editmenu, *preferences, *search_entry,
-		*mediainfo_expander, *mediainfo_box, *mediainfo_labelbox, *area, *time_spin, *time_box, *time_checkbox, *analyze_spinner;
+		*mediainfo_expander, *mediainfo_box, *mediainfo_labelbox, *area, *time_spin, *time_box, *time_checkbox, *analyze_spinner, *library_label;
 	GtkAdjustment *time_adjust;
 	GSettingsSchema *schema;
 	GSettingsSchemaSource *schema_source;
@@ -1008,6 +1008,8 @@ int main(int argc, char **argv) {
 	pargument->title_label = GTK_WIDGET(gtk_builder_get_object(builder, "title_label"));
 	pargument->album_label = GTK_WIDGET(gtk_builder_get_object(builder, "album_label"));
 	pargument->artist_label = GTK_WIDGET(gtk_builder_get_object(builder, "artist_label"));
+	library_label = GTK_WIDGET(gtk_builder_get_object(builder, "library_label"));
+	lib_row_add_label(model_library, NULL, NULL, library_label);
 	/*pargument->genre_label = gtk_label_new("Genre:");
 	pargument->samplerate_label = gtk_label_new("Sample rate:");
 	pargument->bitrate_label = gtk_label_new("Bitrate:");
@@ -1075,6 +1077,8 @@ int main(int argc, char **argv) {
 	g_signal_connect(G_OBJECT(add_file), "activate", G_CALLBACK(add_file_to_playlist_cb), pargument);
 	g_signal_connect(G_OBJECT(close), "activate", G_CALLBACK(destroy_cb), pargument);
 	g_signal_connect(G_OBJECT(pargument->treeview_library), "row-activated", G_CALLBACK(lib_row_activated_cb), pargument);
+	g_signal_connect(G_OBJECT(model_library), "row-deleted", G_CALLBACK(lib_row_del_label), library_label);
+	g_signal_connect(G_OBJECT(model_library), "row-inserted", G_CALLBACK(lib_row_add_label), library_label);
 	g_signal_connect(G_OBJECT(pargument->treeview_library), "button-press-event", G_CALLBACK(treeviews_right_click_cb), pargument);
 	g_signal_connect(G_OBJECT(treeview_artist), "button-press-event", G_CALLBACK(treeviews_right_click_cb), pargument);
 	g_signal_connect(G_OBJECT(treeview_album), "button-press-event", G_CALLBACK(treeviews_right_click_cb), pargument);

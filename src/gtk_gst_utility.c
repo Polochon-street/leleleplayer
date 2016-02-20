@@ -573,3 +573,18 @@ gboolean filter_album(GtkTreeModel *model_album, GtkTreeIter *iter, struct argum
 	
 	return visible;
 }
+
+int nb_rows_treeview(GtkTreeModel *model) {
+	gboolean valid = FALSE;
+	GtkTreeIter iter;
+	int count = 0;
+
+	valid = gtk_tree_model_get_iter_first(model, &iter);
+	
+	while(valid == TRUE) {
+		count++;
+		valid = gtk_tree_model_iter_next(model, &iter);
+	}
+
+	return count;
+}

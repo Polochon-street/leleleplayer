@@ -116,6 +116,11 @@ struct pref_arguments {
 	GAsyncQueue *msg_queue;
 };
 
+struct tab_label {
+	gchar *str;
+	GtkWidget *label;
+};
+
 void setup_tree_view_renderer_play_lib(GtkWidget *);
 /**
 * Description: Sets up the treeview renderer with columns "playing", "tracknumber", "track",
@@ -286,12 +291,8 @@ void add_entry_album_tab(GtkWidget *treeview, GtkTreeStore *treestore, GtkTreeMo
 void time_checkbox_toggled_cb(GtkToggleButton *, struct arguments *);
 float distance(struct force_vector_s, struct force_vector_s);
 float cosine_distance(struct force_vector_s, struct force_vector_s);
-void artist_row_del_label(GtkTreeModel *, GtkTreePath *, GtkWidget *); 
-void artist_row_add_label(GtkTreeModel *, GtkTreePath *, GtkTreeIter *, GtkWidget *); 
-void album_row_del_label(GtkTreeModel *, GtkTreePath *, GtkWidget *); 
-void album_row_add_label(GtkTreeModel *, GtkTreePath *, GtkTreeIter *, GtkWidget *); 
-void lib_row_del_label(GtkTreeModel *, GtkTreePath *, GtkWidget *); 
-void lib_row_add_label(GtkTreeModel *, GtkTreePath *, GtkTreeIter *, GtkWidget *); 
+void update_tab_label(GtkTreeModel *, GtkTreePath *, struct tab_label *);
+void update_tab_label_a(GtkTreeModel *, GtkTreePath *, GtkTreeIter *, struct tab_label *);
 gboolean lib_right_click(GtkWidget *, GdkEventButton *, struct arguments *);
 gboolean artist_right_click(GtkWidget *, GdkEventButton *, struct arguments *);
 gboolean playlist_right_click(GtkWidget *, GdkEventButton *, struct arguments *);
@@ -317,3 +318,4 @@ gboolean lib_right_click(GtkWidget *, GdkEventButton *, struct arguments *);
 gboolean filter_library(GtkTreeModel *, GtkTreeIter *, struct arguments *);
 gboolean filter_artist(GtkTreeModel *, GtkTreeIter *, struct arguments *);
 gboolean filter_album(GtkTreeModel *, GtkTreeIter *, struct arguments *);
+int nb_rows_treeview(GtkTreeModel *);

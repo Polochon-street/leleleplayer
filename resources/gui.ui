@@ -458,7 +458,7 @@ audio-volume-medium-symbolic</property>
               </object>
             </child>
             <child type="tab">
-              <object class="GtkLabel" id="library_label">
+              <object class="GtkLabel" id="library_tab_label">
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
                 <property name="label" translatable="yes">Library</property>
@@ -488,7 +488,7 @@ audio-volume-medium-symbolic</property>
               </packing>
             </child>
             <child type="tab">
-              <object class="GtkLabel" id="artist">
+              <object class="GtkLabel" id="artist_tab_label">
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
                 <property name="label" translatable="yes">Artists</property>
@@ -519,7 +519,7 @@ audio-volume-medium-symbolic</property>
               </packing>
             </child>
             <child type="tab">
-              <object class="GtkLabel" id="albums">
+              <object class="GtkLabel" id="album_tab_label">
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
                 <property name="margin_bottom">1</property>

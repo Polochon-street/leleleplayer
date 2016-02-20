@@ -151,7 +151,7 @@ void lib_row_activated_cb(GtkTreeView *treeview, GtkTreePath *path, GtkTreeViewC
 	start_song(argument);
 }
 
-void lib_row_del_label(GtkTreeModel *model, GtkTreePath *treepath, GtkWidget *library_label) {
+void lib_row_del_label(GtkTreeModel *model, GtkTreePath *treepath, GtkWidget *library_tab_label) {
 	GtkTreeIter tempiter;
 	gboolean valid = FALSE;
 	gchar *tempchar;
@@ -164,12 +164,12 @@ void lib_row_del_label(GtkTreeModel *model, GtkTreePath *treepath, GtkWidget *li
 		valid = gtk_tree_model_iter_next(model, &tempiter);
 	}
 
-	tempchar = g_strdup_printf("Library (%d)", count - 1);
-	gtk_label_set_text(GTK_LABEL(library_label), tempchar);
+	tempchar = g_strdup_printf("Library (%d)", count);
+	gtk_label_set_text(GTK_LABEL(library_tab_label), tempchar);
 	g_free(tempchar);
 }
 
-void lib_row_add_label(GtkTreeModel *model, GtkTreePath *treepath, GtkTreeIter *iter, GtkWidget *library_label) {
+void lib_row_add_label(GtkTreeModel *model, GtkTreePath *treepath, GtkTreeIter *iter, GtkWidget *library_tab_label) {
 	GtkTreeIter tempiter;
 	gboolean valid = FALSE;
 	gchar *tempchar;
@@ -182,8 +182,82 @@ void lib_row_add_label(GtkTreeModel *model, GtkTreePath *treepath, GtkTreeIter *
 		valid = gtk_tree_model_iter_next(model, &tempiter);
 	}
 
-	tempchar = g_strdup_printf("Library (%d)", count - 1);
-	gtk_label_set_text(GTK_LABEL(library_label), tempchar);
+	tempchar = g_strdup_printf("Library (%d)", count);
+	gtk_label_set_text(GTK_LABEL(library_tab_label), tempchar);
+	g_free(tempchar);
+}
+
+void album_row_add_label(GtkTreeModel *model, GtkTreePath *treepath, GtkTreeIter *iter, GtkWidget *album_tab_label) {
+	GtkTreeIter tempiter;
+	gboolean valid = FALSE;
+	gchar *tempchar;
+	int count = 0;
+
+	valid = gtk_tree_model_get_iter_first(model, &tempiter);
+	
+	while(valid == TRUE) {
+		count++;
+		valid = gtk_tree_model_iter_next(model, &tempiter);
+	}
+	tempchar = g_strdup_printf("Album (%d)", count);
+	gtk_label_set_text(GTK_LABEL(album_tab_label), tempchar);
+	g_free(tempchar);
+}
+
+void album_row_del_label(GtkTreeModel *model, GtkTreePath *treepath, GtkWidget *album_tab_label) {
+	GtkTreeIter tempiter;
+	gboolean valid = FALSE;
+	gchar *tempchar;
+	int count = 0;
+
+	valid = gtk_tree_model_get_iter_first(model, &tempiter);
+	
+	while(valid == TRUE) {
+		count++;
+		valid = gtk_tree_model_iter_next(model, &tempiter);
+	}
+
+	tempchar = g_strdup_printf("Album (%d)", count);
+	gtk_label_set_text(GTK_LABEL(album_tab_label), tempchar);
+	g_free(tempchar);
+}
+
+void artist_row_add_label(GtkTreeModel *model, GtkTreePath *treepath, GtkTreeIter *iter, GtkWidget *artist_tab_label) {
+	GtkTreeIter tempiter;
+	gboolean valid = FALSE;
+	gchar *tempchar;
+	int count = 0;
+
+	valid = gtk_tree_model_get_iter_first(model, &tempiter);
+	
+	while(valid == TRUE) {
+		count++;
+		valid = gtk_tree_model_iter_next(model, &tempiter);
+	}
+
+	tempchar = g_strdup_printf("Artist (%d)", count);
+	gtk_label_set_text(GTK_LABEL(artist_tab_label), tempchar);
+	g_free(tempchar);
+}
+
+void artist_row_del_label(GtkTreeModel *model, GtkTreePath *treepath, GtkWidget *artist_tab_label) {
+	GtkTreeIter tempiter;
+	gboolean valid = FALSE;
+	gchar *tempchar;
+	int count = 0;
+
+	valid = gtk_tree_model_get_iter_first(model, &tempiter);
+	/*if(valid == TRUE) {
+		gtk_tree_model_get(model, &tempiter, 0, &tempchar, -1);
+		printf("%s\n", tempchar);
+	}*/
+	while(valid == TRUE) {
+		count++;
+		valid = gtk_tree_model_iter_next(model, &tempiter);
+	}
+
+	tempchar = g_strdup_printf("Artist (%d)", count);
+	gtk_label_set_text(GTK_LABEL(artist_tab_label), tempchar);
 	g_free(tempchar);
 }
 

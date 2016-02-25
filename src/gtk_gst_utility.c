@@ -273,8 +273,8 @@ void clean_playlist(GtkTreeView *treeview_playlist, struct arguments *argument) 
 }
 
 void continue_track_cb(GstElement *playbin, struct arguments *argument) {
-	GstStructure *structure;	
-	gchar *uri;	
+	GstStructure *structure;
+	gchar *uri;
 
 	structure = gst_structure_new_empty("next_song");
 	g_mutex_lock(&argument->queue_mutex);
@@ -359,23 +359,26 @@ void state_changed_cb(GstBus *bus, GstMessage *msg, struct arguments *argument) 
 
 gint sort_iter_compare_func(GtkTreeModel *model, GtkTreeIter *a, GtkTreeIter *b, gpointer userdata) {
 	gchar *track1, *track2;
+
 	gtk_tree_model_get(model, a, TRACKNUMBER, &track1, -1);
 	gtk_tree_model_get(model, b, TRACKNUMBER, &track2, -1);
 
-	if (atof(track1) > atof(track2)) {
-		g_free(track1);
-		g_free(track2);
-		return 1;
-	}
-	else if(atof(track1) < atof(track2)) {
-		g_free(track1);
-		g_free(track2);
-		return -1;
-	}
-	else {
-		g_free(track1);
-		g_free(track2);
-		return 0;
+	if(track1 && track2) {
+		if (atof(track1) > atof(track2)) {
+			g_free(track1);
+			g_free(track2);
+			return 1;
+		}
+		else if(atof(track1) < atof(track2)) {
+			g_free(track1);
+			g_free(track2);
+			return -1;
+		}
+		else {
+			g_free(track1);
+			g_free(track2);
+			return 0;
+		}
 	}
 }
 
@@ -389,20 +392,22 @@ gint sort_album_tracks(GtkTreeModel *model, GtkTreeIter *a, GtkTreeIter *b, gpoi
 	gtk_tree_model_get(model, a, TRACKNUMBER, &track1, -1);
 	gtk_tree_model_get(model, b, TRACKNUMBER, &track2, -1);
 
-
-	if(strcmp(album1, album2) > 0) {
-		retval = 1;
-	}
-	else if(strcmp(album1, album2) < 0)
-		retval = -1;
-	else {
-		if(atof(track1) > atof(track2) > 0)
+	if(album1 && album2 && track1 && track2) {
+		if(strcmp(album1, album2) > 0) {
 			retval = 1;
-		else if(atof(track1) < atof(track2))
+		}
+		else if(strcmp(album1, album2) < 0)
 			retval = -1;
-		else 
-			retval = 0;
+		else {
+			if(atof(track1) > atof(track2) > 0)
+				retval = 1;
+			else if(atof(track1) < atof(track2))
+				retval = -1;
+			else 
+				retval = 0;
+		}
 	}
+	retval = 0;
 
 	g_free(album1);
 	g_free(album2);
@@ -425,24 +430,25 @@ gint sort_artist_album_tracks(GtkTreeModel *model, GtkTreeIter *a, GtkTreeIter *
 	gtk_tree_model_get(model, a, TRACKNUMBER, &track1, -1);
 	gtk_tree_model_get(model, b, TRACKNUMBER, &track2, -1);
 
-
-	if(strcmp(artist1, artist2) > 0) {
-		retval = 1;
-	}
-	else if(strcmp(artist1, artist2) < 0)
-		retval = -1;
-	else {
-		if(strcmp(album1, album2) > 0)
+	if(artist1 && artist2 && album1 && album2 && track1 && track2) {
+		if(strcmp(artist1, artist2) > 0) {
 			retval = 1;
-		else if(strcmp(album1, album2) < 0)
+		}
+		else if(strcmp(artist1, artist2) < 0)
 			retval = -1;
 		else {
-			if(atof(track1) > atof(track2))
+			if(strcmp(album1, album2) > 0)
 				retval = 1;
-			else if(atof(track1) < atof(track2))
+			else if(strcmp(album1, album2) < 0)
 				retval = -1;
-			else
-				retval = 0;
+			else {
+				if(atof(track1) > atof(track2))
+					retval = 1;
+				else if(atof(track1) < atof(track2))
+					retval = -1;
+				else
+					retval = 0;
+			}
 		}
 	}
 	g_free(artist1);
@@ -457,18 +463,20 @@ gint sort_artist_album_tracks(GtkTreeModel *model, GtkTreeIter *a, GtkTreeIter *
 
 gint sort_text(GtkTreeModel *model, GtkTreeIter *a, GtkTreeIter *b, gpointer userdata) {
 	gint retval;
+	
 	gchar *string1, *string2;
 
-	gtk_tree_model_get(model, a, 0, &string1, -1);	
+	gtk_tree_model_get(model, a, 0, &string1, -1);
 	gtk_tree_model_get(model, b, 0, &string2, -1);
-	
-	if(strcmp(string1, string2) > 0)
-		retval = 1;
-	else if(strcmp(string1, string2) < 0)
-		retval = -1;
-	else
-		retval = 0;
-	
+
+	if(string1 && string2) {
+		if(strcmp(string1, string2) > 0)
+			retval = 1;
+		else if(strcmp(string1, string2) < 0)
+			retval = -1;
+		else
+			retval = 0;
+	}
 	return retval;
 }
 
@@ -491,9 +499,14 @@ gboolean filter_library(GtkTreeModel *model_library, GtkTreeIter *iter, struct a
 	gboolean visible = FALSE;
 	gtk_tree_model_get(model_library, iter, TRACK, &track, ALBUM, &album, ARTIST, &artist, -1);
 
-	if(compstr && track && album && artist && (strcasestr(track, compstr) || strcasestr(album, compstr) || strcasestr(artist, compstr)))  {
-		visible = TRUE;
+	if(compstr != NULL) {
+		if(track && album && artist && (strcasestr(track, compstr) || strcasestr(album, compstr) || strcasestr(artist, compstr)))  {
+			visible = TRUE;
+		}
 	}
+	else
+		visible = TRUE;
+
 	g_free(track);
 	g_free(artist);
 	g_free(album);

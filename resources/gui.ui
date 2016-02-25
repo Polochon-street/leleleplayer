@@ -44,23 +44,11 @@
       <column type="gchararray"/>
     </columns>
   </object>
-  <object class="GtkTreeModelFilter" id="album_filter">
-    <property name="child_model">store_album</property>
-  </object>
-  <object class="GtkTreeModelSort" id="sortable_album">
-    <property name="model">album_filter</property>
-  </object>
   <object class="GtkTreeStore" id="store_artist">
     <columns>
       <!-- column-name gchararray1 -->
       <column type="gchararray"/>
     </columns>
-  </object>
-  <object class="GtkTreeModelFilter" id="artist_filter">
-    <property name="child_model">store_artist</property>
-  </object>
-  <object class="GtkTreeModelSort" id="sortable_artist">
-    <property name="model">artist_filter</property>
   </object>
   <object class="GtkListStore" id="store_library">
     <columns>
@@ -89,12 +77,6 @@
       <!-- column-name gchararray7 -->
       <column type="gchararray"/>
     </columns>
-  </object>
-  <object class="GtkTreeModelFilter" id="library_filter">
-    <property name="child_model">store_library</property>
-  </object>
-  <object class="GtkTreeModelSort" id="sortable_library">
-    <property name="model">library_filter</property>
   </object>
   <object class="GtkListStore" id="store_playlist">
     <columns>
@@ -632,7 +614,7 @@ audio-volume-medium-symbolic</property>
               </packing>
             </child>
             <child>
-              <object class="GtkSpinner" id="spinner1">
+              <object class="GtkLabel" id="progress_labe">
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
               </object>
@@ -640,6 +622,17 @@ audio-volume-medium-symbolic</property>
                 <property name="expand">False</property>
                 <property name="fill">True</property>
                 <property name="position">3</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkSpinner" id="spinner1">
+                <property name="visible">True</property>
+                <property name="can_focus">False</property>
+              </object>
+              <packing>
+                <property name="expand">False</property>
+                <property name="fill">True</property>
+                <property name="position">4</property>
               </packing>
             </child>
           </object>

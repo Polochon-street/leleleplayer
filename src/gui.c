@@ -46,7 +46,7 @@ gboolean refresh_config_progressbar(struct pref_arguments *argument) {
 				valid = gtk_tree_model_iter_next(GTK_TREE_MODEL(argument->store_library), &tempiter);
 			}
 			if(found == TRUE) {
-				gtk_list_store_set(argument->store_library, &iter, PLAYING, "", TRACKNUMBER, song->tracknumber, TRACK, song->title, ALBUM, song->album, ARTIST, song->artist,
+				gtk_list_store_set(argument->store_library, &tempiter, PLAYING, "", TRACKNUMBER, song->tracknumber, TRACK, song->title, ALBUM, song->album, ARTIST, song->artist,
 					FORCE, (float)song->calm_or_loud, FORCE_TEMPO, song->force_vector.tempo, FORCE_AMP, song->force_vector.amplitude, FORCE_FREQ, song->force_vector.frequency, FORCE_ATK, song->force_vector.attack, TEXTFORCE, tempforce, AFILE, song->filename, -1);	
 			}
 			else {
@@ -55,7 +55,7 @@ gboolean refresh_config_progressbar(struct pref_arguments *argument) {
 					FORCE, (float)song->calm_or_loud, FORCE_TEMPO, song->force_vector.tempo, FORCE_AMP, song->force_vector.amplitude, FORCE_FREQ, song->force_vector.frequency, FORCE_ATK, song->force_vector.attack, TEXTFORCE, tempforce, AFILE, song->filename, -1);
 				add_entry_artist_tab(argument->treeview_artist, argument->store_artist, GTK_TREE_MODEL(argument->store_library), &iter);
 				add_entry_album_tab(argument->treeview_album, argument->store_album, GTK_TREE_MODEL(argument->store_library), &iter);
-			}
+}
 			bl_free_song(msg);
 			g_free(song->filename);
 			msg = NULL; 
@@ -161,7 +161,7 @@ xmlKeepBlanksDefault(0);
 							found = TRUE;
 						}
 						free(tempstring); // HERE IS THE MOTHER FKING FREE
-					}	
+					}
 					if((!xmlStrcmp(child_find->name, (const xmlChar *)"analyze-resnum"))) {
 						tempstring = xmlNodeGetContent(child_find->children);
 						tempresnum = atoi(tempstring);

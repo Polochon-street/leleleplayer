@@ -395,8 +395,6 @@ void add_entry_album_tab(GtkWidget *treeview, GtkTreeStore *treestore, GtkTreeMo
 			gtk_tree_store_set(treestore, &child, COLUMN_ARTIST, song, -1);
 	}
 
-	gtk_tree_model_filter_refilter(model_filter);
-
 	g_free(temptrack);
 	g_free(temptracknumber1);
 	g_free(temptracknumber2);
@@ -414,6 +412,8 @@ void add_entry_artist_tab(GtkWidget *treeview, GtkTreeStore *treestore, GtkTreeM
 	gchar *tempalbum1, *tempalbum2;
 	gchar *temptrack;
 	gchar *temptracknumber1, *temptracknumber2;
+
+	tempartist1 = tempartist2 = tempalbum1 = tempalbum2 = temptrack = temptracknumber1 = temptracknumber2 = NULL;
 
 	gtk_tree_model_get(model_library, &tempiter_library, ARTIST, &tempartist1, 
 		ALBUM, &tempalbum1, TRACK, &temptrack, TRACKNUMBER, &temptracknumber1, -1);
@@ -488,8 +488,6 @@ void add_entry_artist_tab(GtkWidget *treeview, GtkTreeStore *treestore, GtkTreeM
 		gtk_tree_store_append(treestore, &lowlevel, &child);
 		gtk_tree_store_set(treestore, &lowlevel, COLUMN_ARTIST, song, -1);
 	}
-
-	gtk_tree_model_filter_refilter(model_filter);
 
 	temptrack = temptracknumber1 = temptracknumber2 = song = NULL;
 	g_free(tempartist1);

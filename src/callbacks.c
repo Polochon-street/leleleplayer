@@ -283,7 +283,7 @@ void preferences_callback_cb(GtkMenuItem *preferences, struct pref_arguments *ar
 		gtk_window_set_icon_from_file(GTK_WINDOW(dialog), "/usr/share/leleleplayer/icons/leleleplayer.png", NULL);
 
 	area = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
-	complete_box = gtk_check_button_new_with_label("LeleleScan (complete but longer) (not functionnal now)");
+	complete_box = gtk_check_button_new_with_label("LeleleScan (complete but longer) (not functional now)");
 
 	gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(complete_box), argument->lelele_scan);
 	gtk_window_set_default_size(GTK_WINDOW(dialog), 500, 100);

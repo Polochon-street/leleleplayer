@@ -7,7 +7,7 @@ void toggle_playpause(struct arguments *argument) {
 		resume_song(argument);
 }
 
-gboolean refresh_config_progressbar(struct pref_arguments *argument) {	
+gboolean refresh_config_progressbar(struct pref_arguments *argument) {
 	GAsyncQueue *msg_queue = argument->msg_queue;
 	gpointer msg = NULL;
 	gboolean valid;
@@ -22,7 +22,6 @@ gboolean refresh_config_progressbar(struct pref_arguments *argument) {
 	gtk_spinner_start(GTK_SPINNER(argument->spinner));
 
 	progression = g_strdup_printf("<span weight=\"bold\">%d/%d</span>", count, nblines);
-	gtk_label_set_markup(GTK_LABEL(argument->progress_label), progression);
 	g_free(progression);
 
 	do { 
@@ -60,11 +59,6 @@ gboolean refresh_config_progressbar(struct pref_arguments *argument) {
 			g_free(song->filename);
 			msg = NULL; 
 		}
-		if(msg != NULL) {
-			bl_free_song(msg);
-			g_free(song->filename);
-			msg = NULL;
-		}
 	} while(((msg = g_async_queue_try_pop(msg_queue)) != NULL));
 	
 	if(argument->terminate == TRUE) {
@@ -80,7 +74,7 @@ gboolean refresh_config_progressbar(struct pref_arguments *argument) {
 }
 
 void analyze_thread(struct pref_arguments *argument) {
-xmlKeepBlanksDefault(0);
+	xmlKeepBlanksDefault(0);
 	GList *list, *l = NULL;
 	xmlDocPtr library;
 	xmlNodePtr cur, child, cur_find, child_find;
@@ -160,12 +154,12 @@ xmlKeepBlanksDefault(0);
 						if(!g_strcmp0(tempstring, l->data)) {
 							found = TRUE;
 						}
-						free(tempstring); // HERE IS THE MOTHER FKING FREE
+						//free(tempstring); // HERE IS THE MOTHER FKING FREE
 					}
 					if((!xmlStrcmp(child_find->name, (const xmlChar *)"analyze-resnum"))) {
 						tempstring = xmlNodeGetContent(child_find->children);
 						tempresnum = atoi(tempstring);
-						g_free(tempstring); // AND HERE TOO 
+						//g_free(tempstring); // AND HERE TOO 
 					}
 				}
 				if(found == TRUE)
@@ -670,6 +664,7 @@ void setup_tree_view_renderer_play_lib(GtkWidget *treeview) {
 }
 
 void display_library(GtkTreeView *treeview, GtkListStore *store, gchar *libfile) {
+	gboolean valid = FALSE;
 	GtkTreeIter iter;
 	xmlDocPtr library;
 	xmlNodePtr cur;
@@ -693,83 +688,91 @@ void display_library(GtkTreeView *treeview, GtkListStore *store, gchar *libfile)
 
 	gtk_list_store_clear(store);
 
-	library = xmlParseFile(libfile);
-
-	if(library != NULL) {
-		cur = xmlDocGetRootElement(library);
+	valid = g_file_test(libfile, G_FILE_TEST_EXISTS);
 	
-		if(cur == NULL) {
-			printf("Library file is empty\n");
-			xmlFreeDoc(library);
-			return;
-		}
-		
-		if(xmlStrcmp(cur->name, (const xmlChar *)"lelelelibrary")) {
-			printf("Library file of the wrong type, root node != lelelelibrary");
-			xmlFreeDoc(library);
-			return;
-		}
-		for(cur = cur->children; cur != NULL; cur = cur->next) {
-			if((!xmlStrcmp(cur->name, (const xmlChar *)"song")) && cur->children != NULL ) {
-				for(child = cur->children; child != NULL; child = child->next) {
-					if(child->type != XML_ELEMENT_NODE)
-						continue;
-					if((!xmlStrcmp(child->name, (const xmlChar *)"title"))) {
-						temptrack = xmlNodeGetContent(child);
-					}
-					else if((!xmlStrcmp(child->name, (const xmlChar *)"artist")))
-						tempartist = xmlNodeGetContent(child);
-					else if((!xmlStrcmp(child->name, (const xmlChar *)"album")))
-						tempalbum = xmlNodeGetContent(child);
-					else if((!xmlStrcmp(child->name, (const xmlChar *)"tracknumber")))
-						temptracknumber = xmlNodeGetContent(child);
-					else if((!xmlStrcmp(child->name, (const xmlChar *)"filename"))) 
-						tempfile = xmlNodeGetContent(child);
-					else if((!xmlStrcmp(child->name, (const xmlChar *)"analyze-resnum"))) {
-						tempforce = xmlNodeGetContent(child);
-						tempforcef = atof(tempforce);
-						if(tempforcef == BL_LOUD)
-							strcpy(forceresult, "Loud");
-						else if(tempforcef == BL_CALM) 
-							strcpy(forceresult, "Calm");
-						else
-							strcpy(forceresult, "Can't conclude");
-					}
-					else if((!xmlStrcmp(child->name, (const xmlChar *)"analyze-amplitude"))) {
-						tempforce_amp = xmlNodeGetContent(child);
-						tempforce_ampf = atof(tempforce_amp);
-					}
-					else if((!xmlStrcmp(child->name, (const xmlChar *)"analyze-freq"))) {
-						tempforce_freq = xmlNodeGetContent(child);
-						tempforce_freqf = atof(tempforce_freq);
-					}
-					else if((!xmlStrcmp(child->name, (const xmlChar *)"analyze-tempo"))) {
-						tempforce_env = xmlNodeGetContent(child);
-						tempforce_envf = atof(tempforce_env);
-					}
-					else if((!xmlStrcmp(child->name, (const xmlChar *)"analyze-atk"))) {
-						tempforce_atk = xmlNodeGetContent(child);
-						tempforce_atkf = atof(tempforce_atk);
-					}
-				}
+	if(valid == TRUE) {
+		library = xmlParseFile(libfile);
 
-				gtk_list_store_append(store, &iter);
-				gtk_list_store_set(store, &iter, PLAYING, "", TRACKNUMBER, temptracknumber, TRACK, temptrack, ALBUM, tempalbum, ARTIST, tempartist, FORCE, tempforcef, FORCE_TEMPO, tempforce_envf, FORCE_AMP, tempforce_ampf, FORCE_FREQ, tempforce_freqf, FORCE_ATK, tempforce_atkf, TEXTFORCE, forceresult, AFILE, tempfile, -1);
-				xmlFree(temptracknumber);
-				xmlFree(temptrack);
-				xmlFree(tempartist);
-				xmlFree(tempalbum);
-				xmlFree(tempfile);
-				xmlFree(tempforce);
-				xmlFree(tempforce_amp);
-				xmlFree(tempforce_freq);
-				xmlFree(tempforce_env);
-				xmlFree(tempforce_atk);
-				temptracknumber = temptrack = tempartist = tempalbum =  tempforce = tempforce_amp = tempfile = tempforce_freq = tempforce_env = tempforce_atk = NULL;
+		if(library != NULL) {
+			cur = xmlDocGetRootElement(library);
+	
+			if(cur == NULL) {
+				printf("Library file is empty\n");
+				xmlFreeDoc(library);
+				return;
 			}
+		
+			if(xmlStrcmp(cur->name, (const xmlChar *)"lelelelibrary")) {
+				printf("Library file of the wrong type, root node != lelelelibrary");
+				xmlFreeDoc(library);
+				return;
+			}
+			for(cur = cur->children; cur != NULL; cur = cur->next) {
+				if((!xmlStrcmp(cur->name, (const xmlChar *)"song")) && cur->children != NULL ) {
+					for(child = cur->children; child != NULL; child = child->next) {
+						if(child->type != XML_ELEMENT_NODE)
+						continue;
+						if((!xmlStrcmp(child->name, (const xmlChar *)"title"))) {
+							temptrack = xmlNodeGetContent(child);
+						}
+						else if((!xmlStrcmp(child->name, (const xmlChar *)"artist")))
+							tempartist = xmlNodeGetContent(child);
+						else if((!xmlStrcmp(child->name, (const xmlChar *)"album")))
+							tempalbum = xmlNodeGetContent(child);
+						else if((!xmlStrcmp(child->name, (const xmlChar *)"tracknumber")))
+							temptracknumber = xmlNodeGetContent(child);
+						else if((!xmlStrcmp(child->name, (const xmlChar *)"filename"))) 
+							tempfile = xmlNodeGetContent(child);
+						else if((!xmlStrcmp(child->name, (const xmlChar *)"analyze-resnum"))) {
+							tempforce = xmlNodeGetContent(child);
+							tempforcef = atof(tempforce);
+							if(tempforcef == BL_LOUD)
+								strcpy(forceresult, "Loud");
+							else if(tempforcef == BL_CALM) 
+								strcpy(forceresult, "Calm");
+							else
+								strcpy(forceresult, "Can't conclude");
+						}
+						else if((!xmlStrcmp(child->name, (const xmlChar *)"analyze-amplitude"))) {
+							tempforce_amp = xmlNodeGetContent(child);
+							tempforce_ampf = atof(tempforce_amp);
+						}
+						else if((!xmlStrcmp(child->name, (const xmlChar *)"analyze-freq"))) {
+							tempforce_freq = xmlNodeGetContent(child);
+							tempforce_freqf = atof(tempforce_freq);
+						}
+						else if((!xmlStrcmp(child->name, (const xmlChar *)"analyze-tempo"))) {
+							tempforce_env = xmlNodeGetContent(child);
+							tempforce_envf = atof(tempforce_env);
+						}
+						else if((!xmlStrcmp(child->name, (const xmlChar *)"analyze-atk"))) {
+							tempforce_atk = xmlNodeGetContent(child);
+							tempforce_atkf = atof(tempforce_atk);
+						}
+					}
+
+					gtk_list_store_append(store, &iter);
+					gtk_list_store_set(store, &iter, PLAYING, "", TRACKNUMBER, temptracknumber, TRACK, temptrack, ALBUM, tempalbum, ARTIST, tempartist, FORCE, tempforcef, FORCE_TEMPO, tempforce_envf, FORCE_AMP, tempforce_ampf, FORCE_FREQ, tempforce_freqf, FORCE_ATK, tempforce_atkf, TEXTFORCE, forceresult, AFILE, tempfile, -1);
+					xmlFree(temptracknumber);
+					xmlFree(temptrack);
+					xmlFree(tempartist);
+					xmlFree(tempalbum);
+					xmlFree(tempfile);
+					xmlFree(tempforce);
+					xmlFree(tempforce_amp);
+					xmlFree(tempforce_freq);
+					xmlFree(tempforce_env);
+					xmlFree(tempforce_atk);
+					temptracknumber = temptrack = tempartist = tempalbum =  tempforce = tempforce_amp = tempfile = tempforce_freq = tempforce_env = tempforce_atk = NULL;
+				}
+			}
+			xmlFreeDoc(library);
 		}
-		xmlFreeDoc(library);
+		else
+			fprintf(stderr, "Couldn't parse %s.\n", libfile);
 	}
+	else
+		fprintf(stderr, "Couldn't open library file: %s, because it doesn't exists.\n", libfile);
 }
 
 int main(int argc, char **argv) {
@@ -780,10 +783,9 @@ int main(int argc, char **argv) {
 
 	GtkBuilder *builder;
 
-	GtkWidget *window, *treeview_library, *treeview_playlist, *treeview_artist, *treeview_album, *library_panel, *artist_panel, *album_panel,
-		*playlist_panel, *vboxv, *playbox, *volumebox, *randombox, *repeat_button, *random_button, *lelele_button, *labelbox, *next_button, *previous_button, 
-		*menubar, *file, *filemenu, *open, *add_file, *close, *edit, *editmenu, *preferences, *search_entry, *mediainfo_expander, *mediainfo_box, 
-		*mediainfo_labelbox, *area, *time_spin, *time_box, *time_checkbox, *analyze_spinner;
+	GtkWidget *window, *repeat_button, *random_button, *lelele_button, *next_button, *previous_button, 
+		*open, *add_file, *close, *search_entry, *mediainfo_expander, *mediainfo_box, *preferences,
+		*mediainfo_labelbox, *area, *time_spin, *time_checkbox, *analyze_spinner;
 	GtkAdjustment *time_adjust;
 	GSettingsSchema *schema;
 	GSettingsSchemaSource *schema_source;
@@ -910,23 +912,14 @@ int main(int argc, char **argv) {
 	g_object_set(pargument->current_song.playbin, "vis-plugin", vis_plugin, NULL);
 	g_object_set(pargument->current_song.playbin, "force-aspect-ratio", FALSE, NULL); */
 
-
-	library_panel = gtk_scrolled_window_new(NULL, NULL);
-	playlist_panel = gtk_scrolled_window_new(NULL, NULL);
-	artist_panel = gtk_scrolled_window_new(NULL, NULL);
-	album_panel = gtk_scrolled_window_new(NULL, NULL);
-
 	pargument->store_library = GTK_LIST_STORE(gtk_builder_get_object(builder, "store_library"));
 	pargument->treeview_library = GTK_WIDGET(gtk_builder_get_object(builder, "treeview_library"));
 	setup_tree_view_renderer_play_lib(pargument->treeview_library);	
 	display_library(GTK_TREE_VIEW(pargument->treeview_library), pargument->store_library, pargument->lib_path);
 	GtkTreeIter iter;
-
-	pargument->library_filter = GTK_TREE_MODEL_FILTER(gtk_tree_model_filter_new(GTK_TREE_MODEL(pargument->store_library), NULL));
-	library_sort = GTK_TREE_MODEL_SORT(gtk_tree_model_sort_new_with_model(GTK_TREE_MODEL(pargument->library_filter)));
+	pargument->library_filter = GTK_TREE_MODEL_FILTER(gtk_builder_get_object(builder, "library_filter"));
+	library_sort = GTK_TREE_MODEL_SORT(gtk_builder_get_object(builder, "library_sort"));
 	gtk_tree_model_filter_set_visible_func(pargument->library_filter, (GtkTreeModelFilterVisibleFunc)filter_library, pargument, NULL);
-//library_filter = GTK_TREE_MODEL_FILTER(gtk_builder_get_object(builder, "library_filter")); // Del Glade file
-//library_sort = GTK_TREE_MODEL_SORT(gtk_builder_get_object(builder, "sort_library"));
 	sortable_library = GTK_TREE_SORTABLE(library_sort);
 	gtk_tree_sortable_set_sort_func(sortable_library, TRACKNUMBER, sort_iter_compare_func, NULL, NULL); 
 	gtk_tree_sortable_set_sort_func(sortable_library, TEXTFORCE, sort_force, NULL, NULL);
@@ -939,21 +932,18 @@ int main(int argc, char **argv) {
 	gtk_tree_selection_set_mode(selection, GTK_SELECTION_MULTIPLE);
 	
 	pargument->store_playlist = GTK_LIST_STORE(gtk_builder_get_object(builder, "store_playlist"));
-	treeview_playlist = GTK_WIDGET(gtk_builder_get_object(builder, "treeview_playlist"));
-	setup_tree_view_renderer_play_lib(treeview_playlist);
-	pargument->treeview_playlist = treeview_playlist;
-	model_playlist = gtk_tree_view_get_model(GTK_TREE_VIEW(treeview_playlist));
-	selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(treeview_playlist));
+	pargument->treeview_playlist = GTK_WIDGET(gtk_builder_get_object(builder, "treeview_playlist"));
+	setup_tree_view_renderer_play_lib(pargument->treeview_playlist);
+	model_playlist = gtk_tree_view_get_model(GTK_TREE_VIEW(pargument->treeview_playlist));
+	selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(pargument->treeview_playlist));
 	gtk_tree_selection_set_mode(selection, GTK_SELECTION_MULTIPLE);
 
 	pargument->store_artist = GTK_TREE_STORE(gtk_builder_get_object(builder, "store_artist"));
 	pargument->treeview_artist = GTK_WIDGET(gtk_builder_get_object(builder, "treeview_artist"));
 	setup_tree_view_renderer_artist(pargument->treeview_artist);
-	pargument->artist_filter = GTK_TREE_MODEL_FILTER(gtk_tree_model_filter_new(GTK_TREE_MODEL(pargument->store_artist), NULL));
-	//artist_filter = GTK_TREE_MODEL_FILTER(gtk_builder_get_object(builder, "artist_filter"));
+	pargument->artist_filter = GTK_TREE_MODEL_FILTER(gtk_builder_get_object(builder, "artist_filter"));
+	artist_sort = GTK_TREE_MODEL_SORT(gtk_builder_get_object(builder, "artist_sort"));
 	gtk_tree_model_filter_set_visible_func(pargument->artist_filter, (GtkTreeModelFilterVisibleFunc)filter_artist, pargument, NULL);
-	artist_sort = GTK_TREE_MODEL_SORT(gtk_tree_model_sort_new_with_model(GTK_TREE_MODEL(pargument->artist_filter)));
-	//album_sort = GTK_TREE_MODEL_SORT(gtk_builder_get_object(builder, "sort_artist"));
 	sortable_artist = GTK_TREE_SORTABLE(artist_sort);
 	gtk_tree_sortable_set_sort_func(sortable_artist, COLUMN_ARTIST, sort_text, NULL, NULL); 
 	gtk_tree_sortable_set_sort_column_id(sortable_artist, COLUMN_ARTIST, GTK_SORT_ASCENDING);
@@ -968,11 +958,9 @@ int main(int argc, char **argv) {
 	pargument->store_album = GTK_TREE_STORE(gtk_builder_get_object(builder, "store_album"));
 	pargument->treeview_album = GTK_WIDGET(gtk_builder_get_object(builder, "treeview_album"));
 	setup_tree_view_renderer_album(pargument->treeview_album);
-	pargument->album_filter = GTK_TREE_MODEL_FILTER(gtk_tree_model_filter_new(GTK_TREE_MODEL(pargument->store_album), NULL));
-	//pargument->album_filter = GTK_TREE_MODEL_FILTER(gtk_builder_get_object(builder, "album_filter"));
+	pargument->album_filter = GTK_TREE_MODEL_FILTER(gtk_builder_get_object(builder, "album_filter"));
+	album_sort = GTK_TREE_MODEL_SORT(gtk_builder_get_object(builder, "album_sort"));
 	gtk_tree_model_filter_set_visible_func(pargument->album_filter, (GtkTreeModelFilterVisibleFunc)filter_album, pargument, NULL);
-	//album_sort = GTK_TREE_MODEL_SORT(gtk_builder_get_object(builder, "sort_album"));
-	album_sort = GTK_TREE_MODEL_SORT(gtk_tree_model_sort_new_with_model(GTK_TREE_MODEL(pargument->album_filter)));
 	sortable_album = GTK_TREE_SORTABLE(album_sort);
 	gtk_tree_sortable_set_sort_func(sortable_album, COLUMN_ALBUM, sort_text, NULL, NULL); 
 	gtk_tree_sortable_set_sort_column_id(sortable_album, COLUMN_ALBUM, GTK_SORT_ASCENDING);
@@ -983,19 +971,6 @@ int main(int argc, char **argv) {
 	display_album_tab(pargument->treeview_album, pargument->store_album, model_library, album_sort, pargument->album_filter);
 	selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(pargument->treeview_album));
 	gtk_tree_selection_set_mode(selection, GTK_SELECTION_MULTIPLE);
-
-	gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(library_panel), GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
-	gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(playlist_panel), GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
-	gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(artist_panel), GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
-	gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(album_panel), GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
-	playbox = gtk_button_box_new(GTK_ORIENTATION_HORIZONTAL);
-	randombox = gtk_button_box_new(GTK_ORIENTATION_HORIZONTAL);
-	volumebox = gtk_button_box_new(GTK_ORIENTATION_HORIZONTAL);
-	lelele_button = gtk_toggle_button_new();
-	if(g_file_test("../images/lelelerandom.svg", G_FILE_TEST_EXISTS))
-		gtk_button_set_image(GTK_BUTTON(lelele_button), gtk_image_new_from_file("../images/lelelerandom.svg"));
-	else
-		gtk_button_set_image(GTK_BUTTON(lelele_button), gtk_image_new_from_file("/usr/share/leleleplayer/icons/lelelerandom.svg"));
 
 	pargument->playpause_button = GTK_WIDGET(gtk_builder_get_object(builder, "playpause_button"));
 	
@@ -1028,7 +1003,6 @@ int main(int argc, char **argv) {
 	mediainfo_labelbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
 	mediainfo_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);*/
 	//gtk_widget_set_size_request(area, -1, 50);
-	menubar = gtk_menu_bar_new();
 	if(schema_source = g_settings_schema_source_new_from_directory("..", NULL, FALSE, NULL))
 		;
 	else
@@ -1061,7 +1035,6 @@ int main(int argc, char **argv) {
 	pref_arguments.album_sort = album_sort;
 	pref_arguments.artist_filter = pargument->artist_filter;
 	pref_arguments.artist_sort = artist_sort;
-
 
 
 	random_button = GTK_WIDGET(gtk_builder_get_object(builder, "random_button"));
@@ -1103,9 +1076,9 @@ int main(int argc, char **argv) {
 	g_signal_connect(G_OBJECT(pargument->treeview_library), "button-press-event", G_CALLBACK(treeviews_right_click_cb), pargument);
 	g_signal_connect(G_OBJECT(pargument->treeview_artist), "button-press-event", G_CALLBACK(treeviews_right_click_cb), pargument);
 	g_signal_connect(G_OBJECT(pargument->treeview_album), "button-press-event", G_CALLBACK(treeviews_right_click_cb), pargument);
-	g_signal_connect(G_OBJECT(treeview_playlist), "button-press-event", G_CALLBACK(treeviews_right_click_cb), pargument);
-	g_signal_connect(G_OBJECT(treeview_playlist), "key-press-event", G_CALLBACK(playlist_del_button_cb), pargument);
-	g_signal_connect(G_OBJECT(treeview_playlist), "row-activated", G_CALLBACK(playlist_row_activated_cb), pargument);
+	g_signal_connect(G_OBJECT(pargument->treeview_playlist), "button-press-event", G_CALLBACK(treeviews_right_click_cb), pargument);
+	g_signal_connect(G_OBJECT(pargument->treeview_playlist), "key-press-event", G_CALLBACK(playlist_del_button_cb), pargument);
+	g_signal_connect(G_OBJECT(pargument->treeview_playlist), "row-activated", G_CALLBACK(playlist_row_activated_cb), pargument);
 	g_signal_connect(G_OBJECT(pargument->treeview_artist), "row-activated", G_CALLBACK(artist_row_activated_cb), pargument);
 	g_signal_connect(G_OBJECT(pargument->treeview_album), "row-activated", G_CALLBACK(album_row_activated_cb), pargument);
 	g_signal_connect(G_OBJECT(time_checkbox), "toggled", G_CALLBACK(time_checkbox_toggled_cb), pargument);

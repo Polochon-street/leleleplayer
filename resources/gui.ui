@@ -44,11 +44,23 @@
       <column type="gchararray"/>
     </columns>
   </object>
+  <object class="GtkTreeModelFilter" id="album_filter">
+    <property name="child_model">store_album</property>
+  </object>
+  <object class="GtkTreeModelSort" id="album_sort">
+    <property name="model">album_filter</property>
+  </object>
   <object class="GtkTreeStore" id="store_artist">
     <columns>
       <!-- column-name gchararray1 -->
       <column type="gchararray"/>
     </columns>
+  </object>
+  <object class="GtkTreeModelFilter" id="artist_filter">
+    <property name="child_model">store_artist</property>
+  </object>
+  <object class="GtkTreeModelSort" id="artist_sort">
+    <property name="model">artist_filter</property>
   </object>
   <object class="GtkListStore" id="store_library">
     <columns>
@@ -77,6 +89,12 @@
       <!-- column-name gchararray7 -->
       <column type="gchararray"/>
     </columns>
+  </object>
+  <object class="GtkTreeModelFilter" id="library_filter">
+    <property name="child_model">store_library</property>
+  </object>
+  <object class="GtkTreeModelSort" id="library_sort">
+    <property name="model">library_filter</property>
   </object>
   <object class="GtkListStore" id="store_playlist">
     <columns>

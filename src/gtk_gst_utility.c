@@ -1,5 +1,12 @@
+#define _GNU_SOURCE
 #include "gui.h"
 #include <string.h>
+
+#ifdef WIN32
+#include <shlwapi.h>
+#define strcasestr StrStrI
+#endif
+
 
 gboolean filter_vis_features(GstPluginFeature *feature, gpointer data) {
 	GstElementFactory *factory;

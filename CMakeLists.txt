@@ -53,6 +53,16 @@ if(WIN32)
 	# TODO Find a workaround to avoid setting « SetOutPath » manually 
 	include(CPack)
 else()
+	set(CPACK_GENERATOR "DEB")
+	set(CPACK_DEBIAN_PACKAGE_NAME "leleleplayer")
+	set(CPACK_DEBIAN_PACKAGE_VERSION "0.7")
+	set(CPACK_DEBIAN_PACKAGE_ARCHITECTURE "all")
+	set(CPACK_DEBIAN_PACKAGE_DEPENDS "bliss-music, libgtk-3-0, gstreamer1.0-plugins-base, gstreamer1.0-plugins-bad, gstreamer1.0-plugins-good")
+	set(CPACK_DEBIAN_PACKAGE_MAINTAINER "polochonstreet@gmx.fr")
+	set(CPACK_DEBIAN_PACKAGE_DESCRIPTION "An open-source audio player and an intelligent playlist creator")
+
+	include(CPack)
+
 	install(TARGETS leleleplayer DESTINATION bin)
 	install(FILES "images/lelelerandom.svg" "images/leleleplayer.png" DESTINATION share/leleleplayer/icons/)
 	install(FILES "images/leleleplayer.png" DESTINATION share/pixmaps)

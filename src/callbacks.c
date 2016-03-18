@@ -954,9 +954,9 @@ gint time_spin_output_cb(GtkSpinButton *spin_button, struct arguments *argument)
 	seconds = (minutes - floor(minutes)) * 60.0;
 	buf = g_strdup_printf ("%02.0f:%02.0f:%02.0f", floor(hours), floor(minutes), floor(seconds + 0.5));
 	if(strcmp (buf, gtk_entry_get_text (GTK_ENTRY (spin_button))))
-    	gtk_entry_set_text (GTK_ENTRY (spin_button), buf);
+		gtk_entry_set_text (GTK_ENTRY (spin_button), buf);
 
-  	g_free (buf);
+	g_free (buf);
 
 	return TRUE;
 }
@@ -967,7 +967,7 @@ void time_checkbox_toggled_cb(GtkToggleButton *togglebutton, struct arguments *a
 	if(mode == TRUE && (argument->timer_delay != 0.)) {
 		argument->sleep_timer = g_timer_new();
 	}
-	else if(argument->sleep_timer) {	
+	else if(argument->sleep_timer) {
 		g_timer_destroy(argument->sleep_timer);
 		argument->sleep_timer = NULL;
 	}
@@ -975,7 +975,7 @@ void time_checkbox_toggled_cb(GtkToggleButton *togglebutton, struct arguments *a
 
 
 void search_cb(GtkSearchEntry *search_entry, struct arguments *argument) {
-	argument->search_entry_text = gtk_entry_get_text(GTK_ENTRY(search_entry));
+	argument->search_entry_text = (gchar*)gtk_entry_get_text(GTK_ENTRY(search_entry));
 
 	gtk_tree_model_filter_refilter(argument->library_filter);
 	gtk_tree_model_filter_refilter(argument->artist_filter);

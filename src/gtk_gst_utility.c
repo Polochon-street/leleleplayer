@@ -588,7 +588,7 @@ gboolean filter_album(GtkTreeModel *model_album, GtkTreeIter *iter, struct argum
 	}
 	else
 		visible = TRUE;
-	
+
 	g_free(album);
 	
 	return visible;
@@ -598,9 +598,10 @@ int nb_rows_treeview(GtkTreeModel *model) {
 	gboolean valid = FALSE;
 	GtkTreeIter iter;
 	int count = 0;
+	gchar *tempchar;
 
 	valid = gtk_tree_model_get_iter_first(model, &iter);
-	
+
 	while(valid == TRUE) {
 		count++;
 		valid = gtk_tree_model_iter_next(model, &iter);

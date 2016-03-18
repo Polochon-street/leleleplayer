@@ -22,6 +22,7 @@ gboolean refresh_config_progressbar(struct pref_arguments *argument) {
 	gtk_spinner_start(GTK_SPINNER(argument->spinner));
 
 	progression = g_strdup_printf("<span weight=\"bold\">%d/%d</span>", count, nblines);
+	gtk_label_set_markup(GTK_LABEL(argument->progress_label), progression);
 	g_free(progression);
 
 	do { 
@@ -310,7 +311,7 @@ gboolean refresh_progressbar(gpointer pargument) {
 	
 		GtkAdjustment *adjustment;
 		if(argument->timer_delay - elapsed < -1.) {
-			reset_ui(argument);	
+			reset_ui(argument);
 			g_timer_destroy(argument->sleep_timer);
 			argument->sleep_timer = NULL;
 			gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(argument->time_checkbox), FALSE);
@@ -353,7 +354,7 @@ void add_entry_album_tab(GtkWidget *treeview, GtkTreeStore *treestore, GtkTreeMo
 
 	gtk_tree_model_get(model_library, &tempiter_library, ALBUM, &tempalbum1,
 		TRACK, &temptrack, TRACKNUMBER, &temptracknumber1, -1);
-	gchar *song = g_strconcat(temptracknumber1, "  ", temptrack, NULL);	
+	gchar *song = g_strconcat(temptracknumber1, "  ", temptrack, NULL);
 
 	if(gtk_tree_model_get_iter_first(GTK_TREE_MODEL(treestore), &iter_album) == TRUE) {
 		do {
@@ -850,7 +851,11 @@ int main(int argc, char **argv) {
 
 	g_free(libdir);
 
-	builder = gtk_builder_new_from_file("/usr/share/leleleplayer/gui.ui");
+	if(g_file_test("../share/leleleplayer/gui.ui", G_FILE_TEST_EXISTS)) {
+		builder = gtk_builder_new_from_file("../share/leleleplayer/gui.ui");
+	}
+	else
+		builder = gtk_builder_new_from_file("/usr/share/leleleplayer/gui.ui");
 	
 	window = GTK_WIDGET(gtk_builder_get_object(builder, "window"));
 
@@ -1048,6 +1053,10 @@ int main(int argc, char **argv) {
 	close = GTK_WIDGET(gtk_builder_get_object(builder, "close"));
 	preferences = GTK_WIDGET(gtk_builder_get_object(builder, "preferences"));
 	
+
+	if(g_file_test("../images/lelelerandom.svg", G_FILE_TEST_EXISTS))
+		gtk_button_set_image(GTK_BUTTON(lelele_button), gtk_image_new_from_file("../images/lelelerandom.svg"));
+
 	/* Signal management */
 	g_signal_connect(G_OBJECT(bus), "message::state-changed", G_CALLBACK(state_changed_cb), pargument);
 	g_signal_connect(G_OBJECT(pargument->playbin), "about-to-finish", G_CALLBACK(continue_track_cb), pargument);
@@ -1067,12 +1076,12 @@ int main(int argc, char **argv) {
 	g_signal_connect(G_OBJECT(add_file), "activate", G_CALLBACK(add_file_to_playlist_cb), pargument);
 	g_signal_connect(G_OBJECT(close), "activate", G_CALLBACK(destroy_cb), pargument);
 	g_signal_connect(G_OBJECT(pargument->treeview_library), "row-activated", G_CALLBACK(lib_row_activated_cb), pargument);
-	g_signal_connect(G_OBJECT(model_library), "row-deleted", G_CALLBACK(update_tab_label), &library_tab_label);
-	g_signal_connect(G_OBJECT(model_library), "row-inserted", G_CALLBACK(update_tab_label_a), &library_tab_label);
-	g_signal_connect(G_OBJECT(model_artist), "row-deleted", G_CALLBACK(update_tab_label), &artist_tab_label);
-	g_signal_connect(G_OBJECT(model_artist), "row-inserted", G_CALLBACK(update_tab_label_a), &artist_tab_label);
-	g_signal_connect(G_OBJECT(model_album), "row-deleted", G_CALLBACK(update_tab_label), &album_tab_label);
-	g_signal_connect(G_OBJECT(model_album), "row-inserted", G_CALLBACK(update_tab_label_a), &album_tab_label);
+	g_signal_connect(G_OBJECT(pargument->library_filter), "row-deleted", G_CALLBACK(update_tab_label), &library_tab_label);
+	g_signal_connect(G_OBJECT(pargument->library_filter), "row-inserted", G_CALLBACK(update_tab_label_a), &library_tab_label);
+	g_signal_connect(G_OBJECT(pargument->artist_filter), "row-deleted", G_CALLBACK(update_tab_label), &artist_tab_label);
+	g_signal_connect(G_OBJECT(pargument->artist_filter), "row-inserted", G_CALLBACK(update_tab_label_a), &artist_tab_label);
+	g_signal_connect(G_OBJECT(pargument->album_filter), "row-deleted", G_CALLBACK(update_tab_label), &album_tab_label);
+	g_signal_connect(G_OBJECT(pargument->album_filter), "row-inserted", G_CALLBACK(update_tab_label_a), &album_tab_label);
 	g_signal_connect(G_OBJECT(pargument->treeview_library), "button-press-event", G_CALLBACK(treeviews_right_click_cb), pargument);
 	g_signal_connect(G_OBJECT(pargument->treeview_artist), "button-press-event", G_CALLBACK(treeviews_right_click_cb), pargument);
 	g_signal_connect(G_OBJECT(pargument->treeview_album), "button-press-event", G_CALLBACK(treeviews_right_click_cb), pargument);

@@ -51,8 +51,7 @@ struct arguments {
 	GstElement *playbin;
 	GstState state;
 	gint64 duration;
-	gint64 current;
-	int first;
+	gint64 elapsed;
 	int bartag;
 	int playlist_count;
 	gulong progressbar_update_signal_id;
@@ -66,7 +65,7 @@ struct arguments {
 	GtkWidget *treeview_playlist;
 	GtkWidget *playpause_button;
 	GtkTreePath *path;
-	GtkTreeIter iter_playlist;
+	GtkTreeRowReference *row_playlist;
 	GtkTreeIter iter_library;
 	GtkTreeIter iter_artist;
 	GtkTreeIter iter_album;
@@ -317,3 +316,5 @@ gboolean filter_library(GtkTreeModel *, GtkTreeIter *, struct arguments *);
 gboolean filter_artist(GtkTreeModel *, GtkTreeIter *, struct arguments *);
 gboolean filter_album(GtkTreeModel *, GtkTreeIter *, struct arguments *);
 int nb_rows_treeview(GtkTreeModel *);
+gboolean tree_row_reference_get_iter(GtkTreeRowReference *, GtkTreeIter *);
+GtkTreeRowReference *tree_iter_get_row_reference(GtkTreeModel *, GtkTreeIter *);

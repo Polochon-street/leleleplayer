@@ -307,10 +307,10 @@ gboolean refresh_progressbar(gpointer pargument) {
 	GstFormat fmt = GST_FORMAT_TIME;
 
 	if(argument->sleep_timer) {
-		gdouble elapsed = g_timer_elapsed(argument->sleep_timer, NULL);
+		gdouble sleep_elapsed = g_timer_elapsed(argument->sleep_timer, NULL);
 	
 		GtkAdjustment *adjustment;
-		if(argument->timer_delay - elapsed < -1.) {
+		if(argument->timer_delay - sleep_elapsed < -1.) {
 			reset_ui(argument);
 			g_timer_destroy(argument->sleep_timer);
 			argument->sleep_timer = NULL;
@@ -319,7 +319,7 @@ gboolean refresh_progressbar(gpointer pargument) {
 		else {
 			g_signal_handler_block(argument->time_spin, argument->time_spin_update_signal_id);
 			adjustment = gtk_spin_button_get_adjustment(GTK_SPIN_BUTTON(argument->time_spin));
-			gtk_adjustment_set_value(adjustment, argument->timer_delay - elapsed);
+			gtk_adjustment_set_value(adjustment, argument->timer_delay - sleep_elapsed);
 			g_signal_handler_unblock(argument->time_spin, argument->time_spin_update_signal_id);
 			time_spin_output_cb(GTK_SPIN_BUTTON(argument->time_spin), argument);
 		}
@@ -330,9 +330,9 @@ gboolean refresh_progressbar(gpointer pargument) {
 	}
 	
 	if(gst_element_query_position(argument->playbin, 
-		fmt, &(argument->current))) {
+		fmt, &(argument->elapsed))) {
 		g_signal_handler_block(argument->progressbar, argument->progressbar_update_signal_id);
-		gtk_adjustment_configure(argument->adjust, argument->current/GST_SECOND, 0, argument->duration/GST_SECOND, 
+		gtk_adjustment_configure(argument->adjust, argument->elapsed/GST_SECOND, 0, argument->duration/GST_SECOND, 
 			1, 1, 1);
 		g_signal_handler_unblock(argument->progressbar, argument->progressbar_update_signal_id);
 		return TRUE;
@@ -818,10 +818,8 @@ int main(int argc, char **argv) {
 	pargument->timer_delay = 0;
 	pargument->random = 0;
 	pargument->repeat = 0;
-	pargument->first = 1;
 	pargument->playlist_count = 0;
 	pargument->iter_library.stamp = 0;
-	pargument->iter_playlist.stamp = 0;
 	pargument->duration = GST_CLOCK_TIME_NONE;
 	pargument->state = GST_STATE_NULL;
 	pargument->current_song.artist = pargument->current_song.title = pargument->current_song.album = pargument->current_song.tracknumber = pargument->current_song.genre = NULL;
@@ -831,10 +829,11 @@ int main(int argc, char **argv) {
 	pargument->bartag = 0;
 	pargument->sleep_timer = NULL;
 	pargument->search_entry_text = NULL;
+	pargument->row_playlist = NULL;
 	g_mutex_init(&pargument->queue_mutex);
 	g_cond_init(&pargument->queue_cond);
 
-	gtk_init(&argc, &argv);	
+	gtk_init(&argc, &argv);
 	gst_init(&argc, &argv);
 	
 	char lib_file[] = "library.xml";
@@ -999,10 +998,10 @@ int main(int argc, char **argv) {
 	update_tab_label(model_library, NULL, &library_tab_label);
 	update_tab_label(model_album, NULL, &album_tab_label);
 	update_tab_label(model_artist, NULL, &artist_tab_label);
-	/*pargument->genre_label = gtk_label_new("Genre:");
+	pargument->genre_label = gtk_label_new("Genre:");
 	pargument->samplerate_label = gtk_label_new("Sample rate:");
 	pargument->bitrate_label = gtk_label_new("Bitrate:");
-	pargument->channels_label = gtk_label_new("Channels:");*/
+	pargument->channels_label = gtk_label_new("Channels:");
 	pargument->libnotebook = GTK_WIDGET(gtk_builder_get_object(builder, "libnotebook"));
 	/*mediainfo_expander = gtk_expander_new("Visualizer/Mediainfo");
 	mediainfo_labelbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);

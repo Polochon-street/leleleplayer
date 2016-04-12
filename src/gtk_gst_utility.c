@@ -242,30 +242,76 @@ gboolean get_random_playlist_song(GtkTreeView *treeview_playlist, struct argumen
 gboolean get_lelelerandom_playlist_song(GtkTreeView *treeview_playlist, struct arguments *argument) {
 	GtkTreeModel *model_playlist;
 	GtkTreeIter iter_playlist;
+	gboolean network_succeeded = FALSE; 
 	model_playlist = gtk_tree_view_get_model(GTK_TREE_VIEW(argument->treeview_playlist));
 	struct force_vector_s current_force = argument->current_song.force_vector;
-	float treshold = 0.95;
-	float treshold_distance = 4.0;
-	gchar *tempstring;
-	
-	tree_row_reference_get_iter(argument->row_playlist, &iter_playlist);
 
-	gtk_tree_model_get(model_playlist, &iter_playlist, TRACK, &tempstring, -1);
-	int i = 0;
-	do {
-		//treshold -= 0.001;
-		if(!get_random_playlist_song(treeview_playlist, argument))
-			return FALSE;
+	if(argument->network_mode_set == TRUE) {
+		GSocketClient *client;
+		GSocketConnection *connection;
+		GSocket *socket;
+		GOutputStream *stream;
+		GSocketListener *listener;
+		GInputStream *address_stream;
+		gsize count;
+
+		client = g_socket_client_new();
+
+		connection = g_socket_client_connect_to_host(client, argument->lllserver_address_char,
+			1212, NULL, NULL);
+		if(connection != NULL) {
+			stream = g_io_stream_get_output_stream(G_IO_STREAM(connection));
+			g_output_stream_write_all(stream, &current_force, sizeof(current_force),
+				NULL, NULL, NULL);
+	
+			listener = g_socket_listener_new();
+			g_socket_listener_add_inet_port(listener, 5353, NULL, NULL);
+			
+			address_stream = g_io_stream_get_input_stream(G_IO_STREAM(connection));
+			g_input_stream_read_all(address_stream, &count, sizeof(gsize), NULL,
+				NULL, NULL);
+			gchar address_remote_player_char[count];
+			g_input_stream_read_all(address_stream, &address_remote_player_char, count,
+				NULL, NULL, NULL);
+
+			g_socket_listener_add_inet_port(listener, 18322, NULL, NULL);
+			connection = g_socket_listener_accept(listener, NULL, NULL, NULL);
+			socket = g_socket_connection_get_socket(connection);
+
+			printf("%p\n", socket);
+			// TODO
+
+			network_succeeded = TRUE;
+		}
+		else {
+			network_succeeded = FALSE;
+		}
+	}
+
+	if(network_succeeded = FALSE) {
+		float treshold = 0.95;
+		float treshold_distance = 4.0;
+		gchar *tempstring;
+	
 		tree_row_reference_get_iter(argument->row_playlist, &iter_playlist);
-		gtk_tree_model_get(model_playlist, &iter_playlist, TRACK, &argument->current_song.title, FORCE_TEMPO, &argument->current_song.force_vector.tempo, 
-		FORCE_AMP, &argument->current_song.force_vector.amplitude, FORCE_FREQ, &argument->current_song.force_vector.frequency, 
-		FORCE_ATK, &argument->current_song.force_vector.attack, -1);
-		argument->current_song.force_vector.attack = current_force.attack = 0;
-		argument->current_song.force_vector.tempo = current_force.tempo = 0;
-		printf("Between %s and %s: %f, %f\n", tempstring, argument->current_song.title, bl_cosine_similarity(current_force, argument->current_song.force_vector), bl_distance(current_force, argument->current_song.force_vector));
-	} while((bl_cosine_similarity(current_force, argument->current_song.force_vector) < treshold) ||
-		 (bl_distance(current_force, argument->current_song.force_vector) > treshold_distance));
-	return TRUE;
+
+		gtk_tree_model_get(model_playlist, &iter_playlist, TRACK, &tempstring, -1);
+		int i = 0;
+		do {
+			//treshold -= 0.001;
+			if(!get_random_playlist_song(treeview_playlist, argument))
+				return FALSE;
+			tree_row_reference_get_iter(argument->row_playlist, &iter_playlist);
+			gtk_tree_model_get(model_playlist, &iter_playlist, TRACK, &argument->current_song.title, FORCE_TEMPO, &argument->current_song.force_vector.tempo, 
+			FORCE_AMP, &argument->current_song.force_vector.amplitude, FORCE_FREQ, &argument->current_song.force_vector.frequency, 
+			FORCE_ATK, &argument->current_song.force_vector.attack, -1);
+			argument->current_song.force_vector.attack = current_force.attack = 0;
+			argument->current_song.force_vector.tempo = current_force.tempo = 0;
+			printf("Between %s and %s: %f, %f\n", tempstring, argument->current_song.title, bl_cosine_similarity(current_force, argument->current_song.force_vector), bl_distance(current_force, argument->current_song.force_vector));
+		} while((bl_cosine_similarity(current_force, argument->current_song.force_vector) < treshold) ||
+			 (bl_distance(current_force, argument->current_song.force_vector) > treshold_distance));
+		return TRUE;
+	}
 }
 
 gboolean get_previous_playlist_song(GtkTreeView *treeview_playlist, struct arguments *argument) {

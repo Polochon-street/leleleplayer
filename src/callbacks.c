@@ -182,6 +182,12 @@ void toggle_random_cb(GtkWidget *button, struct arguments *argument) {
 	argument->random = (argument->random == 1 ? 0 : 1);
 }
 
+void toggle_network_mode_cb(GtkWidget *button, struct pref_arguments *argument) {
+	argument->network_mode_set = (argument->network_mode_set == 1 ? 0 : 1);
+	gtk_widget_set_sensitive(argument->network_entry, argument->network_mode_set);
+	g_settings_set_boolean(argument->preferences, "network-mode-set", argument->network_mode_set);
+}
+
 void toggle_lelelescan_cb(GtkWidget *button, struct pref_arguments *argument) {
 	argument->lelele_scan = (argument->lelele_scan == 1 ? 0 : 1);
 	g_settings_set_boolean(argument->preferences, "lelele-scan", argument->lelele_scan);
@@ -274,24 +280,38 @@ void folder_chooser_cb(GtkWidget *button, struct pref_arguments *argument) {
 }
 	
 void preferences_callback_cb(GtkMenuItem *preferences, struct pref_arguments *argument) {
-	GtkWidget *dialog, *label_library, *label_browse, *area, *vbox, *hbox, *labelbox, *library_entry, *browse_button, *window_temp, *complete_box;
-	GtkDialogFlags flags = GTK_DIALOG_MODAL | GTK_DIALOG_DESTROY_WITH_PARENT;	
+	GtkWidget *dialog, *label_library, *label_browse, *area, *vbox, *hbox_library, *hbox_network, *labelbox_library, *labelbox_network, *library_entry, *browse_button, *window_temp, *complete_box,
+		*label_network, *network_box, *label_ip_set, *network_entry;
+	GtkDialogFlags flags = GTK_DIALOG_MODAL | GTK_DIALOG_DESTROY_WITH_PARENT;
 	gint res;
 	const gchar *old_folder;
 
 	label_library = gtk_label_new("");
 	label_browse = gtk_label_new("");
+	label_network = gtk_label_new("");
+	label_ip_set = gtk_label_new("");
 	gtk_label_set_markup(GTK_LABEL(label_library), "\t<span weight=\"bold\">Library management:</span>\n");
 	gtk_label_set_markup(GTK_LABEL(label_browse), "Select library location:");
+	gtk_label_set_markup(GTK_LABEL(label_ip_set), "Set leleleServer's IP address:");
+	gtk_label_set_markup(GTK_LABEL(label_network), "\t<span weight=\"bold\">leleleNetwork Options:</span>\n");
 	browse_button = gtk_button_new_with_label("Browse...");
 	library_entry = gtk_entry_new();
+	network_entry = gtk_entry_new();
 	argument->folder = (gchar*)g_variant_get_data(g_settings_get_value(argument->preferences, "library"));
+	argument->lllserver_address_char = (gchar*)g_variant_get_data(g_settings_get_value(argument->preferences, "network-mode-ip"));
 	if(*(argument->folder) == '\0')
 		argument->folder = g_get_user_special_dir(G_USER_DIRECTORY_MUSIC);
-	gtk_entry_set_text((GtkEntry*)library_entry, argument->folder);
+	if(*(argument->lllserver_address_char) == '\0')
+		/* Type default IP here */;
+
+	gtk_entry_set_text(GTK_ENTRY(library_entry), argument->folder);
+	gtk_entry_set_text(GTK_ENTRY(network_entry), argument->lllserver_address_char);
+	gtk_widget_set_sensitive(network_entry, argument->network_mode_set);
 	vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
-	hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
-	labelbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
+	hbox_library = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
+	hbox_network = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
+	labelbox_library = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
+	labelbox_network = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
 	dialog = gtk_dialog_new_with_buttons("Preferences", GTK_WINDOW(argument->window), flags, "Cancel", GTK_RESPONSE_REJECT, "Save", GTK_RESPONSE_ACCEPT, NULL);
 	if(g_file_test("../images/leleleplayer.png", G_FILE_TEST_EXISTS))
 		gtk_window_set_icon_from_file(GTK_WINDOW(dialog), "../images/leleleplayer.png", NULL);
@@ -299,28 +319,41 @@ void preferences_callback_cb(GtkMenuItem *preferences, struct pref_arguments *ar
 		gtk_window_set_icon_from_file(GTK_WINDOW(dialog), "/usr/share/leleleplayer/icons/leleleplayer.png", NULL);
 
 	area = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
-	complete_box = gtk_check_button_new_with_label("LeleleScan (complete but longer) (not functional now)");
+	complete_box = gtk_check_button_new_with_label("LeleleScan (complete but longer) (checkbox not functional now)");
+	network_box = gtk_check_button_new_with_label("Activate leleleNetwork (will allow you to access music from other leleleplayers with the lelelerandom button)");
 
 	gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(complete_box), argument->lelele_scan);
+	gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(network_box), argument->network_mode_set);
 	gtk_window_set_default_size(GTK_WINDOW(dialog), 500, 100);
 	gtk_window_set_resizable(GTK_WINDOW(dialog), FALSE);
 
 	g_signal_connect(G_OBJECT(browse_button), "clicked", G_CALLBACK(folder_chooser_cb), argument);
 	g_signal_connect(G_OBJECT(complete_box), "toggled", G_CALLBACK(toggle_lelelescan_cb), argument);
+	g_signal_connect(G_OBJECT(network_box), "toggled", G_CALLBACK(toggle_network_mode_cb), argument);
 	argument->library_entry = library_entry;
+	argument->network_entry = network_entry;
 	window_temp = argument->window;
 	argument->window = dialog;
 
 	gtk_box_set_homogeneous(GTK_BOX(vbox), TRUE);
-	gtk_box_set_homogeneous(GTK_BOX(hbox), FALSE);
+	gtk_box_set_homogeneous(GTK_BOX(hbox_library), FALSE);
+	gtk_box_set_homogeneous(GTK_BOX(hbox_network), FALSE);
 	
-	gtk_box_pack_start(GTK_BOX(vbox), labelbox, FALSE, FALSE, 0);
-	gtk_box_pack_start(GTK_BOX(labelbox), label_library, FALSE, FALSE, 0);
-	gtk_box_pack_start(GTK_BOX(vbox), hbox, FALSE, FALSE, 0);
-		gtk_box_pack_start(GTK_BOX(hbox), label_browse, FALSE, FALSE, 0);
-		gtk_box_pack_start(GTK_BOX(hbox), library_entry, TRUE, TRUE, 0);
-		gtk_box_pack_start(GTK_BOX(hbox), browse_button, FALSE, FALSE, 0);
+	gtk_box_pack_start(GTK_BOX(vbox), labelbox_library, FALSE, FALSE, 0);
+	gtk_box_pack_start(GTK_BOX(labelbox_library), label_library, FALSE, FALSE, 0);
+	gtk_box_pack_start(GTK_BOX(vbox), hbox_library, FALSE, FALSE, 0);
+		gtk_box_pack_start(GTK_BOX(hbox_library), label_browse, FALSE, FALSE, 0);
+		gtk_box_pack_start(GTK_BOX(hbox_library), library_entry, TRUE, TRUE, 0);
+		gtk_box_pack_start(GTK_BOX(hbox_library), browse_button, FALSE, FALSE, 0);
 	gtk_box_pack_start(GTK_BOX(vbox), complete_box, FALSE, FALSE, 0);
+	gtk_box_pack_start(GTK_BOX(vbox), labelbox_network, FALSE, FALSE, 0);
+	gtk_box_pack_start(GTK_BOX(labelbox_network), label_network, FALSE, FALSE, 0);
+	gtk_box_pack_start(GTK_BOX(vbox), hbox_network, FALSE, FALSE, 0);
+		gtk_box_pack_start(GTK_BOX(hbox_network), label_ip_set, FALSE, FALSE, 0);
+		gtk_box_pack_start(GTK_BOX(hbox_network), network_entry, TRUE, TRUE, 0);
+	gtk_box_pack_start(GTK_BOX(vbox), network_box, FALSE, FALSE, 0);
+
+	
 	gtk_container_add(GTK_CONTAINER(area), vbox);
 
 	gtk_widget_set_size_request(dialog, 400, 120);
@@ -329,19 +362,22 @@ void preferences_callback_cb(GtkMenuItem *preferences, struct pref_arguments *ar
 	res = gtk_dialog_run(GTK_DIALOG(dialog));
 
 	if(argument->folder != NULL && res == GTK_RESPONSE_ACCEPT) {
+		/* TODO: Error handling (if IP is invalid/folder doesn't exist) */
 		argument->folder = g_strdup(gtk_entry_get_text(GTK_ENTRY(library_entry)));
 		g_settings_set_value(argument->preferences, "library", g_variant_new_string(argument->folder));
+		argument->lllserver_address_char = g_strdup(gtk_entry_get_text(GTK_ENTRY(network_entry)));
+		g_settings_set_value(argument->preferences, "network-mode-ip", g_variant_new_string(argument->lllserver_address_char));
 		if(strcmp(old_folder, argument->folder)) {
 			gtk_list_store_clear(argument->store_library);
 			gtk_tree_store_clear(argument->store_album);
 			gtk_tree_store_clear(argument->store_artist);
 			argument->erase = TRUE;
+			g_thread_new("analyze", (GThreadFunc)analyze_thread, argument);
 		}
 		else {
 			argument->erase = FALSE;
 		}
-		g_thread_new("analyze", (GThreadFunc)analyze_thread, argument);
-		g_settings_set_boolean(argument->preferences, "library-set", TRUE);
+		g_settings_set_boolean(argument->preferences, "is-configured", TRUE);
 	}
 	gtk_widget_destroy(dialog); 
 	argument->window = window_temp;
@@ -1014,4 +1050,68 @@ void search_cb(GtkSearchEntry *search_entry, struct arguments *argument) {
 	gtk_tree_model_filter_refilter(argument->library_filter);
 	gtk_tree_model_filter_refilter(argument->artist_filter);
 	gtk_tree_model_filter_refilter(argument->album_filter);
+}
+
+void remote_lllp_connected_cb(GObject *listener, GAsyncResult *res, gpointer pargument) {
+	struct pref_arguments *argument = (struct pref_arguments *)pargument;
+	GSocketConnection *connection;
+	GInputStream *server_stream;
+	GSocketClient *client;
+	GFile *output_file;
+	GOutputStream *output_stream;
+	GInputStream *file_stream;
+	gsize count;
+
+	connection = g_socket_listener_accept_finish(G_SOCKET_LISTENER(listener), res, NULL, NULL);
+	
+	server_stream = g_io_stream_get_input_stream(G_IO_STREAM(connection));
+	g_input_stream_read_all(server_stream, &count, sizeof(gsize), NULL, NULL, NULL);
+	gchar address_remote_player_char[count];
+	g_input_stream_read_all(server_stream, &address_remote_player_char, count, NULL, NULL, NULL);
+
+	g_input_stream_read_all(server_stream, &count, sizeof(gsize), NULL, NULL, NULL);
+	gchar filename[count];
+	g_input_stream_read_all(server_stream, &filename, count, NULL, NULL, NULL);
+
+	client = g_socket_client_new();
+	output_file = g_file_new_for_path(filename);
+	file_stream = G_INPUT_STREAM(g_file_read(output_file, NULL, NULL));
+
+	connection = g_socket_client_connect_to_host(client, address_remote_player_char, 18322, NULL, NULL); // 18322 = RCV
+
+	output_stream = g_io_stream_get_output_stream(G_IO_STREAM(connection));
+	g_output_stream_splice_async(output_stream, file_stream, 
+		G_OUTPUT_STREAM_SPLICE_CLOSE_SOURCE & G_OUTPUT_STREAM_SPLICE_CLOSE_TARGET, 
+		G_PRIORITY_DEFAULT, NULL, NULL, NULL);
+
+	g_socket_listener_accept_async(G_SOCKET_LISTENER(listener), NULL, remote_lllp_connected_cb, pargument);
+}
+
+void pad_added_handler_cb(GstElement *decodebin, GstPad *pad, gpointer pargument) {
+	struct arguments *argument = (struct arguments *)pargument;
+	GstCaps *caps;
+	GstStructure *str;
+	GstPad *audiopad;
+
+	/* only link once */
+	audiopad = gst_element_get_static_pad (argument->sink, "sink");
+	if (GST_PAD_IS_LINKED (audiopad)) {
+		g_object_unref (audiopad);
+		return;
+	}
+
+	/* check media type */
+	caps = gst_pad_query_caps (pad, NULL);
+	str = gst_caps_get_structure (caps, 0);
+	if (!g_strrstr (gst_structure_get_name (str), "audio")) {
+		gst_caps_unref (caps);
+		gst_object_unref (audiopad);
+		return;
+	}
+	gst_caps_unref (caps);
+
+	/* link'n'play */
+	gst_pad_link (pad, audiopad);
+
+	g_object_unref (audiopad);
 }

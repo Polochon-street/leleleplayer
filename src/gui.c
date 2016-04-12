@@ -66,7 +66,7 @@ gboolean refresh_config_progressbar(struct pref_arguments *argument) {
 		g_async_queue_unref(msg_queue);
 		msg_queue = NULL;
 		gtk_spinner_stop(GTK_SPINNER(argument->spinner));
-		argument->library_set = TRUE;
+		argument->is_configured = TRUE;
 		gtk_label_set_text(GTK_LABEL(argument->progress_label), "");
 		return FALSE;
 	}
@@ -790,7 +790,14 @@ int main(int argc, char **argv) {
 	GtkAdjustment *time_adjust;
 	GSettingsSchema *schema;
 	GSettingsSchemaSource *schema_source;
-	gboolean library_set;
+	gboolean is_configured;
+
+	GSocketListener *listener;
+	GSocketClient *client;
+	GInputStream *file_stream;
+	GFile *library_file;
+	GOutputStream *output_stream;
+	GSocketConnection *connection;
 	
 	GtkTreeModel *model_playlist;
 	GtkTreeModel *model_library;
@@ -846,7 +853,7 @@ int main(int argc, char **argv) {
 	if(g_mkdir_with_parents(libdir, 0755) != -1)
 		pargument->lib_path = libfile;
 	else
-		pargument->lib_path = lib_file;	
+		pargument->lib_path = lib_file;
 
 	g_free(libdir);
 
@@ -857,6 +864,18 @@ int main(int argc, char **argv) {
 		builder = gtk_builder_new_from_file("/usr/share/leleleplayer/gui.ui");
 	
 	window = GTK_WIDGET(gtk_builder_get_object(builder, "window"));
+
+	/*pargument->pipeline = gst_pipeline_new("pipeline");
+	pargument->filesrc = gst_element_factory_make("filesrc", "file-source");
+	pargument->socketsrc = gst_element_factory_make("socketsrc", "socket-source");
+	g_object_set(pargument->socketsrc, "typefind", TRUE, NULL);
+	pargument->decode = gst_element_factory_make("decodebin", "decode");
+	gst_bin_add_many(GST_BIN(pargument->pipeline), pargument->filesrc, pargument->decode, NULL);
+	gst_element_link(pargument->filesrc, pargument->decode);
+
+	pargument->sink = gst_element_factory_make("autoaudiosink", "sink");
+	gst_bin_add(GST_BIN(pargument->pipeline), pargument->sink);
+	gst_element_link(pargument->decode, pargument->sink);*/
 
 	pargument->playbin = gst_element_factory_make("playbin", "playbin");
 	if(!pargument->playbin)
@@ -918,7 +937,7 @@ int main(int argc, char **argv) {
 
 	pargument->store_library = GTK_LIST_STORE(gtk_builder_get_object(builder, "store_library"));
 	pargument->treeview_library = GTK_WIDGET(gtk_builder_get_object(builder, "treeview_library"));
-	setup_tree_view_renderer_play_lib(pargument->treeview_library);	
+	setup_tree_view_renderer_play_lib(pargument->treeview_library);
 	display_library(GTK_TREE_VIEW(pargument->treeview_library), pargument->store_library, pargument->lib_path);
 	GtkTreeIter iter;
 	pargument->library_filter = GTK_TREE_MODEL_FILTER(gtk_builder_get_object(builder, "library_filter"));
@@ -1014,9 +1033,13 @@ int main(int argc, char **argv) {
 	schema = g_settings_schema_source_lookup(schema_source, "org.gnome.leleleplayer.preferences", FALSE);
 	pref_arguments.preferences = g_settings_new_full(schema, NULL, NULL);
 	pargument->preferences = pref_arguments.preferences;
-	library_set = g_settings_get_boolean(pref_arguments.preferences, "library-set");
+	is_configured = g_settings_get_boolean(pref_arguments.preferences, "is-configured");
+	pref_arguments.network_mode_set = g_settings_get_boolean(pref_arguments.preferences, "network-mode-set");
+	argument.network_mode_set = pref_arguments.network_mode_set;
 	pref_arguments.lelele_scan = g_settings_get_boolean(pref_arguments.preferences, "lelele-scan");
 	pref_arguments.lib_path = pargument->lib_path;
+	pref_arguments.lllserver_address_char = (gchar*)g_variant_get_data(g_settings_get_value(pref_arguments.preferences, "network-mode-ip"));
+	argument.lllserver_address_char = pref_arguments.lllserver_address_char;
 	pargument->vol = g_settings_get_double(pref_arguments.preferences, "volume");
 	pargument->time_spin = GTK_WIDGET(gtk_builder_get_object(builder, "time_spin"));
 	analyze_spinner = GTK_WIDGET(gtk_builder_get_object(builder, "spinner1"));
@@ -1059,6 +1082,7 @@ int main(int argc, char **argv) {
 	/* Signal management */
 	g_signal_connect(G_OBJECT(bus), "message::state-changed", G_CALLBACK(state_changed_cb), pargument);
 	g_signal_connect(G_OBJECT(pargument->playbin), "about-to-finish", G_CALLBACK(continue_track_cb), pargument);
+	g_signal_connect(G_OBJECT(pargument->playbin), "pad-added", G_CALLBACK(pad_added_handler_cb), NULL);
 	g_signal_connect(G_OBJECT(bus), "message::stream-start", G_CALLBACK(refresh_ui_cb), pargument);
 	g_signal_connect(G_OBJECT(bus), "message::eos", G_CALLBACK(end_of_playlist_cb), pargument);
 	g_signal_connect(G_OBJECT(bus), "message::application", G_CALLBACK(message_application_cb), pargument);
@@ -1104,10 +1128,29 @@ int main(int argc, char **argv) {
 	gtk_scale_button_set_value(GTK_SCALE_BUTTON(pargument->volume_scale), pargument->vol);
 	gtk_widget_show_all(window);
 
-	if(library_set == FALSE) {
+	if(is_configured == FALSE) {
 		preferences_callback_cb(GTK_MENU_ITEM(preferences), &pref_arguments);
 	}
 	
+	if(pref_arguments.network_mode_set == TRUE) {
+		listener = g_socket_listener_new();
+		client = g_socket_client_new();
+		
+		library_file = g_file_new_for_path(libfile);
+
+		file_stream = G_INPUT_STREAM(g_file_read(library_file, NULL, NULL));
+		connection = g_socket_client_connect_to_host(client, pref_arguments.lllserver_address_char, 
+			1292, NULL, NULL); // 1292 = LIB
+		if(connection != NULL) {
+			output_stream = g_io_stream_get_output_stream(G_IO_STREAM(connection));
+			g_output_stream_splice(output_stream, file_stream, G_OUTPUT_STREAM_SPLICE_CLOSE_SOURCE &
+				G_OUTPUT_STREAM_SPLICE_CLOSE_TARGET, NULL, NULL);
+
+			g_socket_listener_add_inet_port(listener, 19144, NULL, NULL); // 19144 = SND
+			g_socket_listener_accept_async(listener, NULL, remote_lllp_connected_cb, &pref_arguments);
+		}
+	}
+
 	gtk_main();
 
 	gst_object_unref(bus);

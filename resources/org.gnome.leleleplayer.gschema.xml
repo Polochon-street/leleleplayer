@@ -7,11 +7,25 @@
 				The audio library location
 			</description>
 		</key>
-		<key name="library-set" type="b">
+		<key name="is-configured" type="b">
 			<default>false</default>
-			<summary>Whether the library path is set</summary>
+			<summary>Whether the player is configured or not</summary>
 			<description>
-				True if the library path is set
+				True if the player has already been configured
+			</description>
+		</key>
+		<key name="network-mode-set" type="b">
+			<default>true</default>
+			<summary>Whether the network mode is activated</summary>
+			<description>
+				True if the network mode is activated
+			</description>
+		</key>
+		<key name="network-mode-ip" type="s">
+			<default>''</default>
+			<summary>The server's IP</summary>
+			<description>
+				The IP of the server that runs leleleserver, in order to interconnect leleleplayers
 			</description>
 		</key>
 		<key name="lelele-scan" type="b">

@@ -49,6 +49,11 @@ struct arguments {
 	gboolean repeat;
 	struct bl_song current_song;
 	GstElement *playbin;
+	GstElement *pipeline;
+	GstElement *filesrc;
+	GstElement *socketsrc;
+	GstElement *decode;
+	GstElement *sink;
 	GstState state;
 	gint64 duration;
 	gint64 elapsed;
@@ -92,6 +97,8 @@ struct arguments {
 	gdouble vol;
 	gchar *lib_path;
 	GSettings *preferences;
+	gboolean network_mode_set;
+	const gchar *lllserver_address_char;
 };
 
 struct pref_arguments {
@@ -99,16 +106,18 @@ struct pref_arguments {
     GtkWidget *treeview;
     GtkWidget *treeview_artist;
     GtkWidget *treeview_album;
-	gboolean library_set;
+	gboolean is_configured;
 	gboolean lelele_scan;
+	gboolean network_mode_set;
 	const gchar *folder;
+	const gchar *lllserver_address_char;
 	int count;
 	int nblines;
 	gchar *lib_path;
     GtkListStore *store_library;
     GtkTreeStore *store_album;
     GtkTreeStore *store_artist;
-	GtkWidget *library_entry, *spinner, *progress_label;
+	GtkWidget *library_entry, *spinner, *progress_label, *network_entry;
 	GtkTreeModelSort *library_sort, *artist_sort, *album_sort;
 	GtkTreeModelFilter *library_filter, *artist_filter, *album_filter;
 	GSettings *preferences;
@@ -256,6 +265,7 @@ void toggle_lelele_cb(GtkWidget *button, struct arguments *);
 void toggle_repeat_cb(GtkWidget *button, struct arguments *);
 void toggle_random_cb(GtkWidget *button, struct arguments *);
 void toggle_lelelescan_cb(GtkWidget *button, struct pref_arguments *);
+void toggle_network_mode_cb(GtkWidget *button, struct pref_arguments *);
 void changed_page_notebook_cb(GtkNotebook *, GtkWidget *, guint, gpointer data);
 void remove_playlist_selection_from_playlist_cb(GtkWidget *, struct arguments *);
 gboolean playlist_del_button_cb(GtkWidget *, GdkEventKey *, struct arguments *);
@@ -318,3 +328,5 @@ gboolean filter_album(GtkTreeModel *, GtkTreeIter *, struct arguments *);
 int nb_rows_treeview(GtkTreeModel *);
 gboolean tree_row_reference_get_iter(GtkTreeRowReference *, GtkTreeIter *);
 GtkTreeRowReference *tree_iter_get_row_reference(GtkTreeModel *, GtkTreeIter *);
+void remote_lllp_connected_cb(GObject *listener, GAsyncResult *res, gpointer pref_arguments);
+void pad_added_handler_cb(GstElement *, GstPad *, gpointer);

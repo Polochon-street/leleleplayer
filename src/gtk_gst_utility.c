@@ -7,6 +7,124 @@
 #define strcasestr StrStrI
 #endif
 
+G_BEGIN_DECLS
+
+#define URI_SOCKET_TYPE_SRC uri_socket_src_get_type()
+G_DECLARE_FINAL_TYPE(URISocketSrc, uri_socket_src, URI, SOCKETSRC, GstBin);
+
+struct _URISocketSrc {
+	GstBin parent;
+
+	gchar *uri;
+	GstElement *socketbin;
+	GstElement *socketsrc;
+	GSocket *socket;
+};
+
+typedef URISocketSrc _URISocketSrc;
+
+//G_DEFINE_TYPE(URISocketSrc, uri_socket_src, G_TYPE_OBJECT);
+
+static GstStaticPadTemplate uri_socket_src_template = 
+	GST_STATIC_PAD_TEMPLATE("src", GST_PAD_SRC, GST_PAD_ALWAYS,
+	GST_STATIC_CAPS_ANY);
+
+static void uri_socket_src_class_init(URISocketSrcClass *klass) {
+	GstElementClass *element_class = (GstElementClass *)klass;
+
+	gst_element_class_set_static_metadata(element_class, "URISocketSrc", "Generic/Source",
+		"SocketSrc URI implementation", "Polochon_street");
+
+	gst_element_class_add_static_pad_template(element_class, &uri_socket_src_template);
+}
+
+static void uri_socket_src_init(URISocketSrc *self) {
+	GstPad *target_srcpad;
+	GstPad *ghostpad;	
+	self->socketsrc = gst_element_factory_make("socketsrc", "sink");
+	
+	gst_bin_add(GST_BIN(self), self->socketsrc);
+	target_srcpad = gst_element_get_static_pad(self->socketsrc, "src");
+	ghostpad = gst_ghost_pad_new("src", target_srcpad);
+	gst_element_add_pad(GST_ELEMENT(self), ghostpad);
+
+	gst_object_unref(target_srcpad);
+}
+
+static void gst_socket_src_uri_handler_init(gpointer, gpointer);
+
+G_DEFINE_TYPE_WITH_CODE(URISocketSrc, uri_socket_src, GST_TYPE_BIN,
+		G_IMPLEMENT_INTERFACE(GST_TYPE_URI_HANDLER, gst_socket_src_uri_handler_init));
+
+G_END_DECLS
+
+static GstURIType gst_socket_src_uri_get_type(GType type) {
+	return GST_URI_SRC;
+}
+
+static const gchar *const *gst_socket_src_uri_get_protocols(GType type) {
+	static const gchar *protocols[] = { "mysocket", NULL };
+
+	return protocols;
+}
+
+static gchar *gst_socket_src_uri_get_uri(GstURIHandler *handler) {
+	URISocketSrc *self = (URISocketSrc*)handler;
+
+	return self->uri ? g_strdup(self->uri) : NULL;
+}
+
+static gboolean gst_socket_src_uri_set_uri(GstURIHandler *handler, const gchar *uri, GError **error) {
+	URISocketSrc *self = (URISocketSrc*)handler;
+
+	g_free(self->uri);
+	self->uri = uri ? g_strdup(uri) : NULL;
+
+	return TRUE;
+}
+
+static void gst_socket_src_uri_handler_init(gpointer g_iface, gpointer iface_data) {
+	GstURIHandlerInterface *iface = (GstURIHandlerInterface *)g_iface;
+
+	iface->get_type = gst_socket_src_uri_get_type;
+	iface->get_protocols = gst_socket_src_uri_get_protocols;
+	iface->get_uri = gst_socket_src_uri_get_uri;
+	iface->set_uri = gst_socket_src_uri_set_uri;
+}
+
+gboolean uri_socket_src_plugin_init(GstPlugin *plugin) {
+	gst_element_register(plugin, "urisocketsrc", GST_RANK_NONE, URI_SOCKET_TYPE_SRC);
+
+	return TRUE;
+}
+
+void source_setup_cb(GstElement *playbin, GstElement *source, GSocketConnection **connection) {
+	URISocketSrc *self = (URISocketSrc*)source;
+
+	if(*connection != NULL) {
+		if(g_socket_connection_is_connected(*connection) == TRUE)
+			g_io_stream_close(G_IO_STREAM(*connection), NULL, NULL);
+	}
+
+	if(self->uri != NULL) {
+		gchar *scheme = g_uri_parse_scheme(self->uri);
+	
+		if(g_strcmp0(scheme, "mysocket") == 0) {
+			GSocketListener *listener;
+			listener = g_socket_listener_new();
+
+			g_socket_listener_add_inet_port(listener, 18322, NULL, NULL);
+			*connection = g_socket_listener_accept(listener, NULL, NULL, NULL);
+		
+			self->socket = g_socket_connection_get_socket(*connection);
+		
+			g_object_set(self->socketsrc, "socket", self->socket, NULL);
+
+			g_socket_listener_close(listener);
+		}
+		g_free(scheme);
+	}
+}
 
 gboolean filter_vis_features(GstPluginFeature *feature, gpointer data) {
 	GstElementFactory *factory;
@@ -247,48 +365,57 @@ gboolean get_lelelerandom_playlist_song(GtkTreeView *treeview_playlist, struct a
 	struct force_vector_s current_force = argument->current_song.force_vector;
 
 	if(argument->network_mode_set == TRUE) {
+		struct force_vector_s remote_force;
 		GSocketClient *client;
 		GSocketConnection *connection;
 		GSocket *socket;
 		GOutputStream *stream;
 		GSocketListener *listener;
-		GInputStream *address_stream;
+		GInputStream *lllserver_stream;
 		gsize count;
 
 		client = g_socket_client_new();
 
 		connection = g_socket_client_connect_to_host(client, argument->lllserver_address_char,
-			1212, NULL, NULL);
+			12512, NULL, NULL); // 12512 = LE
 		if(connection != NULL) {
 			stream = g_io_stream_get_output_stream(G_IO_STREAM(connection));
 			g_output_stream_write_all(stream, &current_force, sizeof(current_force),
 				NULL, NULL, NULL);
-	
+			//
+			g_output_stream_close(stream, NULL, NULL);
+			//
 			listener = g_socket_listener_new();
+
 			g_socket_listener_add_inet_port(listener, 5353, NULL, NULL);
-			
-			address_stream = g_io_stream_get_input_stream(G_IO_STREAM(connection));
-			g_input_stream_read_all(address_stream, &count, sizeof(gsize), NULL,
-				NULL, NULL);
-			gchar address_remote_player_char[count];
-			g_input_stream_read_all(address_stream, &address_remote_player_char, count,
-				NULL, NULL, NULL);
-
-			g_socket_listener_add_inet_port(listener, 18322, NULL, NULL);
 			connection = g_socket_listener_accept(listener, NULL, NULL, NULL);
-			socket = g_socket_connection_get_socket(connection);
+			lllserver_stream = g_io_stream_get_input_stream(G_IO_STREAM(connection));
+			g_input_stream_read_all(lllserver_stream, &remote_force, sizeof(struct force_vector_s), NULL, NULL, NULL);
+			g_socket_listener_close(listener);
 
-			printf("%p\n", socket);
-			// TODO
-
-			network_succeeded = TRUE;
+			if((remote_force.tempo == 0) &&
+				(remote_force.attack == 0) &&
+				(remote_force.frequency == 0) &&
+				(remote_force.amplitude == 0)) {
+				network_succeeded = FALSE;
+			}
+			else {
+				argument->current_song.filename = g_strdup("remote");
+				argument->current_song.force = 0.;
+				argument->current_song.force_vector = remote_force;
+				argument->current_song.album = g_strdup("");
+				argument->current_song.artist = g_strdup("");
+				argument->current_song.title = g_strdup("");
+				network_succeeded = TRUE;
+				//printf("%s\n", argument->current_song.tracknumber);
+			}
 		}
 		else {
 			network_succeeded = FALSE;
 		}
 	}
 
-	if(network_succeeded = FALSE) {
+	if(network_succeeded == FALSE) {
 		float treshold = 0.95;
 		float treshold_distance = 4.0;
 		gchar *tempstring;
@@ -347,11 +474,15 @@ void continue_track_cb(GstElement *playbin, struct arguments *argument) {
 	g_cond_wait(&argument->queue_cond, &argument->queue_mutex);
 	g_mutex_unlock(&argument->queue_mutex);
 
-	if(argument->current_song.filename) {
-		uri = g_filename_to_uri(argument->current_song.filename, NULL, NULL);
-		g_object_set(argument->playbin, "uri", uri, NULL);
-		g_free(uri);
+	if(argument->current_song.filename && (g_strcmp0(argument->current_song.filename, "remote") == 0)) {
+		uri = g_strdup("mysocket://18322");
 	}
+	else if(argument->current_song.filename) {
+		uri = g_filename_to_uri(argument->current_song.filename, NULL, NULL);
+	}
+
+	g_object_set(argument->playbin, "uri", uri, NULL);
+	g_free(uri);
 }
 
 void queue_song(struct arguments *argument) {
@@ -383,25 +514,29 @@ void start_song(struct arguments *argument) {
 	
 	model_playlist = gtk_tree_view_get_model(GTK_TREE_VIEW(argument->treeview_playlist));
 
-	tree_row_reference_get_iter(argument->row_playlist, &iter_playlist);
+	if(argument->current_song.filename && (g_strcmp0(argument->current_song.filename, "remote") == 0))
+		uri = g_strdup("mysocket://18322");
+	else {
+		tree_row_reference_get_iter(argument->row_playlist, &iter_playlist);
 
-	gtk_tree_model_get(model_playlist, &iter_playlist, AFILE, &argument->current_song.filename, 
-	TRACKNUMBER, &argument->current_song.tracknumber, TRACK, &argument->current_song.title, 
-	ALBUM, &argument->current_song.album, ARTIST, &argument->current_song.artist, 
-	FORCE, &argument->current_song.force, FORCE_TEMPO, &argument->current_song.force_vector.tempo, 
-	FORCE_AMP, &argument->current_song.force_vector.amplitude, FORCE_FREQ, &argument->current_song.force_vector.frequency, 
-	FORCE_ATK, &argument->current_song.force_vector.attack, -1);
+		gtk_tree_model_get(model_playlist, &iter_playlist, AFILE, &argument->current_song.filename, 
+		TRACKNUMBER, &argument->current_song.tracknumber, TRACK, &argument->current_song.title, 
+		ALBUM, &argument->current_song.album, ARTIST, &argument->current_song.artist, 
+		FORCE, &argument->current_song.force, FORCE_TEMPO, &argument->current_song.force_vector.tempo, 
+		FORCE_AMP, &argument->current_song.force_vector.amplitude, FORCE_FREQ, &argument->current_song.force_vector.frequency, 
+		FORCE_ATK, &argument->current_song.force_vector.attack, -1);
 
-	/*gtk_tree_model_get(model_playlist, &(argument->iter_playlist), AFILE, &argument->current_song.filename, 
-	TRACKNUMBER, &argument->current_song.tracknumber, TRACK, &argument->current_song.title, 
-	ALBUM, &argument->current_song.album, ARTIST, &argument->current_song.artist, 
-	FORCE, &argument->current_song.force, FORCE_TEMPO, &argument->current_song.force_vector.tempo, 
-	FORCE_AMP, &argument->current_song.force_vector.amplitude, FORCE_FREQ, &argument->current_song.force_vector.frequency, 
-	FORCE_ATK, &argument->current_song.force_vector.attack, -1);*/
+		/*gtk_tree_model_get(model_playlist, &(argument->iter_playlist), AFILE, &argument->current_song.filename, 
+		TRACKNUMBER, &argument->current_song.tracknumber, TRACK, &argument->current_song.title, 
+		ALBUM, &argument->current_song.album, ARTIST, &argument->current_song.artist, 
+		FORCE, &argument->current_song.force, FORCE_TEMPO, &argument->current_song.force_vector.tempo, 
+		FORCE_AMP, &argument->current_song.force_vector.amplitude, FORCE_FREQ, &argument->current_song.force_vector.frequency, 
+		FORCE_ATK, &argument->current_song.force_vector.attack, -1);*/
+
+		uri = g_filename_to_uri(argument->current_song.filename, NULL, NULL);
+	}
 
 	gtk_widget_set_sensitive(argument->progressbar, TRUE);
-	uri = g_filename_to_uri(argument->current_song.filename, NULL, NULL);
-
 	gst_element_set_state(argument->playbin, GST_STATE_NULL);
 	g_object_set(argument->playbin, "uri", uri, NULL);
 	gst_element_set_state(argument->playbin, GST_STATE_PLAYING);

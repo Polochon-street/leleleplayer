@@ -83,7 +83,8 @@ struct arguments {
 	gchar *search_entry_text;
 	GtkWidget *album_label, *title_label, *artist_label;
 	GtkWidget *genre_label, *samplerate_label, *bitrate_label, *channels_label;
-	gchar *str_genre, *str_samplerate, *str_channels, *str_bitrate;
+	gchar *str_genre, *str_samplerate, *str_channels, *str_bitrate, *str_artist,
+		*str_album, *str_title;
 	GtkAdjustment *adjust;
 	GtkWidget *volume_scale;
 	GtkWidget *video_window;
@@ -98,6 +99,7 @@ struct arguments {
 	gchar *lib_path;
 	GSettings *preferences;
 	gboolean network_mode_set;
+	GSocketConnection *connection_remote;
 	const gchar *lllserver_address_char;
 };
 
@@ -330,3 +332,5 @@ gboolean tree_row_reference_get_iter(GtkTreeRowReference *, GtkTreeIter *);
 GtkTreeRowReference *tree_iter_get_row_reference(GtkTreeModel *, GtkTreeIter *);
 void remote_lllp_connected_cb(GObject *listener, GAsyncResult *res, gpointer pref_arguments);
 void pad_added_handler_cb(GstElement *, GstPad *, gpointer);
+void source_setup_cb(GstElement *, GstElement *, GSocketConnection **); 
+gboolean uri_socket_src_plugin_init(GstPlugin *);

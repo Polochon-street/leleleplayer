@@ -776,6 +776,10 @@ void display_library(GtkTreeView *treeview, GtkListStore *store, gchar *libfile)
 		fprintf(stderr, "Couldn't open library file: %s, because it doesn't exists.\n", libfile);
 }
 
+void dummy(void) {
+	printf("changed audio\n");
+}
+
 int main(int argc, char **argv) {
 	struct arguments argument;
 	struct arguments *pargument = &argument;
@@ -837,12 +841,17 @@ int main(int argc, char **argv) {
 	pargument->sleep_timer = NULL;
 	pargument->search_entry_text = NULL;
 	pargument->row_playlist = NULL;
+	pargument->connection_remote = NULL;
 	g_mutex_init(&pargument->queue_mutex);
 	g_cond_init(&pargument->queue_cond);
 
 	gtk_init(&argc, &argv);
 	gst_init(&argc, &argv);
 	
+	gst_plugin_register_static(GST_VERSION_MAJOR,
+        GST_VERSION_MINOR, "urisocketsrc", "URI handler for socket src",
+        uri_socket_src_plugin_init, "1", "LGPL", "base", "leleleplayer", "http://lelele.io");
+
 	char lib_file[] = "library.xml";
 	gchar *libdir;
 	gchar *libfile;
@@ -1082,7 +1091,7 @@ int main(int argc, char **argv) {
 	/* Signal management */
 	g_signal_connect(G_OBJECT(bus), "message::state-changed", G_CALLBACK(state_changed_cb), pargument);
 	g_signal_connect(G_OBJECT(pargument->playbin), "about-to-finish", G_CALLBACK(continue_track_cb), pargument);
-	g_signal_connect(G_OBJECT(pargument->playbin), "pad-added", G_CALLBACK(pad_added_handler_cb), NULL);
+	g_signal_connect(G_OBJECT(pargument->playbin), "source-setup", G_CALLBACK(source_setup_cb), &pargument->connection_remote);
 	g_signal_connect(G_OBJECT(bus), "message::stream-start", G_CALLBACK(refresh_ui_cb), pargument);
 	g_signal_connect(G_OBJECT(bus), "message::eos", G_CALLBACK(end_of_playlist_cb), pargument);
 	g_signal_connect(G_OBJECT(bus), "message::application", G_CALLBACK(message_application_cb), pargument);
@@ -1125,7 +1134,8 @@ int main(int argc, char **argv) {
 	g_signal_connect(G_OBJECT(window), "destroy", G_CALLBACK(destroy_cb), pargument);
 
 	/* Add objects to the box */
-	gtk_scale_button_set_value(GTK_SCALE_BUTTON(pargument->volume_scale), pargument->vol);
+	//gtk_scale_button_set_value(GTK_SCALE_BUTTON(pargument->volume_scale), pargument->vol);
+	gtk_scale_button_set_value(GTK_SCALE_BUTTON(pargument->volume_scale), 0.2);
 	gtk_widget_show_all(window);
 
 	if(is_configured == FALSE) {
@@ -1145,6 +1155,8 @@ int main(int argc, char **argv) {
 			output_stream = g_io_stream_get_output_stream(G_IO_STREAM(connection));
 			g_output_stream_splice(output_stream, file_stream, G_OUTPUT_STREAM_SPLICE_CLOSE_SOURCE &
 				G_OUTPUT_STREAM_SPLICE_CLOSE_TARGET, NULL, NULL);
+
+			g_io_stream_close(G_IO_STREAM(connection), NULL, NULL);
 
 			g_socket_listener_add_inet_port(listener, 19144, NULL, NULL); // 19144 = SND
 			g_socket_listener_accept_async(listener, NULL, remote_lllp_connected_cb, &pref_arguments);

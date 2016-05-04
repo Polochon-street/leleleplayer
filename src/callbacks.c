@@ -367,7 +367,7 @@ void preferences_callback_cb(GtkMenuItem *preferences, struct pref_arguments *ar
 		g_settings_set_value(argument->preferences, "library", g_variant_new_string(argument->folder));
 		argument->lllserver_address_char = g_strdup(gtk_entry_get_text(GTK_ENTRY(network_entry)));
 		g_settings_set_value(argument->preferences, "network-mode-ip", g_variant_new_string(argument->lllserver_address_char));
-		if(strcmp(old_folder, argument->folder)) {
+		if((old_folder == NULL) ||strcmp(old_folder, argument->folder)) {
 			gtk_list_store_clear(argument->store_library);
 			gtk_tree_store_clear(argument->store_album);
 			gtk_tree_store_clear(argument->store_artist);
@@ -511,37 +511,44 @@ void refresh_ui_cb(GstBus *bus, GstMessage *msg, struct arguments *argument) {
 	
 	GstFormat fmt = GST_FORMAT_TIME;
 
-	if((model_playlist = gtk_tree_view_get_model(GTK_TREE_VIEW(argument->treeview_playlist)))) {
-		selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(argument->treeview_playlist));
-		path = gtk_tree_row_reference_get_path(argument->row_playlist);
+	model_playlist = gtk_tree_view_get_model(GTK_TREE_VIEW(argument->treeview_playlist));
+	selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(argument->treeview_playlist));
+
+	/* Reset PLAYING icons in the treeview */
+	gtk_tree_model_get_iter_first(gtk_tree_view_get_model(GTK_TREE_VIEW(argument->treeview_playlist)), &(temp_iter));
+	do {
+		gtk_list_store_set(argument->store_playlist, &(temp_iter), PLAYING, "", -1);
+	}
+	while(gtk_tree_model_iter_next(model_playlist, &(temp_iter)));
+	gtk_tree_selection_unselect_all(selection);
+
+	/* Don't use the playlist treeview if the song is streamed */
+	if((argument->current_song.filename != NULL) &&
+		(g_strcmp0(argument->current_song.filename, "remote") == 0)) {
+		gtk_button_set_image(GTK_BUTTON(argument->playpause_button), gtk_image_new_from_icon_name("media-playback-pause-symbolic", GTK_ICON_SIZE_BUTTON));
+	}
+	/* Display the played song in the playlist treeview if the song is not streamed */
+	else if((path = gtk_tree_row_reference_get_path(argument->row_playlist)) != NULL) {
 		gtk_tree_model_get_iter(model_playlist, &iter_playlist, path);
 		column = gtk_tree_view_get_column(GTK_TREE_VIEW(argument->treeview_playlist), PLAYING);
 
-		gtk_tree_model_get_iter_first(gtk_tree_view_get_model(GTK_TREE_VIEW(argument->treeview_playlist)), &(temp_iter));
-
-		do {
-			gtk_list_store_set(argument->store_playlist, &(temp_iter), PLAYING, "", -1);
-		}
-		while(gtk_tree_model_iter_next(model_playlist, &(temp_iter)));
 		gtk_button_set_image(GTK_BUTTON(argument->playpause_button), gtk_image_new_from_icon_name("media-playback-pause-symbolic", GTK_ICON_SIZE_BUTTON));
 		gtk_list_store_set(argument->store_playlist, &iter_playlist, PLAYING, "▶", -1);
-		gtk_tree_selection_unselect_all(selection);
 		gtk_tree_selection_select_iter(selection, &iter_playlist);
 		gtk_tree_view_scroll_to_cell(GTK_TREE_VIEW(argument->treeview_playlist), path, column, 1, 0.3, 1);
-	
-		gtk_label_set_text(GTK_LABEL(argument->album_label), argument->current_song.album);
-		gtk_label_set_text(GTK_LABEL(argument->artist_label), argument->current_song.artist);
-		gtk_label_set_text(GTK_LABEL(argument->title_label), argument->current_song.title);	
 	}
+
 	while(!gst_element_query_duration(argument->playbin, fmt,
 		&(argument->duration)))
 		;
+/*	printf("%"PRId64"\n", argument->duration/GST_SECOND);
 	gst_element_query_position(argument->playbin, 
-		fmt, &(argument->elapsed));
+		fmt, &(argument->elapsed));*/
 
 	g_signal_handler_block(argument->progressbar, argument->progressbar_update_signal_id);
 	gtk_adjustment_configure(argument->adjust, 0, 0, argument->duration/GST_SECOND, 
 		1, 1, 1);
+
 	g_signal_handler_unblock(argument->progressbar, argument->progressbar_update_signal_id);
 	refresh_progressbar(argument);
 }
@@ -549,7 +556,6 @@ void refresh_ui_cb(GstBus *bus, GstMessage *msg, struct arguments *argument) {
 void message_application_cb(GstBus *bus, GstMessage *msg, struct arguments *argument) {
 	const GstStructure *structure = gst_message_get_structure(msg);
 	if(!strcmp(gst_structure_get_name(structure), "tags")) {
-/*
 		GstTagList *tags;
 		gchar *str;
 		gint samplerate = 0, channels = 0, bitrate;
@@ -596,6 +602,21 @@ void message_application_cb(GstBus *bus, GstMessage *msg, struct arguments *argu
 			else {
 				argument->str_bitrate = g_strdup("Bitrate not found");
 			}
+			if(gst_tag_list_get_string(tags, GST_TAG_TITLE, &argument->str_title))
+				;
+			else {
+				argument->str_title = g_strdup("<no title>");
+			}
+			if(gst_tag_list_get_string(tags, GST_TAG_ARTIST, &argument->str_artist))
+				;
+			else {
+				argument->str_title = g_strdup("<no artist>");
+			}
+			if(gst_tag_list_get_string(tags, GST_TAG_ALBUM, &argument->str_album))
+				;
+			else {
+				argument->str_title = g_strdup("<no album>");
+			}
 		}
 		gst_tag_list_free(tags);
 
@@ -610,7 +631,16 @@ void message_application_cb(GstBus *bus, GstMessage *msg, struct arguments *argu
 		argument->str_genre = NULL;
 		gtk_label_set_text(GTK_LABEL(argument->bitrate_label), argument->str_bitrate);
 		g_free(argument->str_bitrate);
-		argument->str_bitrate = NULL;*/
+		argument->str_bitrate = NULL;
+		gtk_label_set_text(GTK_LABEL(argument->album_label), argument->str_album);
+		g_free(argument->str_album);
+		argument->str_album = NULL;
+		gtk_label_set_text(GTK_LABEL(argument->artist_label), argument->str_artist);
+		g_free(argument->str_artist);
+		argument->str_artist = NULL;
+		gtk_label_set_text(GTK_LABEL(argument->title_label), argument->str_title);	
+		g_free(argument->str_title);
+		argument->str_title = NULL;
 	}
 	else if(!strcmp(gst_structure_get_name(structure), "next_song")) {
 		GtkTreeModel *model_playlist;
@@ -624,17 +654,22 @@ void message_application_cb(GstBus *bus, GstMessage *msg, struct arguments *argu
 			bl_free_song(&argument->current_song); 
 			if(get_next_playlist_song(GTK_TREE_VIEW(argument->treeview_playlist), argument)) {
 				/*GtkTreeModel *model_playlist;
-	
+				
 				model_playlist = gtk_tree_view_get_model(GTK_TREE_VIEW(argument->treeview_playlist));*/
-				GtkTreeIter iter_playlist;
-				tree_row_reference_get_iter(argument->row_playlist, &iter_playlist);
+				if(argument->current_song.filename &&
+					(g_strcmp0(argument->current_song.filename, "remote") == 0)) {
+				}
+				else {
+					GtkTreeIter iter_playlist;
+					tree_row_reference_get_iter(argument->row_playlist, &iter_playlist);
 
-				gtk_tree_model_get(model_playlist, &iter_playlist, AFILE, &argument->current_song.filename, 
-				TRACKNUMBER, &argument->current_song.tracknumber, TRACK, &argument->current_song.title, 
-				ALBUM, &argument->current_song.album, ARTIST, &argument->current_song.artist, 
-				FORCE, &argument->current_song.force, FORCE_TEMPO, &argument->current_song.force_vector.tempo, 
-				FORCE_AMP, &argument->current_song.force_vector.amplitude, FORCE_FREQ, &argument->current_song.force_vector.frequency, 
-				FORCE_ATK, &argument->current_song.force_vector.attack, -1);
+					gtk_tree_model_get(model_playlist, &iter_playlist, AFILE, &argument->current_song.filename, 
+					TRACKNUMBER, &argument->current_song.tracknumber, TRACK, &argument->current_song.title, 
+					ALBUM, &argument->current_song.album, ARTIST, &argument->current_song.artist, 
+					FORCE, &argument->current_song.force, FORCE_TEMPO, &argument->current_song.force_vector.tempo, 
+					FORCE_AMP, &argument->current_song.force_vector.amplitude, FORCE_FREQ, &argument->current_song.force_vector.frequency, 
+					FORCE_ATK, &argument->current_song.force_vector.attack, -1);
+				}
 			}
 			else {
 				argument->current_song.filename = NULL;
@@ -657,8 +692,8 @@ void slider_changed_cb(GtkRange *progressbar, struct arguments *argument) {
 } 
 
 void volume_scale_changed_cb(GtkScaleButton* volume_scale, gdouble value, struct arguments *argument) {
-	double vol = pow(value, 3);
-	argument->vol = value;
+	double vol = pow(value, 4);
+	argument->vol = vol;
 	g_object_set(argument->playbin, "volume", argument->vol, NULL);
 	g_settings_set_double(argument->preferences, "volume", value);
 }
@@ -1052,6 +1087,12 @@ void search_cb(GtkSearchEntry *search_entry, struct arguments *argument) {
 	gtk_tree_model_filter_refilter(argument->album_filter);
 }
 
+void transfer_completed_track_cb(GObject *out_stream, GAsyncResult *res, gpointer connection) {
+	g_output_stream_splice_finish(G_OUTPUT_STREAM(out_stream), res, NULL);
+	g_output_stream_close(G_OUTPUT_STREAM(out_stream), NULL, NULL);
+	g_io_stream_close(G_IO_STREAM(connection), NULL, NULL);
+}
+
 void remote_lllp_connected_cb(GObject *listener, GAsyncResult *res, gpointer pargument) {
 	struct pref_arguments *argument = (struct pref_arguments *)pargument;
 	GSocketConnection *connection;
@@ -1077,41 +1118,13 @@ void remote_lllp_connected_cb(GObject *listener, GAsyncResult *res, gpointer par
 	output_file = g_file_new_for_path(filename);
 	file_stream = G_INPUT_STREAM(g_file_read(output_file, NULL, NULL));
 
+	// Maybe add a do { } while(connect == NULL) loop ?
 	connection = g_socket_client_connect_to_host(client, address_remote_player_char, 18322, NULL, NULL); // 18322 = RCV
-
+	
 	output_stream = g_io_stream_get_output_stream(G_IO_STREAM(connection));
 	g_output_stream_splice_async(output_stream, file_stream, 
 		G_OUTPUT_STREAM_SPLICE_CLOSE_SOURCE & G_OUTPUT_STREAM_SPLICE_CLOSE_TARGET, 
 		G_PRIORITY_DEFAULT, NULL, NULL, NULL);
 
 	g_socket_listener_accept_async(G_SOCKET_LISTENER(listener), NULL, remote_lllp_connected_cb, pargument);
-}
-
-void pad_added_handler_cb(GstElement *decodebin, GstPad *pad, gpointer pargument) {
-	struct arguments *argument = (struct arguments *)pargument;
-	GstCaps *caps;
-	GstStructure *str;
-	GstPad *audiopad;
-
-	/* only link once */
-	audiopad = gst_element_get_static_pad (argument->sink, "sink");
-	if (GST_PAD_IS_LINKED (audiopad)) {
-		g_object_unref (audiopad);
-		return;
-	}
-
-	/* check media type */
-	caps = gst_pad_query_caps (pad, NULL);
-	str = gst_caps_get_structure (caps, 0);
-	if (!g_strrstr (gst_structure_get_name (str), "audio")) {
-		gst_caps_unref (caps);
-		gst_object_unref (audiopad);
-		return;
-	}
-	gst_caps_unref (caps);
-
-	/* link'n'play */
-	gst_pad_link (pad, audiopad);
-
-	g_object_unref (audiopad);
 }

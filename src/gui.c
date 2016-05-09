@@ -55,7 +55,7 @@ gboolean refresh_config_progressbar(struct pref_arguments *argument) {
 					FORCE, (float)song->calm_or_loud, FORCE_TEMPO, song->force_vector.tempo, FORCE_AMP, song->force_vector.amplitude, FORCE_FREQ, song->force_vector.frequency, FORCE_ATK, song->force_vector.attack, TEXTFORCE, tempforce, AFILE, song->filename, -1);
 				add_entry_artist_tab(argument->treeview_artist, argument->store_artist, GTK_TREE_MODEL(argument->store_library), &iter);
 				add_entry_album_tab(argument->treeview_album, argument->store_album, GTK_TREE_MODEL(argument->store_library), &iter);
-}
+			}
 			bl_free_song(msg);
 			g_free(song->filename);
 			msg = NULL; 
@@ -833,8 +833,8 @@ int main(int argc, char **argv) {
 	pargument->iter_library.stamp = 0;
 	pargument->duration = GST_CLOCK_TIME_NONE;
 	pargument->state = GST_STATE_NULL;
-	pargument->current_song.artist = pargument->current_song.title = pargument->current_song.album = pargument->current_song.tracknumber = pargument->current_song.genre = NULL;
-	pargument->str_genre = pargument->str_bitrate = pargument->str_samplerate = pargument->str_channels = NULL;
+	pargument->str_genre = pargument->str_bitrate = pargument->str_samplerate = pargument->str_channels = pargument->str_title = pargument->str_album = pargument->str_artist
+		= NULL;
 	pargument->history = NULL;
 	pargument->current_song.sample_array = NULL;
 	pargument->bartag = 0;
@@ -847,6 +847,7 @@ int main(int argc, char **argv) {
 
 	gtk_init(&argc, &argv);
 	gst_init(&argc, &argv);
+	bl_initialize_song(&pargument->current_song);
 	
 	gst_plugin_register_static(GST_VERSION_MAJOR,
         GST_VERSION_MINOR, "urisocketsrc", "URI handler for socket src",
@@ -883,6 +884,7 @@ int main(int argc, char **argv) {
 	gst_element_link(pargument->filesrc, pargument->decode);
 
 	pargument->sink = gst_element_factory_make("autoaudiosink", "sink");
+a
 	gst_bin_add(GST_BIN(pargument->pipeline), pargument->sink);
 	gst_element_link(pargument->decode, pargument->sink);*/
 
@@ -1095,7 +1097,7 @@ int main(int argc, char **argv) {
 	g_signal_connect(G_OBJECT(bus), "message::stream-start", G_CALLBACK(refresh_ui_cb), pargument);
 	g_signal_connect(G_OBJECT(bus), "message::eos", G_CALLBACK(end_of_playlist_cb), pargument);
 	g_signal_connect(G_OBJECT(bus), "message::application", G_CALLBACK(message_application_cb), pargument);
-	g_signal_connect(G_OBJECT(pargument->playbin), "audio-tags-changed", G_CALLBACK(tags_obtained_cb), pargument);
+	pargument->tags_update_signal_id = g_signal_connect(G_OBJECT(pargument->playbin), "audio-tags-changed", G_CALLBACK(tags_obtained_cb), pargument);
 	g_signal_connect(G_OBJECT(pargument->playpause_button), "clicked", G_CALLBACK(toggle_playpause_button_cb), pargument);
 	g_signal_connect(G_OBJECT(pargument->volume_scale), "value-changed", G_CALLBACK(volume_scale_changed_cb), pargument);
 	g_signal_connect(G_OBJECT(random_button), "clicked", G_CALLBACK(toggle_random_cb), pargument);
@@ -1134,8 +1136,7 @@ int main(int argc, char **argv) {
 	g_signal_connect(G_OBJECT(window), "destroy", G_CALLBACK(destroy_cb), pargument);
 
 	/* Add objects to the box */
-	//gtk_scale_button_set_value(GTK_SCALE_BUTTON(pargument->volume_scale), pargument->vol);
-	gtk_scale_button_set_value(GTK_SCALE_BUTTON(pargument->volume_scale), 0.2);
+	gtk_scale_button_set_value(GTK_SCALE_BUTTON(pargument->volume_scale), pargument->vol);
 	gtk_widget_show_all(window);
 
 	if(is_configured == FALSE) {

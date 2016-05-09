@@ -6,8 +6,8 @@ void destroy_cb(GtkWidget *window, struct arguments *argument) {
 }
 
 void tags_obtained_cb(GstElement *playbin, gint stream, struct arguments *argument) {
-	GstStructure *structure;	
-	
+	GstStructure *structure;
+
 	structure = gst_structure_new_empty("tags");
 
 	GstMessage *msg = gst_message_new_application(GST_OBJECT(playbin), structure);
@@ -514,6 +514,29 @@ void refresh_ui_cb(GstBus *bus, GstMessage *msg, struct arguments *argument) {
 	model_playlist = gtk_tree_view_get_model(GTK_TREE_VIEW(argument->treeview_playlist));
 	selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(argument->treeview_playlist));
 
+	// FIXME
+	/*if(argument->str_album != NULL) {
+		gtk_label_set_text(GTK_LABEL(argument->album_label), argument->str_album);
+		g_free(argument->str_album);
+		argument->str_album = NULL;
+	}
+	else
+		gtk_label_set_text(GTK_LABEL(argument->album_label), argument->current_song.album);
+	if(argument->str_artist != NULL) {
+		gtk_label_set_text(GTK_LABEL(argument->artist_label), argument->str_artist);
+		g_free(argument->str_artist);
+		argument->str_artist = NULL;
+	}
+	else
+		gtk_label_set_text(GTK_LABEL(argument->artist_label), argument->current_song.artist);
+	if(argument->str_title != NULL) {
+		gtk_label_set_text(GTK_LABEL(argument->title_label), argument->str_title);	
+		g_free(argument->str_title);
+		argument->str_title = NULL;
+	}
+	else
+		gtk_label_set_text(GTK_LABEL(argument->title_label), argument->current_song.title);*/
+
 	/* Reset PLAYING icons in the treeview */
 	gtk_tree_model_get_iter_first(gtk_tree_view_get_model(GTK_TREE_VIEW(argument->treeview_playlist)), &(temp_iter));
 	do {
@@ -551,6 +574,22 @@ void refresh_ui_cb(GstBus *bus, GstMessage *msg, struct arguments *argument) {
 
 	g_signal_handler_unblock(argument->progressbar, argument->progressbar_update_signal_id);
 	refresh_progressbar(argument);
+
+	gint signal_id;
+	signal_id = g_signal_lookup("audio-tags-changed", G_TYPE_FROM_INSTANCE(argument->playbin));
+
+	if(g_signal_handler_find(argument->playbin,
+		G_SIGNAL_MATCH_ID|G_SIGNAL_MATCH_UNBLOCKED, signal_id, 0, NULL, NULL, NULL) == 0) {
+		g_signal_handler_unblock(argument->playbin, argument->tags_update_signal_id);
+	}
+
+	GstStructure *structure;
+
+	structure = gst_structure_new_empty("tags");
+
+	GstMessage *msg2 = gst_message_new_application(GST_OBJECT(argument->playbin), structure);
+
+	gst_element_post_message(argument->playbin, msg2);
 }
 
 void message_application_cb(GstBus *bus, GstMessage *msg, struct arguments *argument) {
@@ -610,12 +649,12 @@ void message_application_cb(GstBus *bus, GstMessage *msg, struct arguments *argu
 			if(gst_tag_list_get_string(tags, GST_TAG_ARTIST, &argument->str_artist))
 				;
 			else {
-				argument->str_title = g_strdup("<no artist>");
+				argument->str_artist = g_strdup("<no artist>");
 			}
 			if(gst_tag_list_get_string(tags, GST_TAG_ALBUM, &argument->str_album))
 				;
 			else {
-				argument->str_title = g_strdup("<no album>");
+				argument->str_artist = g_strdup("<no album>");
 			}
 		}
 		gst_tag_list_free(tags);
@@ -638,7 +677,7 @@ void message_application_cb(GstBus *bus, GstMessage *msg, struct arguments *argu
 		gtk_label_set_text(GTK_LABEL(argument->artist_label), argument->str_artist);
 		g_free(argument->str_artist);
 		argument->str_artist = NULL;
-		gtk_label_set_text(GTK_LABEL(argument->title_label), argument->str_title);	
+		gtk_label_set_text(GTK_LABEL(argument->title_label), argument->str_title);
 		g_free(argument->str_title);
 		argument->str_title = NULL;
 	}

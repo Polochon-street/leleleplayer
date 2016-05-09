@@ -60,6 +60,7 @@ struct arguments {
 	int bartag;
 	int playlist_count;
 	gulong progressbar_update_signal_id;
+	gulong tags_update_signal_id;
 	gulong playlist_update_signal_id;
 	gulong time_spin_update_signal_id;
 	GList *history;

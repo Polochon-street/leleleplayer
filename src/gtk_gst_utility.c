@@ -468,6 +468,11 @@ void continue_track_cb(GstElement *playbin, struct arguments *argument) {
 
 	structure = gst_structure_new_empty("next_song");
 	g_mutex_lock(&argument->queue_mutex);
+	
+	gint signal_id;	
+	signal_id = g_signal_lookup("audio-tags-changed", G_TYPE_FROM_INSTANCE(argument->playbin));
+	g_signal_handler_block(playbin, argument->tags_update_signal_id);
+
 	GstMessage *msg = gst_message_new_application(GST_OBJECT(playbin), structure);
 	gst_element_post_message(argument->playbin, msg);
 

@@ -5,13 +5,14 @@ project(leleleplayer C)
 find_package(PkgConfig REQUIRED)
 
 pkg_check_modules(MULTIMEDIA REQUIRED gstreamer-1.0 gstreamer-video-1.0 libxml-2.0)
+pkg_check_modules(BLISS REQUIRED libavcodec libavutil libavformat)
 
 set(GCC_BLISS_LINK_FLAGS "-lbliss")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS}${GCC_BLISS_LINK_FLAGS}")
 
 pkg_check_modules(GTK REQUIRED gtk+-3.0)
 
-include_directories(${MULTIMEDIA_INCLUDE_DIRS} ${GTK_INCLUDE_DIRS})
+include_directories(${MULTIMEDIA_INCLUDE_DIRS} ${GTK_INCLUDE_DIRS} ${BLISS_INCLUDE_DIRS})
 link_directories(${MULTIMEDIA_LIBRARY_DIRS} ${GTK_LIBRARY_DIRS})
 add_definitions(${MULTIMEDIA_CFLAGS_OTHER} ${GTK_CFLAGS_OTHER})
 
@@ -54,7 +55,6 @@ if(WIN32)
 	include(CPack)
 else()
 	#set(CPACK_GENERATOR "DEB")
-	set(CPACK_GENERATOR "MACOSX_BUNDLE")
 	set(CPACK_DEBIAN_PACKAGE_NAME "leleleplayer")
 	set(CPACK_DEBIAN_PACKAGE_VERSION "0.7")
 	set(CPACK_DEBIAN_PACKAGE_ARCHITECTURE "all")
@@ -65,6 +65,7 @@ else()
 	include(CPack)
 
 	install(TARGETS leleleplayer DESTINATION bin)
+	install(SCRIPT "resources/compile-schemas.cmake")
 	install(FILES "images/lelelerandom.svg" "images/leleleplayer.png" DESTINATION share/leleleplayer/icons/)
 	install(FILES "images/leleleplayer.png" DESTINATION share/pixmaps)
 	install(FILES "resources/leleleplayer.desktop" DESTINATION share/applications/)

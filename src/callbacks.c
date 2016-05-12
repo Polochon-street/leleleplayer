@@ -1158,7 +1158,9 @@ void remote_lllp_connected_cb(GObject *listener, GAsyncResult *res, gpointer par
 	file_stream = G_INPUT_STREAM(g_file_read(output_file, NULL, NULL));
 
 	// Maybe add a do { } while(connect == NULL) loop ?
-	connection = g_socket_client_connect_to_host(client, address_remote_player_char, 18322, NULL, NULL); // 18322 = RCV
+	do {
+		connection = g_socket_client_connect_to_host(client, address_remote_player_char, 18322, NULL, NULL); // 18322 = RCV
+	} while(connection == NULL);
 	
 	output_stream = g_io_stream_get_output_stream(G_IO_STREAM(connection));
 	g_output_stream_splice_async(output_stream, file_stream, 

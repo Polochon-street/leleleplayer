@@ -1128,7 +1128,7 @@ a
 	g_signal_connect(G_OBJECT(pargument->libnotebook), "switch-page", G_CALLBACK(changed_page_notebook_cb), NULL);
 	pargument->progressbar_update_signal_id = g_signal_connect(G_OBJECT(pargument->progressbar), 
 		"value-changed", G_CALLBACK(slider_changed_cb), pargument);
-	g_signal_connect(G_OBJECT(window), "destroy", G_CALLBACK(destroy_cb), pref_arguments);
+	g_signal_connect(G_OBJECT(window), "destroy", G_CALLBACK(destroy_cb), &pref_arguments);
 
 	/* Add objects to the box */
 	gtk_scale_button_set_value(GTK_SCALE_BUTTON(pargument->volume_scale), pargument->vol);

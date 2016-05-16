@@ -127,6 +127,7 @@ struct pref_arguments {
 	gboolean terminate;
 	gboolean erase;
 	GAsyncQueue *msg_queue;
+	GstElement *playbin;
 };
 
 struct tab_label {
@@ -226,10 +227,11 @@ void next_buttonf_cb(GtkWidget *, struct arguments *);
 void previous_buttonf_cb(GtkWidget *, struct arguments *);
 /**
 * Description: Callback function called when trying to quit the player
-* Arguments: struct arguments *argument: the global argument struct containing:
+* Arguments: struct pref_arguments *argument: the global preferences argument struct containing:
 * -the playbin, in order to set its state to NULL, which is necessary when quitting: current_song.playbin
+* -
 */
-void destroy_cb(GtkWidget *, struct arguments *);
+void destroy_cb(GtkWidget *, struct pref_arguments *);
 /**
 * Description: Callback function called when the « file->add file to playlist » button is clicked: adds an audio file to the playlist
 * Arguments: GtkMenuItem *add_file: the button, used for getting the toplevel window for gtk_file_chooser_dialog_new()
@@ -332,6 +334,7 @@ int nb_rows_treeview(GtkTreeModel *);
 gboolean tree_row_reference_get_iter(GtkTreeRowReference *, GtkTreeIter *);
 GtkTreeRowReference *tree_iter_get_row_reference(GtkTreeModel *, GtkTreeIter *);
 void remote_lllp_connected_cb(GObject *listener, GAsyncResult *res, gpointer pref_arguments);
+void connection_established_lllserver_cb(GObject *, GAsyncResult *, gpointer);
 void pad_added_handler_cb(GstElement *, GstPad *, gpointer);
 void source_setup_cb(GstElement *, GstElement *, GSocketConnection **); 
 gboolean uri_socket_src_plugin_init(GstPlugin *);

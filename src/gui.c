@@ -795,12 +795,7 @@ int main(int argc, char **argv) {
 	GSettingsSchema *schema;
 	GSettingsSchemaSource *schema_source;
 	gboolean is_configured;
-
-	GSocketListener *listener;
 	GSocketClient *client;
-	GInputStream *file_stream;
-	GFile *library_file;
-	GOutputStream *output_stream;
 	GSocketConnection *connection;
 	
 	GtkTreeModel *model_playlist;
@@ -1073,7 +1068,7 @@ a
 	pref_arguments.album_sort = album_sort;
 	pref_arguments.artist_filter = pargument->artist_filter;
 	pref_arguments.artist_sort = artist_sort;
-
+	pref_arguments.playbin = pargument->playbin;
 
 	random_button = GTK_WIDGET(gtk_builder_get_object(builder, "random_button"));
 	repeat_button = GTK_WIDGET(gtk_builder_get_object(builder, "repeat_button"));
@@ -1095,9 +1090,9 @@ a
 	g_signal_connect(G_OBJECT(pargument->playbin), "about-to-finish", G_CALLBACK(continue_track_cb), pargument);
 	g_signal_connect(G_OBJECT(pargument->playbin), "source-setup", G_CALLBACK(source_setup_cb), &pargument->connection_remote);
 	g_signal_connect(G_OBJECT(bus), "message::stream-start", G_CALLBACK(refresh_ui_cb), pargument);
+	g_signal_connect(G_OBJECT(bus), "message::tag", G_CALLBACK(tags_obtained_cb), pargument);
 	g_signal_connect(G_OBJECT(bus), "message::eos", G_CALLBACK(end_of_playlist_cb), pargument);
 	g_signal_connect(G_OBJECT(bus), "message::application", G_CALLBACK(message_application_cb), pargument);
-	pargument->tags_update_signal_id = g_signal_connect(G_OBJECT(pargument->playbin), "audio-tags-changed", G_CALLBACK(tags_obtained_cb), pargument);
 	g_signal_connect(G_OBJECT(pargument->playpause_button), "clicked", G_CALLBACK(toggle_playpause_button_cb), pargument);
 	g_signal_connect(G_OBJECT(pargument->volume_scale), "value-changed", G_CALLBACK(volume_scale_changed_cb), pargument);
 	g_signal_connect(G_OBJECT(random_button), "clicked", G_CALLBACK(toggle_random_cb), pargument);
@@ -1133,7 +1128,7 @@ a
 	g_signal_connect(G_OBJECT(pargument->libnotebook), "switch-page", G_CALLBACK(changed_page_notebook_cb), NULL);
 	pargument->progressbar_update_signal_id = g_signal_connect(G_OBJECT(pargument->progressbar), 
 		"value-changed", G_CALLBACK(slider_changed_cb), pargument);
-	g_signal_connect(G_OBJECT(window), "destroy", G_CALLBACK(destroy_cb), pargument);
+	g_signal_connect(G_OBJECT(window), "destroy", G_CALLBACK(destroy_cb), pref_arguments);
 
 	/* Add objects to the box */
 	gtk_scale_button_set_value(GTK_SCALE_BUTTON(pargument->volume_scale), pargument->vol);
@@ -1143,25 +1138,11 @@ a
 		preferences_callback_cb(GTK_MENU_ITEM(preferences), &pref_arguments);
 	}
 	
-	if(pref_arguments.network_mode_set == TRUE) {
-		listener = g_socket_listener_new();
+	if(pref_arguments.network_mode_set == TRUE) {		
 		client = g_socket_client_new();
-		
-		library_file = g_file_new_for_path(libfile);
-
-		file_stream = G_INPUT_STREAM(g_file_read(library_file, NULL, NULL));
-		connection = g_socket_client_connect_to_host(client, pref_arguments.lllserver_address_char, 
-			1292, NULL, NULL); // 1292 = LIB
-		if(connection != NULL) {
-			output_stream = g_io_stream_get_output_stream(G_IO_STREAM(connection));
-			g_output_stream_splice(output_stream, file_stream, G_OUTPUT_STREAM_SPLICE_CLOSE_SOURCE &
-				G_OUTPUT_STREAM_SPLICE_CLOSE_TARGET, NULL, NULL);
-
-			g_io_stream_close(G_IO_STREAM(connection), NULL, NULL);
-
-			g_socket_listener_add_inet_port(listener, 19144, NULL, NULL); // 19144 = SND
-			g_socket_listener_accept_async(listener, NULL, remote_lllp_connected_cb, &pref_arguments);
-		}
+	
+		g_socket_client_connect_to_host_async(client, pref_arguments.lllserver_address_char, 
+			1292, NULL, connection_established_lllserver_cb, &pref_arguments); // 1292 = LIB
 	}
 
 	gtk_main();

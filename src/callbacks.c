@@ -1,6 +1,6 @@
 #include "gui.h"
 
-void destroy_cb(GtkWidget *window, struct arguments *argument) {
+void destroy_cb(GtkWidget *window, struct pref_arguments *argument) {
 	gst_element_set_state(argument->playbin, GST_STATE_NULL);
 	gtk_main_quit();
 }
@@ -577,11 +577,6 @@ void refresh_ui_cb(GstBus *bus, GstMessage *msg, struct arguments *argument) {
 
 	gint signal_id;
 	signal_id = g_signal_lookup("audio-tags-changed", G_TYPE_FROM_INSTANCE(argument->playbin));
-
-	if(g_signal_handler_find(argument->playbin,
-		G_SIGNAL_MATCH_ID|G_SIGNAL_MATCH_UNBLOCKED, signal_id, 0, NULL, NULL, NULL) == 0) {
-		g_signal_handler_unblock(argument->playbin, argument->tags_update_signal_id);
-	}
 
 	GstStructure *structure;
 
@@ -1168,4 +1163,31 @@ void remote_lllp_connected_cb(GObject *listener, GAsyncResult *res, gpointer par
 		G_PRIORITY_DEFAULT, NULL, NULL, NULL);
 
 	g_socket_listener_accept_async(G_SOCKET_LISTENER(listener), NULL, remote_lllp_connected_cb, pargument);
+}
+
+void connection_established_lllserver_cb(GObject *client, GAsyncResult *res, gpointer pargument) {
+	struct pref_arguments *pref_arguments = (struct pref_arguments*)pargument;
+	GSocketConnection *connection;
+	GOutputStream *output_stream;
+	GInputStream *file_stream;
+	GFile *library_file;
+	GSocketListener *listener;
+
+	listener = g_socket_listener_new();
+
+	library_file = g_file_new_for_path(pref_arguments->lib_path);
+	file_stream = G_INPUT_STREAM(g_file_read(library_file, NULL, NULL));
+
+	connection = g_socket_client_connect_to_host_finish(G_SOCKET_CLIENT(client), res, NULL);
+
+	if(connection != NULL) {
+		output_stream = g_io_stream_get_output_stream(G_IO_STREAM(connection));
+		g_output_stream_splice(output_stream, file_stream, G_OUTPUT_STREAM_SPLICE_CLOSE_SOURCE &
+			G_OUTPUT_STREAM_SPLICE_CLOSE_TARGET, NULL, NULL);
+	
+		g_io_stream_close(G_IO_STREAM(connection), NULL, NULL);
+	
+		g_socket_listener_add_inet_port(listener, 19144, NULL, NULL); // 19144 = SND
+		g_socket_listener_accept_async(listener, NULL, remote_lllp_connected_cb, &pref_arguments);
+	}
 }

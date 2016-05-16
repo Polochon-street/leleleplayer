@@ -1,7 +1,16 @@
 #include "gui.h"
 
 void destroy_cb(GtkWidget *window, struct pref_arguments *argument) {
+	GSocketClient *client = g_socket_client_new();
+
 	gst_element_set_state(argument->playbin, GST_STATE_NULL);
+//	g_socket_client_connect_to_host_async(client, argument->lllserver_address_char, 
+//		11912, NULL, quit_lllserver_cb, argument); // 11912 = KIL
+
+	g_socket_client_set_timeout(client, 1);
+	g_socket_client_connect_to_host(client, argument->lllserver_address_char, 
+		11912, NULL, NULL); // 11912 = KIL
+
 	gtk_main_quit();
 }
 
@@ -1190,4 +1199,19 @@ void connection_established_lllserver_cb(GObject *client, GAsyncResult *res, gpo
 		g_socket_listener_add_inet_port(listener, 19144, NULL, NULL); // 19144 = SND
 		g_socket_listener_accept_async(listener, NULL, remote_lllp_connected_cb, &pref_arguments);
 	}
+}
+
+void quit_lllserver_cb(GObject *client, GAsyncResult *res, gpointer pargument) {
+	struct pref_arguments *pref_arguments = (struct pref_arguments*)pargument;
+	GSocketConnection *connection;
+	GOutputStream *output_stream;
+	gsize count;
+	
+	connection = g_socket_client_connect_to_host_finish(G_SOCKET_CLIENT(client), res, NULL);
+	/*output_stream = g_io_stream_get_output_stream(G_IO_STREAM(connection));
+	
+	count = strlen("destroy") + 1;
+	g_output_stream_write_all(output_stream, &count, sizeof(gsize), NULL, NULL, NULL);
+	g_output_stream_write_all(output_stream, &count, sizeof(gsize), NULL, NULL, NULL);;*/
+	printf("DONE\n");
 }

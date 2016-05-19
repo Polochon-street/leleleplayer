@@ -434,7 +434,6 @@ gboolean get_lelelerandom_playlist_song(GtkTreeView *treeview_playlist, struct a
 			FORCE_ATK, &argument->current_song.force_vector.attack, -1);
 			argument->current_song.force_vector.attack = current_force.attack = 0;
 			argument->current_song.force_vector.tempo = current_force.tempo = 0;
-			printf("Between %s and %s: %f, %f\n", tempstring, argument->current_song.title, bl_cosine_similarity(current_force, argument->current_song.force_vector), bl_distance(current_force, argument->current_song.force_vector));
 		} while((bl_cosine_similarity(current_force, argument->current_song.force_vector) < treshold) ||
 			 (bl_distance(current_force, argument->current_song.force_vector) > treshold_distance));
 		return TRUE;
@@ -481,6 +480,8 @@ void continue_track_cb(GstElement *playbin, struct arguments *argument) {
 	else if(argument->current_song.filename) {
 		uri = g_filename_to_uri(argument->current_song.filename, NULL, NULL);
 	}
+	else if(argument->current_song.filename == NULL)
+		return;
 
 	g_object_set(argument->playbin, "uri", uri, NULL);
 	g_free(uri);
@@ -526,13 +527,6 @@ void start_song(struct arguments *argument) {
 		FORCE, &argument->current_song.force, FORCE_TEMPO, &argument->current_song.force_vector.tempo, 
 		FORCE_AMP, &argument->current_song.force_vector.amplitude, FORCE_FREQ, &argument->current_song.force_vector.frequency, 
 		FORCE_ATK, &argument->current_song.force_vector.attack, -1);
-
-		/*gtk_tree_model_get(model_playlist, &(argument->iter_playlist), AFILE, &argument->current_song.filename, 
-		TRACKNUMBER, &argument->current_song.tracknumber, TRACK, &argument->current_song.title, 
-		ALBUM, &argument->current_song.album, ARTIST, &argument->current_song.artist, 
-		FORCE, &argument->current_song.force, FORCE_TEMPO, &argument->current_song.force_vector.tempo, 
-		FORCE_AMP, &argument->current_song.force_vector.amplitude, FORCE_FREQ, &argument->current_song.force_vector.frequency, 
-		FORCE_ATK, &argument->current_song.force_vector.attack, -1);*/
 
 		uri = g_filename_to_uri(argument->current_song.filename, NULL, NULL);
 	}

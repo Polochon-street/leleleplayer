@@ -87,7 +87,6 @@ void artist_row_activated_cb(GtkTreeView *treeview, GtkTreePath *path, GtkTreeVi
 		
 		gtk_tree_model_get_iter_first(model_playlist, &iter_playlist);
 
-		
 		argument->row_playlist = tree_iter_get_row_reference(model_playlist, &iter_playlist);
 
 		start_song(argument);
@@ -144,7 +143,6 @@ void album_row_activated_cb(GtkTreeView *treeview, GtkTreePath *path, GtkTreeVie
 void playlist_row_activated_cb(GtkTreeView *treeview, GtkTreePath *path, GtkTreeViewColumn *column, struct arguments *argument) {
 	GtkTreeModel *model_playlist = gtk_tree_view_get_model(treeview);
 
-	
 	if((argument->row_playlist = gtk_tree_row_reference_new(model_playlist, path))) {
 		start_song(argument);
 	}
@@ -154,7 +152,6 @@ void lib_row_activated_cb(GtkTreeView *treeview, GtkTreePath *path, GtkTreeViewC
 	GtkTreeModel *model_library;
 	GtkTreeModel *model_playlist;
 	GtkTreeIter iter_library;
-	GtkTreePath *playlist_path;
 
 	model_library = gtk_tree_view_get_model(treeview);
 	model_playlist = gtk_tree_view_get_model(GTK_TREE_VIEW(argument->treeview_playlist));
@@ -164,9 +161,6 @@ void lib_row_activated_cb(GtkTreeView *treeview, GtkTreePath *path, GtkTreeViewC
 	do {
 		playlist_queue(&iter_library, model_library, GTK_TREE_VIEW(argument->treeview_playlist), argument);
 	} while(gtk_tree_model_iter_next(model_library, &iter_library));
-
-	playlist_path = gtk_tree_path_new_first();
-
 	
 	argument->row_playlist = gtk_tree_row_reference_new(model_playlist, path);
 	argument->history = g_list_prepend(argument->history, gtk_tree_path_to_string(path));
@@ -469,33 +463,27 @@ void open_audio_file_cb(GtkMenuItem *open, struct arguments *argument) {
 
 	res = gtk_dialog_run(GTK_DIALOG(dialog));
 	if(res == GTK_RESPONSE_ACCEPT) {
-		path = gtk_tree_row_reference_get_path(argument->row_playlist);
-		argument->history = g_list_prepend(argument->history, gtk_tree_path_to_string(path));
+		if(argument->row_playlist != NULL) {
+			path = gtk_tree_row_reference_get_path(argument->row_playlist);
+			argument->history = g_list_prepend(argument->history, gtk_tree_path_to_string(path));
+		}
 		char *filename;
 		GtkFileChooser *chooser = GTK_FILE_CHOOSER(dialog);
 		filename = gtk_file_chooser_get_filename(chooser);
-		if((resnum = bl_analyze(filename, &song)) == 0)
-			printf("Couldn't conclude\n");
+		if((resnum = bl_analyze(filename, &song)) == BL_UNEXPECTED)
+			printf("Couldn't parse song\n");
 		else { // Create an iter_forge() function?
 			gtk_list_store_append(argument->store_playlist, &iter_playlist);
-			gtk_list_store_set(argument->store_playlist, &iter_playlist, PLAYING, "", -1);
-			gtk_list_store_set(argument->store_playlist, &iter_playlist, TRACKNUMBER, song.tracknumber, -1);
-			gtk_list_store_set(argument->store_playlist, &iter_playlist, TRACK, song.title, -1);
-			gtk_list_store_set(argument->store_playlist, &iter_playlist, ALBUM, song.album, -1);
-			gtk_list_store_set(argument->store_playlist, &iter_playlist, ARTIST, song.artist, -1);		
-			gtk_list_store_set(argument->store_playlist, &iter_playlist, FORCE_TEMPO, song.force_vector.tempo, -1);
-			gtk_list_store_set(argument->store_playlist, &iter_playlist, FORCE_AMP, song.force_vector.amplitude, -1);
-			gtk_list_store_set(argument->store_playlist, &iter_playlist, FORCE_FREQ, song.force_vector.frequency, -1);
-			gtk_list_store_set(argument->store_playlist, &iter_playlist, FORCE_ATK, song.force_vector.attack, -1);
-			if(resnum > 0) 
+			gtk_list_store_set(argument->store_playlist, &iter_playlist, PLAYING, "", TRACKNUMBER, song.tracknumber,
+			TRACK, song.title, ALBUM, song.album, ARTIST, song.artist, FORCE_TEMPO, song.force_vector.tempo, 
+			FORCE_AMP, song.force_vector.amplitude, FORCE_FREQ, song.force_vector.frequency, FORCE_ATK, song.force_vector.attack, AFILE, filename, -1);
+			if(resnum == BL_LOUD)
 				gtk_list_store_set(argument->store_playlist, &iter_playlist, TEXTFORCE, "Loud", -1);
-			else if(resnum < 0)
+			else if(resnum == BL_CALM)
 				gtk_list_store_set(argument->store_playlist, &iter_playlist, TEXTFORCE, "Calm", -1);
 			else
 				gtk_list_store_set(argument->store_playlist, &iter_playlist, TEXTFORCE, "Couldn't conclude", -1);
-			gtk_list_store_set(argument->store_playlist, &iter_playlist, AFILE, filename, -1);
 			argument->playlist_count++;
-
 			
 			argument->row_playlist = tree_iter_get_row_reference(GTK_TREE_MODEL(argument->store_playlist), &iter_playlist);
 			bl_free_song(&song);
@@ -608,6 +596,9 @@ void message_application_cb(GstBus *bus, GstMessage *msg, struct arguments *argu
 
 		g_signal_emit_by_name(argument->playbin, "get-audio-pad", 0, &pad);
 		caps = gst_pad_get_current_caps(pad);
+	
+		if(caps == NULL) // No caps to parse
+			return;
 
 		s = gst_caps_get_structure(caps, 0);
 

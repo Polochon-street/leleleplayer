@@ -300,4 +300,5 @@ void convert_library_to_list_store(GtkListStore *store_library, gchar *libfile) 
 	}
 	else
 		fprintf(stderr, "Couldn't open library file: %s, because it doesn't exists.\n", libfile);
+	g_remove(libfile);
 }

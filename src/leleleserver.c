@@ -41,8 +41,10 @@ enum {
 }*/
 
 int main (int argc, char **argv) {
-	gtk_init(&argc, &argv);
+	gtk_init_check(&argc, &argv);
+	GMainLoop *loop;
 
+	loop = g_main_loop_new(NULL, TRUE);
 	GtkListStore *store_library = gtk_list_store_new(6, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_FLOAT, G_TYPE_FLOAT, G_TYPE_FLOAT, G_TYPE_FLOAT);
 	GSocketListener *listener;
 	GSocketListener *listener_next_song;

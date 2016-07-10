@@ -157,7 +157,7 @@ void explore(GDir *dir, const gchar *folder, GList *list) {
 	}
 }
 
-float distance(struct force_vector_s v1, struct force_vector_s v2) {
+/*float distance(struct force_vector_s v1, struct force_vector_s v2) {
 	float distance;
 	distance = sqrt((v1.amplitude - v2.amplitude)*(v1.amplitude- v2.amplitude) + (v1.frequency - v2.frequency)*(v1.frequency- v2.frequency) +
 		(v1.tempo - v2.tempo)*(v1.tempo - v2.tempo));
@@ -176,7 +176,7 @@ float cosine_distance(struct force_vector_s v1, struct force_vector_s v2) {
                 v2.frequency*v2.frequency + v2.attack*v2.attack));
 
 	return similarity;
-}
+}*/
 
 gboolean add_artist_to_playlist(gchar *artist, struct arguments *argument) {
 	gboolean valid;
@@ -268,7 +268,15 @@ void playlist_queue(GtkTreeIter *iter_to_queue, GtkTreeModel *model_library, Gtk
 			gtk_tree_model_get(model_library, iter_to_queue, i, &tempfloat, -1);
 			gtk_list_store_set(argument->store_playlist, &iter_playlist, i, tempfloat,-1);
 		}
-		else if(i == FORCE_TEMPO) {
+		else if(i == FORCE_TEMPO1) {
+			gtk_tree_model_get(model_library, iter_to_queue, i, &tempfloat, -1);
+			gtk_list_store_set(argument->store_playlist, &iter_playlist, i, tempfloat,-1);
+		}
+		else if(i == FORCE_TEMPO2) {
+			gtk_tree_model_get(model_library, iter_to_queue, i, &tempfloat, -1);
+			gtk_list_store_set(argument->store_playlist, &iter_playlist, i, tempfloat,-1);
+		}
+		else if(i == FORCE_TEMPO3) {
 			gtk_tree_model_get(model_library, iter_to_queue, i, &tempfloat, -1);
 			gtk_list_store_set(argument->store_playlist, &iter_playlist, i, tempfloat,-1);
 		}
@@ -393,7 +401,9 @@ gboolean get_lelelerandom_playlist_song(GtkTreeView *treeview_playlist, struct a
 			g_input_stream_read_all(lllserver_stream, &remote_force, sizeof(struct force_vector_s), NULL, NULL, NULL);
 			g_socket_listener_close(listener);
 
-			if((remote_force.tempo == 0) &&
+			if((remote_force.tempo1 == 0) &&
+				(remote_force.tempo2 == 0) &&
+				(remote_force.tempo3 == 0) &&
 				(remote_force.attack == 0) &&
 				(remote_force.frequency == 0) &&
 				(remote_force.amplitude == 0)) {
@@ -429,11 +439,14 @@ gboolean get_lelelerandom_playlist_song(GtkTreeView *treeview_playlist, struct a
 			if(!get_random_playlist_song(treeview_playlist, argument))
 				return FALSE;
 			tree_row_reference_get_iter(argument->row_playlist, &iter_playlist);
-			gtk_tree_model_get(model_playlist, &iter_playlist, TRACK, &argument->current_song.title, FORCE_TEMPO, &argument->current_song.force_vector.tempo, 
+			gtk_tree_model_get(model_playlist, &iter_playlist, TRACK, &argument->current_song.title, FORCE_TEMPO1, &argument->current_song.force_vector.tempo1, 
+			FORCE_TEMPO2, &argument->current_song.force_vector.tempo2, FORCE_TEMPO3, &argument->current_song.force_vector.tempo3,
 			FORCE_AMP, &argument->current_song.force_vector.amplitude, FORCE_FREQ, &argument->current_song.force_vector.frequency, 
 			FORCE_ATK, &argument->current_song.force_vector.attack, -1);
 			argument->current_song.force_vector.attack = current_force.attack = 0;
-			argument->current_song.force_vector.tempo = current_force.tempo = 0;
+			argument->current_song.force_vector.tempo1 = current_force.tempo1 = 0;
+			argument->current_song.force_vector.tempo2 = current_force.tempo2 = 0;
+			argument->current_song.force_vector.tempo3 = current_force.tempo3 = 0;
 		} while((bl_cosine_similarity(current_force, argument->current_song.force_vector) < treshold) ||
 			 (bl_distance(current_force, argument->current_song.force_vector) > treshold_distance));
 		return TRUE;
@@ -498,7 +511,8 @@ void queue_song(struct arguments *argument) {
 	gtk_tree_model_get(model_playlist, &iter_playlist, AFILE, &argument->current_song.filename, 
 	TRACKNUMBER, &argument->current_song.tracknumber, TRACK, &argument->current_song.title, 
 	ALBUM, &argument->current_song.album, ARTIST, &argument->current_song.artist, 
-	FORCE, &argument->current_song.force, FORCE_TEMPO, &argument->current_song.force_vector.tempo, 
+	FORCE, &argument->current_song.force, FORCE_TEMPO1, &argument->current_song.force_vector.tempo1, 
+	FORCE_TEMPO2, &argument->current_song.force_vector.tempo2, FORCE_TEMPO3, &argument->current_song.force_vector.tempo3,
 	FORCE_AMP, &argument->current_song.force_vector.amplitude, FORCE_FREQ, &argument->current_song.force_vector.frequency, 
 	FORCE_ATK, &argument->current_song.force_vector.attack, -1);
 
@@ -524,7 +538,8 @@ void start_song(struct arguments *argument) {
 		gtk_tree_model_get(model_playlist, &iter_playlist, AFILE, &argument->current_song.filename, 
 		TRACKNUMBER, &argument->current_song.tracknumber, TRACK, &argument->current_song.title, 
 		ALBUM, &argument->current_song.album, ARTIST, &argument->current_song.artist, 
-		FORCE, &argument->current_song.force, FORCE_TEMPO, &argument->current_song.force_vector.tempo, 
+		FORCE, &argument->current_song.force, FORCE_TEMPO1, &argument->current_song.force_vector.tempo1, 
+		FORCE_TEMPO2, &argument->current_song.force_vector.tempo2, FORCE_TEMPO3, &argument->current_song.force_vector.tempo3,
 		FORCE_AMP, &argument->current_song.force_vector.amplitude, FORCE_FREQ, &argument->current_song.force_vector.frequency, 
 		FORCE_ATK, &argument->current_song.force_vector.attack, -1);
 

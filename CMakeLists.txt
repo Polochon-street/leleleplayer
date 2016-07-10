@@ -17,6 +17,7 @@ link_directories(${MULTIMEDIA_LIBRARY_DIRS} ${GTK_LIBRARY_DIRS})
 add_definitions(${MULTIMEDIA_CFLAGS_OTHER} ${GTK_CFLAGS_OTHER})
 
 add_executable(leleleplayer WIN32 src/gui.c src/callbacks.c src/gtk_gst_utility.c)
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fopenmp")
 add_executable(leleleserver WIN32 src/leleleserver.c)
 target_link_libraries(leleleplayer ${GTK_LIBRARIES} ${MULTIMEDIA_LIBRARIES} "-lbliss")
 target_link_libraries(leleleserver ${GTK_LIBRARIES} ${MULTIMEDIA_LIBRARIES} "-lbliss")

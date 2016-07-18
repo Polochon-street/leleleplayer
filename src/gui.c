@@ -1,4 +1,5 @@
 #include "gui.h"
+#include <gst/pbutils/pbutils.h>
 
 void toggle_playpause(struct arguments *argument) {
 	if(argument->state == GST_STATE_PLAYING)
@@ -57,7 +58,7 @@ gboolean refresh_config_progressbar(struct pref_arguments *argument) {
 				add_entry_album_tab(argument->treeview_album, argument->store_album, GTK_TREE_MODEL(argument->store_library), &iter);
 			}
 			bl_free_song(msg);
-			g_free(song->filename);
+			free(song);
 			msg = NULL; 
 		}
 	} while(((msg = g_async_queue_try_pop(msg_queue)) != NULL));
@@ -135,15 +136,26 @@ void analyze_thread(struct pref_arguments *argument) {
 
 	gpointer msg_thread;
 	int resnum;
+	GstDiscoverer *discoverer;
+	GstDiscovererInfo *discoverer_info;
+	GstTagList *tags;
 	argument->count = 0;
 	gboolean found = FALSE;
 	argument->terminate = FALSE;
 
+	gchar *uri;
 	g_idle_add((GSourceFunc)refresh_config_progressbar, argument);
+
+	discoverer = gst_discoverer_new(5 * GST_SECOND, NULL);
 
 	for(l = list; l != NULL; l = l->next) {
 		((gchar*)l->data)[strcspn((gchar*)l->data, "\n")] = '\0';
 		found = FALSE;
+
+		struct bl_song song;
+		bl_initialize_song(&song);
+		struct bl_song *msg_song = malloc(sizeof(struct bl_song));
+		bl_initialize_song(msg_song);
 
 		cur_find = xmlDocGetRootElement(library);
 		cur_find = cur_find->children;
@@ -168,13 +180,31 @@ void analyze_thread(struct pref_arguments *argument) {
 			}
 			cur_find = cur_find->next;
 		}
-		printf("%d, %s\n", ( argument->lelele_scan && ( (tempresnum == 2) || (found == FALSE) ) ), l->data);
-		struct bl_song song;
-		struct bl_song msg_song;
+
 		child = xmlNewTextChild(cur, NULL, "song", NULL);
-		int tempint;
+
+		uri = g_filename_to_uri(l->data, NULL, NULL);
+
+		discoverer_info = gst_discoverer_discover_uri(discoverer, uri, NULL);
+		tags = gst_discoverer_info_get_tags(discoverer_info);
+
 		gchar *amplitude, *freq, *tempo1, *tempo2, *tempo3, *atk, *resnum_s;
-		if((resnum = bl_analyze(l->data, &song)) > -2) {
+		int tempint;
+
+		if(tags) {
+			if(gst_tag_list_get_uint(tags, GST_TAG_TRACK_NUMBER, &resnum) == FALSE)
+				song.tracknumber = g_strdup_printf("");
+			else
+				song.tracknumber = g_strdup_printf("%d", resnum);
+			if(gst_tag_list_get_string(tags, GST_TAG_TITLE, &song.title) == FALSE)
+				song.title = g_strdup("<no title>");	
+			if(gst_tag_list_get_string(tags, GST_TAG_ALBUM, &song.album) == FALSE)
+				song.album= g_strdup("<no album>");	
+			if(gst_tag_list_get_string(tags, GST_TAG_ARTIST, &song.artist) == FALSE)
+				song.artist= g_strdup("<no artist>");
+
+			song.force_vector.tempo1 = song.force_vector.tempo2 = song.force_vector.tempo3 =
+				song.force_vector.amplitude = song.force_vector.attack = song.force_vector.frequency = 0.0;
 			for(i = 0; (song.tracknumber[i] != '\0') && (g_ascii_isdigit(song.tracknumber[i]) == FALSE); ++i)
 				song.tracknumber[i] = '0';
 			if(song.tracknumber[i] != '\0') {
@@ -183,27 +213,20 @@ void analyze_thread(struct pref_arguments *argument) {
 				g_free(song.tracknumber);
 				song.tracknumber = temptracknumber;
 			}
-			resnum_s = g_strdup_printf("%d", resnum);
-			amplitude = g_strdup_printf("%f", song.force_vector.amplitude);
-			freq = g_strdup_printf("%f", song.force_vector.frequency);
-			tempo1 = g_strdup_printf("%f", song.force_vector.tempo1);
-			tempo2 = g_strdup_printf("%f", song.force_vector.tempo2);
-			tempo3 = g_strdup_printf("%f", song.force_vector.tempo3);
-			atk = g_strdup_printf("%f", song.force_vector.attack);
-	
+
 			if(found == FALSE) {
 				xmlNewTextChild(child, NULL, "filename", l->data);
 				xmlNewTextChild(child, NULL, "tracknumber", song.tracknumber);
 				xmlNewTextChild(child, NULL, "title", song.title);
 				xmlNewTextChild(child, NULL, "album", song.album);
 				xmlNewTextChild(child, NULL, "artist", song.artist);
-				xmlNewTextChild(child, NULL, "analyze-resnum", resnum_s);
-				xmlNewTextChild(child, NULL, "analyze-amplitude", amplitude);
-				xmlNewTextChild(child, NULL, "analyze-freq", freq);
-				xmlNewTextChild(child, NULL, "analyze-tempo1", tempo1);
-				xmlNewTextChild(child, NULL, "analyze-tempo2", tempo2);
-				xmlNewTextChild(child, NULL, "analyze-tempo3", tempo3);
-				xmlNewTextChild(child, NULL, "analyze-atk", atk);
+				xmlNewTextChild(child, NULL, "analyze-resnum", "2");
+				xmlNewTextChild(child, NULL, "analyze-amplitude", "0");
+				xmlNewTextChild(child, NULL, "analyze-freq", "0");
+				xmlNewTextChild(child, NULL, "analyze-tempo1", "0");
+				xmlNewTextChild(child, NULL, "analyze-tempo2", "0");
+				xmlNewTextChild(child, NULL, "analyze-tempo3", "0");
+				xmlNewTextChild(child, NULL, "analyze-atk", "0");
 			}
 			else {
 				if((!xmlStrcmp(cur_find->name, (const xmlChar *)"song"))) {
@@ -216,64 +239,183 @@ void analyze_thread(struct pref_arguments *argument) {
 							xmlNodeSetContent(child_find, song.album);
 						else if((!xmlStrcmp(child_find->name, (const xmlChar *)"tracknumber")))
 							xmlNodeSetContent(child_find, song.tracknumber);	
-						if(tempresnum == 2) {
-							if((!xmlStrcmp(child_find->name, (const xmlChar *)"analyze-resnum"))) {
-								xmlNodeSetContent(child_find, resnum_s);
-							}
-							else if((!xmlStrcmp(child_find->name, (const xmlChar *)"analyze-amplitude"))) {
-								xmlNodeSetContent(child_find, amplitude);
-							}
-							else if((!xmlStrcmp(child_find->name, (const xmlChar *)"analyze-freq"))) {
-								xmlNodeSetContent(child_find, freq);
-							}
-							else if((!xmlStrcmp(child_find->name, (const xmlChar *)"analyze-tempo1"))) {
-								xmlNodeSetContent(child_find, tempo1);
-							}
-							else if((!xmlStrcmp(child_find->name, (const xmlChar *)"analyze-tempo2"))) {
-								xmlNodeSetContent(child_find, tempo2);
-							}
-							else if((!xmlStrcmp(child_find->name, (const xmlChar *)"analyze-tempo3"))) {
-								xmlNodeSetContent(child_find, tempo3);
-							}
-							else if((!xmlStrcmp(child_find->name, (const xmlChar *)"analyze-atk"))) {
-								xmlNodeSetContent(child_find, atk);
-							}		
-						}
+						if((!xmlStrcmp(child_find->name, (const xmlChar *)"analyze-resnum"))) 
+							xmlNodeSetContent(child_find, "2");
+						else if((!xmlStrcmp(child_find->name, (const xmlChar *)"analyze-amplitude"))) 
+							xmlNodeSetContent(child_find, "0");
+						else if((!xmlStrcmp(child_find->name, (const xmlChar *)"analyze-freq"))) 
+							xmlNodeSetContent(child_find, "0");
+						else if((!xmlStrcmp(child_find->name, (const xmlChar *)"analyze-tempo1"))) 
+							xmlNodeSetContent(child_find, "0");		
+						else if((!xmlStrcmp(child_find->name, (const xmlChar *)"analyze-tempo2"))) 
+							xmlNodeSetContent(child_find, "0");
+						else if((!xmlStrcmp(child_find->name, (const xmlChar *)"analyze-tempo3"))) 
+							xmlNodeSetContent(child_find, "0");
+						else if((!xmlStrcmp(child_find->name, (const xmlChar *)"analyze-atk"))) 
+							xmlNodeSetContent(child_find, "0");
 					}
 				}
 			}
-			g_free(amplitude);
-			g_free(resnum_s);
-			g_free(freq);
-			g_free(tempo1);
-			g_free(tempo2);
-			g_free(tempo3);
-			g_free(atk);
-			msg_song = song;
-			msg_song.tracknumber = g_malloc(strlen(song.tracknumber)+1);
-			msg_song.tracknumber = strcpy(msg_song.tracknumber, song.tracknumber);
-			msg_song.title = g_malloc(strlen(song.title)+1);
-			msg_song.title = strcpy(msg_song.title, song.title);
-			msg_song.album = g_malloc(strlen(song.album)+1);
-			msg_song.album = strcpy(msg_song.album, song.album);	
-			msg_song.artist= g_malloc(strlen(song.artist)+1);
-			msg_song.artist = strcpy(msg_song.artist, song.artist);
-			msg_song.sample_array = NULL;
-			msg_song.genre = NULL;
-			msg_song.calm_or_loud = (int)resnum;
-			msg_song.filename = g_malloc(strlen(l->data)+1);
-			msg_song.filename = strcpy(msg_song.filename, l->data);
-			g_async_queue_push(msg_queue, (gpointer)&msg_song);
+
+			*msg_song = song;
+			msg_song->tracknumber = g_malloc(strlen(song.tracknumber)+1);
+			msg_song->tracknumber = strcpy(msg_song->tracknumber, song.tracknumber);
+			msg_song->title = g_malloc(strlen(song.title)+1);
+			msg_song->title = strcpy(msg_song->title, song.title);
+			msg_song->album = g_malloc(strlen(song.album)+1);
+			msg_song->album = strcpy(msg_song->album, song.album);	
+			msg_song->artist= g_malloc(strlen(song.artist)+1);
+			msg_song->artist = strcpy(msg_song->artist, song.artist);
+			msg_song->sample_array = NULL;
+			msg_song->genre = NULL;
+			msg_song->calm_or_loud = 2;
+			msg_song->filename = g_malloc(strlen(l->data)+1);
+			msg_song->filename = strcpy(msg_song->filename, l->data);
+			g_async_queue_push(msg_queue, (gpointer)msg_song);
 			bl_free_song(&song);
 			xmlSaveFormatFile(argument->lib_path, library, 1);
-			//fflush(library); 
 		}
 		argument->count++;
 	}
+
+	argument->count = 0;
+
+	if(argument->lelele_scan == TRUE) {
+		for(l = list; l != NULL; l = l->next) {
+			((gchar*)l->data)[strcspn((gchar*)l->data, "\n")] = '\0';
+			found = FALSE;
+	
+			cur_find = xmlDocGetRootElement(library);
+			cur_find = cur_find->children;
+			while(cur_find != NULL) {
+				if((!xmlStrcmp(cur_find->name, (const xmlChar *)"song"))) {
+					for(child_find = cur_find->children; child_find != NULL; child_find = child_find->next) {
+						if((!xmlStrcmp(child_find->name, (const xmlChar *)"filename"))) {
+							tempstring = xmlNodeGetContent(child_find->children);
+							if(!g_strcmp0(tempstring, l->data)) {
+								found = TRUE;
+							}
+							//free(tempstring); // HERE IS THE MOTHER FKING FREE
+						}
+						if((!xmlStrcmp(child_find->name, (const xmlChar *)"analyze-resnum"))) {
+							tempstring = xmlNodeGetContent(child_find->children);
+							tempresnum = atoi(tempstring);
+							//g_free(tempstring); // AND HERE TOO 
+						}
+					}
+					if(found == TRUE)
+						break;
+				}
+				cur_find = cur_find->next;
+			}
+	
+			struct bl_song song;
+			struct bl_song *msg_song = malloc(sizeof(struct bl_song));
+			child = xmlNewTextChild(cur, NULL, "song", NULL);
+			int tempint;
+			gchar *amplitude, *freq, *tempo1, *tempo2, *tempo3, *atk, *resnum_s;
+			if((resnum = bl_analyze(l->data, &song)) > -2) {
+				for(i = 0; (song.tracknumber[i] != '\0') && (g_ascii_isdigit(song.tracknumber[i]) == FALSE); ++i)
+					song.tracknumber[i] = '0';
+				if(song.tracknumber[i] != '\0') {
+					tempint = strtol(song.tracknumber, NULL, 10);
+					temptracknumber = g_strdup_printf("%02d", tempint);
+					g_free(song.tracknumber);
+					song.tracknumber = temptracknumber;
+				}
+				resnum_s = g_strdup_printf("%d", resnum);
+				amplitude = g_strdup_printf("%f", song.force_vector.amplitude);
+				freq = g_strdup_printf("%f", song.force_vector.frequency);
+				tempo1 = g_strdup_printf("%f", song.force_vector.tempo1);
+				tempo2 = g_strdup_printf("%f", song.force_vector.tempo2);
+				tempo3 = g_strdup_printf("%f", song.force_vector.tempo3);
+				atk = g_strdup_printf("%f", song.force_vector.attack);
+		
+				if(found == FALSE) {
+					xmlNewTextChild(child, NULL, "filename", l->data);
+					xmlNewTextChild(child, NULL, "tracknumber", song.tracknumber);
+					xmlNewTextChild(child, NULL, "title", song.title);
+					xmlNewTextChild(child, NULL, "album", song.album);
+					xmlNewTextChild(child, NULL, "artist", song.artist);
+					xmlNewTextChild(child, NULL, "analyze-resnum", resnum_s);
+					xmlNewTextChild(child, NULL, "analyze-amplitude", amplitude);
+					xmlNewTextChild(child, NULL, "analyze-freq", freq);
+					xmlNewTextChild(child, NULL, "analyze-tempo1", tempo1);
+					xmlNewTextChild(child, NULL, "analyze-tempo2", tempo2);
+					xmlNewTextChild(child, NULL, "analyze-tempo3", tempo3);
+					xmlNewTextChild(child, NULL, "analyze-atk", atk);
+				}
+				else {
+					if((!xmlStrcmp(cur_find->name, (const xmlChar *)"song"))) {
+						for(child_find = cur_find->children; child_find != NULL; child_find = child_find->next) {
+							if((!xmlStrcmp(child_find->name, (const xmlChar *)"title"))) 
+								xmlNodeSetContent(child_find, song.title);
+							else if((!xmlStrcmp(child_find->name, (const xmlChar *)"artist")))
+								xmlNodeSetContent(child_find, song.artist);
+							else if((!xmlStrcmp(child_find->name, (const xmlChar *)"album")))
+								xmlNodeSetContent(child_find, song.album);
+							else if((!xmlStrcmp(child_find->name, (const xmlChar *)"tracknumber")))
+								xmlNodeSetContent(child_find, song.tracknumber);	
+							if(tempresnum == 2) {
+								if((!xmlStrcmp(child_find->name, (const xmlChar *)"analyze-resnum"))) {
+									xmlNodeSetContent(child_find, resnum_s);
+								}
+								else if((!xmlStrcmp(child_find->name, (const xmlChar *)"analyze-amplitude"))) {
+									xmlNodeSetContent(child_find, amplitude);
+								}
+								else if((!xmlStrcmp(child_find->name, (const xmlChar *)"analyze-freq"))) {
+									xmlNodeSetContent(child_find, freq);
+								}
+								else if((!xmlStrcmp(child_find->name, (const xmlChar *)"analyze-tempo1"))) {
+									xmlNodeSetContent(child_find, tempo1);
+								}
+								else if((!xmlStrcmp(child_find->name, (const xmlChar *)"analyze-tempo2"))) {
+									xmlNodeSetContent(child_find, tempo2);
+								}
+								else if((!xmlStrcmp(child_find->name, (const xmlChar *)"analyze-tempo3"))) {
+									xmlNodeSetContent(child_find, tempo3);
+								}
+								else if((!xmlStrcmp(child_find->name, (const xmlChar *)"analyze-atk"))) {
+									xmlNodeSetContent(child_find, atk);
+								}		
+							}
+						}
+					}
+				}
+				g_free(amplitude);
+				g_free(resnum_s);
+				g_free(freq);
+				g_free(tempo1);
+				g_free(tempo2);
+				g_free(tempo3);
+				g_free(atk);
+				*msg_song = song;
+				msg_song->tracknumber = g_malloc(strlen(song.tracknumber)+1);
+				msg_song->tracknumber = strcpy(msg_song->tracknumber, song.tracknumber);
+				msg_song->title = g_malloc(strlen(song.title)+1);
+				msg_song->title = strcpy(msg_song->title, song.title);
+				msg_song->album = g_malloc(strlen(song.album)+1);
+				msg_song->album = strcpy(msg_song->album, song.album);	
+				msg_song->artist= g_malloc(strlen(song.artist)+1);
+				msg_song->artist = strcpy(msg_song->artist, song.artist);
+				msg_song->sample_array = NULL;
+				msg_song->genre = NULL;
+				msg_song->calm_or_loud = (int)resnum;
+				msg_song->filename = g_malloc(strlen(l->data)+1);
+				msg_song->filename = strcpy(msg_song->filename, l->data);
+				g_async_queue_push(msg_queue, (gpointer)msg_song);
+				bl_free_song(&song);
+				xmlSaveFormatFile(argument->lib_path, library, 1);
+				//fflush(library); 
+			}
+			argument->count++;
+		}
+	}
+
 	argument->terminate = TRUE;
 	g_list_free_full(list, g_free);
 	xmlSaveFormatFile(argument->lib_path, library, 1);
-	xmlFreeDoc(library);	
+	xmlFreeDoc(library);
 }
 
 void reset_ui(struct arguments *argument) {

@@ -17,11 +17,9 @@ link_directories(${MULTIMEDIA_LIBRARY_DIRS} ${GTK_LIBRARY_DIRS})
 add_definitions(${MULTIMEDIA_CFLAGS_OTHER} ${GTK_CFLAGS_OTHER})
 
 add_executable(leleleplayer WIN32 src/gui.c src/callbacks.c src/gtk_gst_utility.c)
-add_executable(leleleserver WIN32 src/leleleserver.c)
 target_link_libraries(leleleplayer ${GTK_LIBRARIES} ${MULTIMEDIA_LIBRARIES} "-lbliss")
-target_link_libraries(leleleserver ${GTK_LIBRARIES} ${MULTIMEDIA_LIBRARIES} "-lbliss")
 
-foreach(EXE leleleplayer leleleserver)
+foreach(EXE leleleplayer)
 	target_link_libraries(${EXE} "-lbliss" ${CMAKE_C_FLAGS} m)
 endforeach ()
 
@@ -29,7 +27,6 @@ if(NOT WIN32)
 	set(CMAKE_INSTALL_PREFIX /usr)
 endif()
 set_property(TARGET leleleplayer PROPERTY C_STANDARD 99)
-set_property(TARGET leleleserver PROPERTY C_STANDARD 99)
 
 if(WIN32)
 	install(TARGETS leleleplayer RUNTIME DESTINATION bin COMPONENT applications)
@@ -68,7 +65,6 @@ else()
 	include(CPack)
 
 	install(TARGETS leleleplayer DESTINATION bin)
-	install(TARGETS leleleserver DESTINATION bin)
 	install(SCRIPT "resources/compile-schemas.cmake")
 	install(FILES "images/lelelerandom.svg" "images/leleleplayer.png" DESTINATION share/leleleplayer/icons/)
 	install(FILES "images/leleleplayer.png" DESTINATION share/pixmaps)

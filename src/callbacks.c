@@ -1,15 +1,7 @@
 #include "gui.h"
 
 void destroy_cb(GtkWidget *window, struct pref_arguments *argument) {
-	GSocketClient *client = g_socket_client_new();
-
 	gst_element_set_state(argument->playbin, GST_STATE_NULL);
-//	g_socket_client_connect_to_host_async(client, argument->lllserver_address_char, 
-//		11912, NULL, quit_lllserver_cb, argument); // 11912 = KIL
-
-	g_socket_client_set_timeout(client, 1);
-	g_socket_client_connect_to_host(client, argument->lllserver_address_char, 
-		11912, NULL, NULL); // 11912 = KIL
 
 	gtk_main_quit();
 }
@@ -283,38 +275,25 @@ void folder_chooser_cb(GtkWidget *button, struct pref_arguments *argument) {
 }
 	
 void preferences_callback_cb(GtkMenuItem *preferences, struct pref_arguments *argument) {
-	GtkWidget *dialog, *label_library, *label_browse, *area, *vbox, *hbox_library, *hbox_network, *labelbox_library, *labelbox_network, *library_entry, *browse_button, *window_temp, *complete_box,
-		*label_network, *network_box, *label_ip_set, *network_entry;
+	GtkWidget *dialog, *label_library, *label_browse, *area, *vbox, *hbox_library, *labelbox_library, *library_entry, *browse_button, *window_temp, *complete_box;
 	GtkDialogFlags flags = GTK_DIALOG_MODAL | GTK_DIALOG_DESTROY_WITH_PARENT;
 	gint res;
 	const gchar *old_folder;
 
 	label_library = gtk_label_new("");
 	label_browse = gtk_label_new("");
-	label_network = gtk_label_new("");
-	label_ip_set = gtk_label_new("");
 	gtk_label_set_markup(GTK_LABEL(label_library), "\t<span weight=\"bold\">Library management:</span>\n");
 	gtk_label_set_markup(GTK_LABEL(label_browse), "Select library location:");
-	gtk_label_set_markup(GTK_LABEL(label_ip_set), "Set leleleServer's IP address:");
-	gtk_label_set_markup(GTK_LABEL(label_network), "\t<span weight=\"bold\">leleleNetwork Options:</span>\n");
 	browse_button = gtk_button_new_with_label("Browse...");
 	library_entry = gtk_entry_new();
-	network_entry = gtk_entry_new();
 	argument->folder = (gchar*)g_variant_get_data(g_settings_get_value(argument->preferences, "library"));
-	argument->lllserver_address_char = (gchar*)g_variant_get_data(g_settings_get_value(argument->preferences, "network-mode-ip"));
 	if(*(argument->folder) == '\0')
 		argument->folder = g_get_user_special_dir(G_USER_DIRECTORY_MUSIC);
-	if(*(argument->lllserver_address_char) == '\0')
-		/* Type default IP here */;
 
 	gtk_entry_set_text(GTK_ENTRY(library_entry), argument->folder);
-	gtk_entry_set_text(GTK_ENTRY(network_entry), argument->lllserver_address_char);
-	gtk_widget_set_sensitive(network_entry, argument->network_mode_set);
 	vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
 	hbox_library = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
-	hbox_network = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
 	labelbox_library = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
-	labelbox_network = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
 	dialog = gtk_dialog_new_with_buttons("Preferences", GTK_WINDOW(argument->window), flags, "Cancel", GTK_RESPONSE_REJECT, "Save", GTK_RESPONSE_ACCEPT, NULL);
 	if(g_file_test("../images/leleleplayer.png", G_FILE_TEST_EXISTS))
 		gtk_window_set_icon_from_file(GTK_WINDOW(dialog), "../images/leleleplayer.png", NULL);
@@ -323,24 +302,19 @@ void preferences_callback_cb(GtkMenuItem *preferences, struct pref_arguments *ar
 
 	area = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
 	complete_box = gtk_check_button_new_with_label("LeleleScan (complete but longer) (checkbox not functional now)");
-	network_box = gtk_check_button_new_with_label("Activate leleleNetwork (will allow you to access music from other leleleplayers with the lelelerandom button)");
 
 	gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(complete_box), argument->lelele_scan);
-	gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(network_box), argument->network_mode_set);
 	gtk_window_set_default_size(GTK_WINDOW(dialog), 500, 100);
 	gtk_window_set_resizable(GTK_WINDOW(dialog), FALSE);
 
 	g_signal_connect(G_OBJECT(browse_button), "clicked", G_CALLBACK(folder_chooser_cb), argument);
 	g_signal_connect(G_OBJECT(complete_box), "toggled", G_CALLBACK(toggle_lelelescan_cb), argument);
-	g_signal_connect(G_OBJECT(network_box), "toggled", G_CALLBACK(toggle_network_mode_cb), argument);
 	argument->library_entry = library_entry;
-	argument->network_entry = network_entry;
 	window_temp = argument->window;
 	argument->window = dialog;
 
 	gtk_box_set_homogeneous(GTK_BOX(vbox), TRUE);
 	gtk_box_set_homogeneous(GTK_BOX(hbox_library), FALSE);
-	gtk_box_set_homogeneous(GTK_BOX(hbox_network), FALSE);
 	
 	gtk_box_pack_start(GTK_BOX(vbox), labelbox_library, FALSE, FALSE, 0);
 	gtk_box_pack_start(GTK_BOX(labelbox_library), label_library, FALSE, FALSE, 0);
@@ -349,13 +323,6 @@ void preferences_callback_cb(GtkMenuItem *preferences, struct pref_arguments *ar
 		gtk_box_pack_start(GTK_BOX(hbox_library), library_entry, TRUE, TRUE, 0);
 		gtk_box_pack_start(GTK_BOX(hbox_library), browse_button, FALSE, FALSE, 0);
 	gtk_box_pack_start(GTK_BOX(vbox), complete_box, FALSE, FALSE, 0);
-	gtk_box_pack_start(GTK_BOX(vbox), labelbox_network, FALSE, FALSE, 0);
-	gtk_box_pack_start(GTK_BOX(labelbox_network), label_network, FALSE, FALSE, 0);
-	gtk_box_pack_start(GTK_BOX(vbox), hbox_network, FALSE, FALSE, 0);
-		gtk_box_pack_start(GTK_BOX(hbox_network), label_ip_set, FALSE, FALSE, 0);
-		gtk_box_pack_start(GTK_BOX(hbox_network), network_entry, TRUE, TRUE, 0);
-	gtk_box_pack_start(GTK_BOX(vbox), network_box, FALSE, FALSE, 0);
-
 	
 	gtk_container_add(GTK_CONTAINER(area), vbox);
 
@@ -368,8 +335,6 @@ void preferences_callback_cb(GtkMenuItem *preferences, struct pref_arguments *ar
 		/* TODO: Error handling (if IP is invalid/folder doesn't exist) */
 		argument->folder = g_strdup(gtk_entry_get_text(GTK_ENTRY(library_entry)));
 		g_settings_set_value(argument->preferences, "library", g_variant_new_string(argument->folder));
-		argument->lllserver_address_char = g_strdup(gtk_entry_get_text(GTK_ENTRY(network_entry)));
-		g_settings_set_value(argument->preferences, "network-mode-ip", g_variant_new_string(argument->lllserver_address_char));
 		if((old_folder == NULL) ||strcmp(old_folder, argument->folder)) {
 			gtk_list_store_clear(argument->store_library);
 			gtk_tree_store_clear(argument->store_album);
@@ -542,13 +507,8 @@ void refresh_ui_cb(GstBus *bus, GstMessage *msg, struct arguments *argument) {
 	while(gtk_tree_model_iter_next(model_playlist, &(temp_iter)));
 	gtk_tree_selection_unselect_all(selection);
 
-	/* Don't use the playlist treeview if the song is streamed */
-	if((argument->current_song.filename != NULL) &&
-		(g_strcmp0(argument->current_song.filename, "remote") == 0)) {
-		gtk_button_set_image(GTK_BUTTON(argument->playpause_button), gtk_image_new_from_icon_name("media-playback-pause-symbolic", GTK_ICON_SIZE_BUTTON));
-	}
 	/* Display the played song in the playlist treeview if the song is not streamed */
-	else if((path = gtk_tree_row_reference_get_path(argument->row_playlist)) != NULL) {
+	if((path = gtk_tree_row_reference_get_path(argument->row_playlist)) != NULL) {
 		gtk_tree_model_get_iter(model_playlist, &iter_playlist, path);
 		column = gtk_tree_view_get_column(GTK_TREE_VIEW(argument->treeview_playlist), PLAYING);
 
@@ -690,20 +650,15 @@ void message_application_cb(GstBus *bus, GstMessage *msg, struct arguments *argu
 				/*GtkTreeModel *model_playlist;
 				
 				model_playlist = gtk_tree_view_get_model(GTK_TREE_VIEW(argument->treeview_playlist));*/
-				if(argument->current_song.filename &&
-					(g_strcmp0(argument->current_song.filename, "remote") == 0)) {
-				}
-				else {
-					GtkTreeIter iter_playlist;
-					tree_row_reference_get_iter(argument->row_playlist, &iter_playlist);
+				GtkTreeIter iter_playlist;
+				tree_row_reference_get_iter(argument->row_playlist, &iter_playlist);
 
-					gtk_tree_model_get(model_playlist, &iter_playlist, AFILE, &argument->current_song.filename, 
+				gtk_tree_model_get(model_playlist, &iter_playlist, AFILE, &argument->current_song.filename, 
 					TRACKNUMBER, &argument->current_song.tracknumber, TRACK, &argument->current_song.title, 
 					ALBUM, &argument->current_song.album, ARTIST, &argument->current_song.artist, 
 					FORCE, &argument->current_song.force, FORCE_TEMPO, &argument->current_song.force_vector.tempo, 
 					FORCE_AMP, &argument->current_song.force_vector.amplitude, FORCE_FREQ, &argument->current_song.force_vector.frequency, 
 					FORCE_ATK, &argument->current_song.force_vector.attack, -1);
-				}
 			}
 			else {
 				argument->current_song.filename = NULL;
@@ -1119,90 +1074,4 @@ void search_cb(GtkSearchEntry *search_entry, struct arguments *argument) {
 	gtk_tree_model_filter_refilter(argument->library_filter);
 	gtk_tree_model_filter_refilter(argument->artist_filter);
 	gtk_tree_model_filter_refilter(argument->album_filter);
-}
-
-void transfer_completed_track_cb(GObject *out_stream, GAsyncResult *res, gpointer connection) {
-	g_output_stream_splice_finish(G_OUTPUT_STREAM(out_stream), res, NULL);
-	g_output_stream_close(G_OUTPUT_STREAM(out_stream), NULL, NULL);
-	g_io_stream_close(G_IO_STREAM(connection), NULL, NULL);
-}
-
-void remote_lllp_connected_cb(GObject *listener, GAsyncResult *res, gpointer pargument) {
-	struct pref_arguments *argument = (struct pref_arguments *)pargument;
-	GSocketConnection *connection;
-	GInputStream *server_stream;
-	GSocketClient *client;
-	GFile *output_file;
-	GOutputStream *output_stream;
-	GInputStream *file_stream;
-	gsize count;
-
-	connection = g_socket_listener_accept_finish(G_SOCKET_LISTENER(listener), res, NULL, NULL);
-	
-	server_stream = g_io_stream_get_input_stream(G_IO_STREAM(connection));
-	g_input_stream_read_all(server_stream, &count, sizeof(gsize), NULL, NULL, NULL);
-	gchar address_remote_player_char[count];
-	g_input_stream_read_all(server_stream, &address_remote_player_char, count, NULL, NULL, NULL);
-
-	g_input_stream_read_all(server_stream, &count, sizeof(gsize), NULL, NULL, NULL);
-	gchar filename[count];
-	g_input_stream_read_all(server_stream, &filename, count, NULL, NULL, NULL);
-
-	client = g_socket_client_new();
-	output_file = g_file_new_for_path(filename);
-	file_stream = G_INPUT_STREAM(g_file_read(output_file, NULL, NULL));
-
-	// Maybe add a do { } while(connect == NULL) loop ?
-	do {
-		connection = g_socket_client_connect_to_host(client, address_remote_player_char, 18322, NULL, NULL); // 18322 = RCV
-	} while(connection == NULL);
-	
-	output_stream = g_io_stream_get_output_stream(G_IO_STREAM(connection));
-	g_output_stream_splice_async(output_stream, file_stream, 
-		G_OUTPUT_STREAM_SPLICE_CLOSE_SOURCE & G_OUTPUT_STREAM_SPLICE_CLOSE_TARGET, 
-		G_PRIORITY_DEFAULT, NULL, NULL, NULL);
-
-	g_socket_listener_accept_async(G_SOCKET_LISTENER(listener), NULL, remote_lllp_connected_cb, pargument);
-}
-
-void connection_established_lllserver_cb(GObject *client, GAsyncResult *res, gpointer pargument) {
-	struct pref_arguments *pref_arguments = (struct pref_arguments*)pargument;
-	GSocketConnection *connection;
-	GOutputStream *output_stream;
-	GInputStream *file_stream;
-	GFile *library_file;
-	GSocketListener *listener;
-
-	listener = g_socket_listener_new();
-
-	library_file = g_file_new_for_path(pref_arguments->lib_path);
-	file_stream = G_INPUT_STREAM(g_file_read(library_file, NULL, NULL));
-
-	connection = g_socket_client_connect_to_host_finish(G_SOCKET_CLIENT(client), res, NULL);
-
-	if(connection != NULL) {
-		output_stream = g_io_stream_get_output_stream(G_IO_STREAM(connection));
-		g_output_stream_splice(output_stream, file_stream, G_OUTPUT_STREAM_SPLICE_CLOSE_SOURCE &
-			G_OUTPUT_STREAM_SPLICE_CLOSE_TARGET, NULL, NULL);
-	
-		g_io_stream_close(G_IO_STREAM(connection), NULL, NULL);
-	
-		g_socket_listener_add_inet_port(listener, 19144, NULL, NULL); // 19144 = SND
-		g_socket_listener_accept_async(listener, NULL, remote_lllp_connected_cb, &pref_arguments);
-	}
-}
-
-void quit_lllserver_cb(GObject *client, GAsyncResult *res, gpointer pargument) {
-	struct pref_arguments *pref_arguments = (struct pref_arguments*)pargument;
-	GSocketConnection *connection;
-	GOutputStream *output_stream;
-	gsize count;
-	
-	connection = g_socket_client_connect_to_host_finish(G_SOCKET_CLIENT(client), res, NULL);
-	/*output_stream = g_io_stream_get_output_stream(G_IO_STREAM(connection));
-	
-	count = strlen("destroy") + 1;
-	g_output_stream_write_all(output_stream, &count, sizeof(gsize), NULL, NULL, NULL);
-	g_output_stream_write_all(output_stream, &count, sizeof(gsize), NULL, NULL, NULL);;*/
-	printf("DONE\n");
 }

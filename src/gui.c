@@ -776,10 +776,6 @@ void display_library(GtkTreeView *treeview, GtkListStore *store, gchar *libfile)
 		fprintf(stderr, "Couldn't open library file: %s, because it doesn't exists.\n", libfile);
 }
 
-void dummy(void) {
-	printf("changed audio\n");
-}
-
 int main(int argc, char **argv) {
 	struct arguments argument;
 	struct arguments *pargument = &argument;
@@ -795,8 +791,6 @@ int main(int argc, char **argv) {
 	GSettingsSchema *schema;
 	GSettingsSchemaSource *schema_source;
 	gboolean is_configured;
-	GSocketClient *client;
-	GSocketConnection *connection;
 	
 	GtkTreeModel *model_playlist;
 	GtkTreeModel *model_library;
@@ -836,7 +830,6 @@ int main(int argc, char **argv) {
 	pargument->sleep_timer = NULL;
 	pargument->search_entry_text = NULL;
 	pargument->row_playlist = NULL;
-	pargument->connection_remote = NULL;
 	g_mutex_init(&pargument->queue_mutex);
 	g_cond_init(&pargument->queue_cond);
 
@@ -844,10 +837,6 @@ int main(int argc, char **argv) {
 	gst_init(&argc, &argv);
 	bl_initialize_song(&pargument->current_song);
 	
-	gst_plugin_register_static(GST_VERSION_MAJOR,
-        GST_VERSION_MINOR, "urisocketsrc", "URI handler for socket src",
-        uri_socket_src_plugin_init, "1", "LGPL", "base", "leleleplayer", "http://lelele.io");
-
 	char lib_file[] = "library.xml";
 	gchar *libdir;
 	gchar *libfile;
@@ -1040,12 +1029,8 @@ a
 	pref_arguments.preferences = g_settings_new_full(schema, NULL, NULL);
 	pargument->preferences = pref_arguments.preferences;
 	is_configured = g_settings_get_boolean(pref_arguments.preferences, "is-configured");
-	pref_arguments.network_mode_set = g_settings_get_boolean(pref_arguments.preferences, "network-mode-set");
-	argument.network_mode_set = pref_arguments.network_mode_set;
 	pref_arguments.lelele_scan = g_settings_get_boolean(pref_arguments.preferences, "lelele-scan");
 	pref_arguments.lib_path = pargument->lib_path;
-	pref_arguments.lllserver_address_char = (gchar*)g_variant_get_data(g_settings_get_value(pref_arguments.preferences, "network-mode-ip"));
-	argument.lllserver_address_char = pref_arguments.lllserver_address_char;
 	pargument->vol = g_settings_get_double(pref_arguments.preferences, "volume");
 	pargument->time_spin = GTK_WIDGET(gtk_builder_get_object(builder, "time_spin"));
 	analyze_spinner = GTK_WIDGET(gtk_builder_get_object(builder, "spinner1"));
@@ -1088,7 +1073,6 @@ a
 	/* Signal management */
 	g_signal_connect(G_OBJECT(bus), "message::state-changed", G_CALLBACK(state_changed_cb), pargument);
 	g_signal_connect(G_OBJECT(pargument->playbin), "about-to-finish", G_CALLBACK(continue_track_cb), pargument);
-	g_signal_connect(G_OBJECT(pargument->playbin), "source-setup", G_CALLBACK(source_setup_cb), &pargument->connection_remote);
 	g_signal_connect(G_OBJECT(bus), "message::stream-start", G_CALLBACK(refresh_ui_cb), pargument);
 	g_signal_connect(G_OBJECT(bus), "message::tag", G_CALLBACK(tags_obtained_cb), pargument);
 	g_signal_connect(G_OBJECT(bus), "message::eos", G_CALLBACK(end_of_playlist_cb), pargument);
@@ -1136,13 +1120,6 @@ a
 
 	if(is_configured == FALSE) {
 		preferences_callback_cb(GTK_MENU_ITEM(preferences), &pref_arguments);
-	}
-	
-	if(pref_arguments.network_mode_set == TRUE) {		
-		client = g_socket_client_new();
-	
-		g_socket_client_connect_to_host_async(client, pref_arguments.lllserver_address_char, 
-			1292, NULL, connection_established_lllserver_cb, &pref_arguments); // 1292 = LIB
 	}
 
 	gtk_main();

@@ -99,9 +99,6 @@ struct arguments {
 	gdouble vol;
 	gchar *lib_path;
 	GSettings *preferences;
-	gboolean network_mode_set;
-	GSocketConnection *connection_remote;
-	const gchar *lllserver_address_char;
 };
 
 struct pref_arguments {
@@ -333,9 +330,3 @@ gboolean filter_album(GtkTreeModel *, GtkTreeIter *, struct arguments *);
 int nb_rows_treeview(GtkTreeModel *);
 gboolean tree_row_reference_get_iter(GtkTreeRowReference *, GtkTreeIter *);
 GtkTreeRowReference *tree_iter_get_row_reference(GtkTreeModel *, GtkTreeIter *);
-void remote_lllp_connected_cb(GObject *listener, GAsyncResult *res, gpointer pref_arguments);
-void connection_established_lllserver_cb(GObject *, GAsyncResult *, gpointer);
-void quit_lllserver_cb(GObject *, GAsyncResult *, gpointer);
-void pad_added_handler_cb(GstElement *, GstPad *, gpointer);
-void source_setup_cb(GstElement *, GstElement *, GSocketConnection **); 
-gboolean uri_socket_src_plugin_init(GstPlugin *);

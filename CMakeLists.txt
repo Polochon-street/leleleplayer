@@ -4,7 +4,7 @@ project(leleleplayer C)
 
 find_package(PkgConfig REQUIRED)
 
-pkg_check_modules(MULTIMEDIA REQUIRED gstreamer-1.0 gstreamer-video-1.0 libxml-2.0 gstreamer-pbutils-1.0)
+pkg_check_modules(MULTIMEDIA REQUIRED gstreamer-1.0 gstreamer-video-1.0 libxml-2.0)
 pkg_check_modules(BLISS REQUIRED libavcodec libavutil libavformat)
 
 set(GCC_BLISS_LINK_FLAGS "-lbliss")

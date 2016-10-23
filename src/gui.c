@@ -47,12 +47,12 @@ gboolean refresh_config_progressbar(struct pref_arguments *argument) {
 			}
 			if(found == TRUE) {
 				gtk_list_store_set(argument->store_library, &tempiter, PLAYING, "", TRACKNUMBER, song->tracknumber, TRACK, song->title, ALBUM, song->album, ARTIST, song->artist,
-					FORCE, (float)song->calm_or_loud, FORCE_TEMPO1, song->force_vector.tempo1, FORCE_TEMPO2, song->force_vector.tempo2, FORCE_TEMPO3, song->force_vector.tempo3, FORCE_AMP, song->force_vector.amplitude, FORCE_FREQ, song->force_vector.frequency, FORCE_ATK, song->force_vector.attack, TEXTFORCE, tempforce, AFILE, song->filename, -1);	
+					FORCE, (float)song->calm_or_loud, FORCE_TEMPO, song->force_vector.tempo, FORCE_AMP, song->force_vector.amplitude, FORCE_FREQ, song->force_vector.frequency, FORCE_ATK, song->force_vector.attack, TEXTFORCE, tempforce, AFILE, song->filename, -1);	
 			}
 			else {
 				gtk_list_store_append(argument->store_library, &iter);
 				gtk_list_store_set(argument->store_library, &iter, PLAYING, "", TRACKNUMBER, song->tracknumber, TRACK, song->title, ALBUM, song->album, ARTIST, song->artist,
-					FORCE, (float)song->calm_or_loud, FORCE_TEMPO1, song->force_vector.tempo1, FORCE_TEMPO2, song->force_vector.tempo2, FORCE_TEMPO3, song->force_vector.tempo3, FORCE_AMP, song->force_vector.amplitude, FORCE_FREQ, song->force_vector.frequency, FORCE_ATK, song->force_vector.attack, TEXTFORCE, tempforce, AFILE, song->filename, -1);
+					FORCE, (float)song->calm_or_loud, FORCE_TEMPO, song->force_vector.tempo, FORCE_AMP, song->force_vector.amplitude, FORCE_FREQ, song->force_vector.frequency, FORCE_ATK, song->force_vector.attack, TEXTFORCE, tempforce, AFILE, song->filename, -1);
 				add_entry_artist_tab(argument->treeview_artist, argument->store_artist, GTK_TREE_MODEL(argument->store_library), &iter);
 				add_entry_album_tab(argument->treeview_album, argument->store_album, GTK_TREE_MODEL(argument->store_library), &iter);
 			}
@@ -173,8 +173,8 @@ void analyze_thread(struct pref_arguments *argument) {
 		struct bl_song msg_song;
 		child = xmlNewTextChild(cur, NULL, "song", NULL);
 		int tempint;
-		gchar *amplitude, *freq, *tempo1, *tempo2, *tempo3, *atk, *resnum_s;
-		if((resnum = bl_analyze(l->data, &song)) > -2) {
+		gchar *amplitude, *freq, *tempo, *atk, *resnum_s;
+		if((resnum = bl_analyze(l->data, &song)) < 3) {
 			for(i = 0; (song.tracknumber[i] != '\0') && (g_ascii_isdigit(song.tracknumber[i]) == FALSE); ++i)
 				song.tracknumber[i] = '0';
 			if(song.tracknumber[i] != '\0') {
@@ -186,9 +186,7 @@ void analyze_thread(struct pref_arguments *argument) {
 			resnum_s = g_strdup_printf("%d", resnum);
 			amplitude = g_strdup_printf("%f", song.force_vector.amplitude);
 			freq = g_strdup_printf("%f", song.force_vector.frequency);
-			tempo1 = g_strdup_printf("%f", song.force_vector.tempo1);
-			tempo2 = g_strdup_printf("%f", song.force_vector.tempo2);
-			tempo3 = g_strdup_printf("%f", song.force_vector.tempo3);
+			tempo = g_strdup_printf("%f", song.force_vector.tempo);
 			atk = g_strdup_printf("%f", song.force_vector.attack);
 	
 			if(found == FALSE) {
@@ -200,9 +198,7 @@ void analyze_thread(struct pref_arguments *argument) {
 				xmlNewTextChild(child, NULL, "analyze-resnum", resnum_s);
 				xmlNewTextChild(child, NULL, "analyze-amplitude", amplitude);
 				xmlNewTextChild(child, NULL, "analyze-freq", freq);
-				xmlNewTextChild(child, NULL, "analyze-tempo1", tempo1);
-				xmlNewTextChild(child, NULL, "analyze-tempo2", tempo2);
-				xmlNewTextChild(child, NULL, "analyze-tempo3", tempo3);
+				xmlNewTextChild(child, NULL, "analyze-tempo", tempo);
 				xmlNewTextChild(child, NULL, "analyze-atk", atk);
 			}
 			else {
@@ -226,14 +222,8 @@ void analyze_thread(struct pref_arguments *argument) {
 							else if((!xmlStrcmp(child_find->name, (const xmlChar *)"analyze-freq"))) {
 								xmlNodeSetContent(child_find, freq);
 							}
-							else if((!xmlStrcmp(child_find->name, (const xmlChar *)"analyze-tempo1"))) {
-								xmlNodeSetContent(child_find, tempo1);
-							}
-							else if((!xmlStrcmp(child_find->name, (const xmlChar *)"analyze-tempo2"))) {
-								xmlNodeSetContent(child_find, tempo2);
-							}
-							else if((!xmlStrcmp(child_find->name, (const xmlChar *)"analyze-tempo3"))) {
-								xmlNodeSetContent(child_find, tempo3);
+							else if((!xmlStrcmp(child_find->name, (const xmlChar *)"analyze-tempo"))) {
+								xmlNodeSetContent(child_find, tempo);
 							}
 							else if((!xmlStrcmp(child_find->name, (const xmlChar *)"analyze-atk"))) {
 								xmlNodeSetContent(child_find, atk);
@@ -241,13 +231,11 @@ void analyze_thread(struct pref_arguments *argument) {
 						}
 					}
 				}
-			}
+			} 
 			g_free(amplitude);
 			g_free(resnum_s);
 			g_free(freq);
-			g_free(tempo1);
-			g_free(tempo2);
-			g_free(tempo3);
+			g_free(tempo);
 			g_free(atk);
 			msg_song = song;
 			msg_song.tracknumber = g_malloc(strlen(song.tracknumber)+1);
@@ -690,13 +678,8 @@ void display_library(GtkTreeView *treeview, GtkListStore *store, gchar *libfile)
 	xmlChar *tempforce = NULL;
 	gchar forceresult[20];
 	float tempforcef;
-	xmlChar *tempforce_env1 = NULL;
-	float tempforce_env1f;
-	xmlChar *tempforce_env2 = NULL;
-	float tempforce_env2f;
-	xmlChar *tempforce_env3 = NULL;
-	float tempforce_env3f;
-
+	xmlChar *tempforce_env = NULL;
+	float tempforce_envf;
 	xmlChar *tempforce_amp = NULL;
 	float tempforce_ampf;
 	xmlChar *tempforce_freq = NULL;
@@ -759,17 +742,9 @@ void display_library(GtkTreeView *treeview, GtkListStore *store, gchar *libfile)
 							tempforce_freq = xmlNodeGetContent(child);
 							tempforce_freqf = atof(tempforce_freq);
 						}
-						else if((!xmlStrcmp(child->name, (const xmlChar *)"analyze-tempo1"))) {
-							tempforce_env1 = xmlNodeGetContent(child);
-							tempforce_env1f = atof(tempforce_env1);
-						}
-						else if((!xmlStrcmp(child->name, (const xmlChar *)"analyze-tempo2"))) {
-							tempforce_env2 = xmlNodeGetContent(child);
-							tempforce_env2f = atof(tempforce_env2);
-						}
-						else if((!xmlStrcmp(child->name, (const xmlChar *)"analyze-tempo3"))) {
-							tempforce_env3 = xmlNodeGetContent(child);
-							tempforce_env3f = atof(tempforce_env3);
+						else if((!xmlStrcmp(child->name, (const xmlChar *)"analyze-tempo"))) {
+							tempforce_env = xmlNodeGetContent(child);
+							tempforce_envf = atof(tempforce_env);
 						}
 						else if((!xmlStrcmp(child->name, (const xmlChar *)"analyze-atk"))) {
 							tempforce_atk = xmlNodeGetContent(child);
@@ -778,7 +753,7 @@ void display_library(GtkTreeView *treeview, GtkListStore *store, gchar *libfile)
 					}
 
 					gtk_list_store_append(store, &iter);
-					gtk_list_store_set(store, &iter, PLAYING, "", TRACKNUMBER, temptracknumber, TRACK, temptrack, ALBUM, tempalbum, ARTIST, tempartist, FORCE, tempforcef, FORCE_TEMPO1, tempforce_env1f, FORCE_TEMPO2, tempforce_env2f, FORCE_TEMPO3, tempforce_env3f, FORCE_AMP, tempforce_ampf, FORCE_FREQ, tempforce_freqf, FORCE_ATK, tempforce_atkf, TEXTFORCE, forceresult, AFILE, tempfile, -1);
+					gtk_list_store_set(store, &iter, PLAYING, "", TRACKNUMBER, temptracknumber, TRACK, temptrack, ALBUM, tempalbum, ARTIST, tempartist, FORCE, tempforcef, FORCE_TEMPO, tempforce_envf, FORCE_AMP, tempforce_ampf, FORCE_FREQ, tempforce_freqf, FORCE_ATK, tempforce_atkf, TEXTFORCE, forceresult, AFILE, tempfile, -1);
 					xmlFree(temptracknumber);
 					xmlFree(temptrack);
 					xmlFree(tempartist);
@@ -787,11 +762,9 @@ void display_library(GtkTreeView *treeview, GtkListStore *store, gchar *libfile)
 					xmlFree(tempforce);
 					xmlFree(tempforce_amp);
 					xmlFree(tempforce_freq);
-					xmlFree(tempforce_env1);
-					xmlFree(tempforce_env2);
-					xmlFree(tempforce_env3);
+					xmlFree(tempforce_env);
 					xmlFree(tempforce_atk);
-					temptracknumber = temptrack = tempartist = tempalbum =  tempforce = tempforce_amp = tempfile = tempforce_freq = tempforce_env1 = tempforce_env2 = tempforce_env3 = tempforce_atk = NULL;
+					temptracknumber = temptrack = tempartist = tempalbum =  tempforce = tempforce_amp = tempfile = tempforce_freq = tempforce_env = tempforce_atk = NULL;
 				}
 			}
 			xmlFreeDoc(library);

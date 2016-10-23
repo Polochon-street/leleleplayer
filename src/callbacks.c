@@ -370,17 +370,16 @@ void preferences_callback_cb(GtkMenuItem *preferences, struct pref_arguments *ar
 		g_settings_set_value(argument->preferences, "library", g_variant_new_string(argument->folder));
 		argument->lllserver_address_char = g_strdup(gtk_entry_get_text(GTK_ENTRY(network_entry)));
 		g_settings_set_value(argument->preferences, "network-mode-ip", g_variant_new_string(argument->lllserver_address_char));
-		printf("%p\n", old_folder);
-		//if((old_folder == NULL) || strcmp(old_folder, argument->folder)) {
+		if((old_folder == NULL) ||strcmp(old_folder, argument->folder)) {
 			gtk_list_store_clear(argument->store_library);
 			gtk_tree_store_clear(argument->store_album);
 			gtk_tree_store_clear(argument->store_artist);
 			argument->erase = TRUE;
 			g_thread_new("analyze", (GThreadFunc)analyze_thread, argument);
-		//}
-		//else {
-		//	argument->erase = FALSE;
-		//}
+		}
+		else {
+			argument->erase = FALSE;
+		}
 		g_settings_set_boolean(argument->preferences, "is-configured", TRUE);
 	}
 	gtk_widget_destroy(dialog); 
@@ -427,9 +426,7 @@ void add_file_to_playlist_cb(GtkMenuItem *add_file, struct arguments *argument) 
 				gtk_list_store_set(argument->store_playlist, &iter_playlist, TRACK, song.title, -1);
 				gtk_list_store_set(argument->store_playlist, &iter_playlist, ALBUM, song.album, -1);
 				gtk_list_store_set(argument->store_playlist, &iter_playlist, ARTIST, song.artist, -1);		
-				gtk_list_store_set(argument->store_playlist, &iter_playlist, FORCE_TEMPO1, song.force_vector.tempo1, -1);
-				gtk_list_store_set(argument->store_playlist, &iter_playlist, FORCE_TEMPO2, song.force_vector.tempo2, -1);
-				gtk_list_store_set(argument->store_playlist, &iter_playlist, FORCE_TEMPO3, song.force_vector.tempo3, -1);
+				gtk_list_store_set(argument->store_playlist, &iter_playlist, FORCE_TEMPO, song.force_vector.tempo, -1);
 				gtk_list_store_set(argument->store_playlist, &iter_playlist, FORCE_AMP, song.force_vector.amplitude, -1);
 				gtk_list_store_set(argument->store_playlist, &iter_playlist, FORCE_FREQ, song.force_vector.frequency, -1);
 				gtk_list_store_set(argument->store_playlist, &iter_playlist, FORCE_ATK, song.force_vector.attack, -1);
@@ -478,9 +475,8 @@ void open_audio_file_cb(GtkMenuItem *open, struct arguments *argument) {
 		else { // Create an iter_forge() function?
 			gtk_list_store_append(argument->store_playlist, &iter_playlist);
 			gtk_list_store_set(argument->store_playlist, &iter_playlist, PLAYING, "", TRACKNUMBER, song.tracknumber,
-			TRACK, song.title, ALBUM, song.album, ARTIST, song.artist, FORCE_TEMPO1, song.force_vector.tempo1, FORCE_TEMPO2, song.force_vector.tempo2,
-			FORCE_TEMPO3, song.force_vector.tempo3, FORCE_AMP, song.force_vector.amplitude, FORCE_FREQ, song.force_vector.frequency,
-			FORCE_ATK, song.force_vector.attack, AFILE, filename, -1);
+			TRACK, song.title, ALBUM, song.album, ARTIST, song.artist, FORCE_TEMPO, song.force_vector.tempo, 
+			FORCE_AMP, song.force_vector.amplitude, FORCE_FREQ, song.force_vector.frequency, FORCE_ATK, song.force_vector.attack, AFILE, filename, -1);
 			if(resnum == BL_LOUD)
 				gtk_list_store_set(argument->store_playlist, &iter_playlist, TEXTFORCE, "Loud", -1);
 			else if(resnum == BL_CALM)
@@ -704,8 +700,7 @@ void message_application_cb(GstBus *bus, GstMessage *msg, struct arguments *argu
 					gtk_tree_model_get(model_playlist, &iter_playlist, AFILE, &argument->current_song.filename, 
 					TRACKNUMBER, &argument->current_song.tracknumber, TRACK, &argument->current_song.title, 
 					ALBUM, &argument->current_song.album, ARTIST, &argument->current_song.artist, 
-					FORCE, &argument->current_song.force, FORCE_TEMPO1, &argument->current_song.force_vector.tempo1,
-					FORCE_TEMPO2, &argument->current_song.force_vector.tempo2, FORCE_TEMPO3, &argument->current_song.force_vector.tempo3,
+					FORCE, &argument->current_song.force, FORCE_TEMPO, &argument->current_song.force_vector.tempo, 
 					FORCE_AMP, &argument->current_song.force_vector.amplitude, FORCE_FREQ, &argument->current_song.force_vector.frequency, 
 					FORCE_ATK, &argument->current_song.force_vector.attack, -1);
 				}

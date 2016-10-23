@@ -16,9 +16,7 @@ enum {
 	AFILE,
 	FORCE_AMP,
 	FORCE_FREQ,
-	FORCE_TEMPO1,
-	FORCE_TEMPO2,
-	FORCE_TEMPO3,
+	FORCE_TEMPO,
 	FORCE_ATK,
 };
 
@@ -120,8 +118,7 @@ void lllp_next_song_cb(GObject *listener, GAsyncResult *res, gpointer pstore_lib
 			}
 			gtk_tree_model_get(GTK_TREE_MODEL(store_library), &iter, FORCE_AMP, &rand_force_vector.amplitude,
 				FORCE_ATK, &rand_force_vector.attack, FORCE_FREQ, &rand_force_vector.frequency,
-				FORCE_TEMPO1, &rand_force_vector.tempo1, FORCE_TEMPO2, &rand_force_vector.tempo2,
-				FORCE_TEMPO3, &rand_force_vector.tempo3, -1);
+				FORCE_TEMPO, &rand_force_vector.tempo, -1);
 		}
 		treshold -= 0.01;
 		treshold_distance += 0.01;
@@ -132,7 +129,7 @@ void lllp_next_song_cb(GObject *listener, GAsyncResult *res, gpointer pstore_lib
 	player_with_the_song = g_inet_address_new_from_string(player_with_the_song_char);
 
 	if(g_inet_address_equal(player_with_the_song, inet_address) == TRUE) {
-		rand_force_vector.attack = rand_force_vector.frequency = rand_force_vector.tempo1 = rand_force_vector.tempo2 = rand_force_vector.tempo3 = rand_force_vector.amplitude = 0;
+		rand_force_vector.attack = rand_force_vector.frequency = rand_force_vector.tempo = rand_force_vector.amplitude = 0;
 		player_client = g_socket_client_new();
 		connection = g_socket_client_connect_to_host(player_client, g_inet_address_to_string(inet_address), 5353, NULL, NULL);
 		output_stream = g_io_stream_get_output_stream(G_IO_STREAM(connection));
@@ -234,12 +231,8 @@ void convert_library_to_list_store(GtkListStore *store_library, gchar *libfile) 
 	xmlNodePtr cur;
 	xmlNodePtr child;
 	xmlChar *tempfile = NULL;
-	xmlChar *tempforce_env1 = NULL;
-	float tempforce_env1f;
-	xmlChar *tempforce_env2 = NULL;
-	float tempforce_env2f;
-	xmlChar *tempforce_env3 = NULL;
-	float tempforce_env3f;
+	xmlChar *tempforce_env = NULL;
+	float tempforce_envf;
 	xmlChar *tempforce_amp = NULL;
 	float tempforce_ampf;
 	xmlChar *tempforce_freq = NULL;
@@ -282,17 +275,9 @@ void convert_library_to_list_store(GtkListStore *store_library, gchar *libfile) 
 							tempforce_freq = xmlNodeGetContent(child);
 							tempforce_freqf = atof(tempforce_freq);
 						}
-						else if((!xmlStrcmp(child->name, (const xmlChar *)"analyze-tempo1"))) {
-							tempforce_env1 = xmlNodeGetContent(child);
-							tempforce_env1f = atof(tempforce_env1);
-						}
-						else if((!xmlStrcmp(child->name, (const xmlChar *)"analyze-tempo2"))) {
-							tempforce_env2 = xmlNodeGetContent(child);
-							tempforce_env2f = atof(tempforce_env2);
-						}
-						else if((!xmlStrcmp(child->name, (const xmlChar *)"analyze-tempo3"))) {
-							tempforce_env3 = xmlNodeGetContent(child);
-							tempforce_env3f = atof(tempforce_env3);
+						else if((!xmlStrcmp(child->name, (const xmlChar *)"analyze-tempo"))) {
+							tempforce_env = xmlNodeGetContent(child);
+							tempforce_envf = atof(tempforce_env);
 						}
 						else if((!xmlStrcmp(child->name, (const xmlChar *)"analyze-atk"))) {
 							tempforce_atk = xmlNodeGetContent(child);
@@ -301,15 +286,13 @@ void convert_library_to_list_store(GtkListStore *store_library, gchar *libfile) 
 					}
 
 					gtk_list_store_append(store_library, &iter);
-					gtk_list_store_set(store_library, &iter, INET_ADDRESS, libfile, AFILE, tempfile, FORCE_AMP, tempforce_ampf, FORCE_FREQ, tempforce_freqf, FORCE_TEMPO1, tempforce_env1f, FORCE_TEMPO2, tempforce_env2f, FORCE_TEMPO3, tempforce_env3f, FORCE_ATK, tempforce_atkf, -1);
+					gtk_list_store_set(store_library, &iter, INET_ADDRESS, libfile, AFILE, tempfile, FORCE_AMP, tempforce_ampf, FORCE_FREQ, tempforce_freqf, FORCE_TEMPO, tempforce_envf, FORCE_ATK, tempforce_atkf, -1);
 					xmlFree(tempfile);
 					xmlFree(tempforce_amp);
 					xmlFree(tempforce_freq);
-					xmlFree(tempforce_env1);
-					xmlFree(tempforce_env2);
-					xmlFree(tempforce_env3);
+					xmlFree(tempforce_env);
 					xmlFree(tempforce_atk);
-					tempforce_amp = tempfile = tempforce_freq = tempforce_env1 = tempforce_env2 = tempforce_env3 = tempforce_atk = NULL;
+					tempforce_amp = tempfile = tempforce_freq = tempforce_env = tempforce_atk = NULL;
 				}
 			}
 			xmlFreeDoc(library);

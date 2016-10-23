@@ -6,7 +6,6 @@
 #include <glib/gstdio.h>
 #include <glib.h>
 #include <limits.h>
-#include <omp.h>
 #define GST_USE_UNSTABLE_API
 #include <gst/gst.h>
 #include <libxml/xmlmemory.h>
@@ -35,9 +34,7 @@ enum {
 	ALBUM,
 	ARTIST,
 	FORCE,
-	FORCE_TEMPO1,
-	FORCE_TEMPO2,
-	FORCE_TEMPO3,
+	FORCE_TEMPO,
 	FORCE_AMP,
 	FORCE_FREQ,
 	FORCE_ATK,

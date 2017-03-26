@@ -8,7 +8,7 @@ pkg_check_modules(MULTIMEDIA REQUIRED gstreamer-1.0 gstreamer-video-1.0 libxml-2
 pkg_check_modules(BLISS REQUIRED libavcodec libavutil libavformat)
 
 set(GCC_BLISS_LINK_FLAGS "-lbliss")
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS}${GCC_BLISS_LINK_FLAGS}")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${GCC_BLISS_LINK_FLAGS}")
 
 pkg_check_modules(GTK REQUIRED gtk+-3.0)
 

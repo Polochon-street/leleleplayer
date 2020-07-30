@@ -1,3 +1,5 @@
+This project is not alive anymore; it is instead recommended to use [bliss](https://github.com/Polochon-street/bliss) in combination with your favorite audio player.
+
 # leleleplayer v0.7.0
 Leleleplayer is a classic audio player, which comes with a [home-made library](https://github.com/Polochon-street/bliss) that computes distance between songs, using it in order to smoothly play similar songs from your audio library.
 Handy when you don't want to bother yourself with creating a complete playlist.
